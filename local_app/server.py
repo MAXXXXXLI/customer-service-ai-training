@@ -1,0 +1,829 @@
+from __future__ import annotations
+
+import json
+import os
+import re
+import urllib.error
+import urllib.request
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parents[1]
+KB_ROOT = ROOT / "knowledge_base"
+STATIC_ROOT = Path(__file__).resolve().parent / "static"
+HOST = os.getenv("HOST", "127.0.0.1")
+PORT = int(os.getenv("PORT", "8787"))
+SILICONFLOW_URL = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1/chat/completions")
+DEFAULT_MODEL = os.getenv("SILICONFLOW_MODEL", "Qwen/Qwen3.5-35B-A3B")
+ENV_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
+MOCK_MODE = os.getenv("SILICONFLOW_MOCK", "0").lower() in {"1", "true", "yes"}
+
+
+def read_json(name: str) -> Any:
+    return json.loads((KB_ROOT / name).read_text(encoding="utf-8"))
+
+
+def read_jsonl(name: str) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in (KB_ROOT / name).read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+RAG_DOCUMENTS = read_jsonl("rag_documents.jsonl")
+CARDS = read_jsonl("knowledge_cards.jsonl")
+OBJECTIONS = read_jsonl("objection_library.jsonl")
+SCENARIOS = read_jsonl("scenario_library.jsonl")
+RUBRIC = read_json("scoring_rubric.json")
+SOURCE_REGISTRY = read_json("source_registry.json")["sources"]
+LEARNING_CATALOG = read_json("learning_catalog.json")
+LEARNING_MODULES = read_json("learning_modules.json")["modules"]
+METHODOLOGY = read_json("customer_service_methodology.json")
+PUBLIC_TITLE_BY_ID = {
+    course["id"].removeprefix("COURSE-"): course["title"]
+    for course in LEARNING_CATALOG["courses"]
+}
+COURSE_BY_KNOWLEDGE_ID = {
+    course["id"].removeprefix("COURSE-"): course
+    for course in LEARNING_CATALOG["courses"]
+}
+COURSE_BY_ID = {course["id"]: course for course in LEARNING_CATALOG["courses"]}
+MODULE_BY_ID = {module["id"]: module for module in LEARNING_MODULES}
+SOURCE_TO_COURSES: dict[str, list[dict[str, Any]]] = {}
+for item in [*CARDS, *OBJECTIONS]:
+    course = COURSE_BY_KNOWLEDGE_ID.get(item.get("id", ""))
+    if not course:
+        continue
+    for source_id in item.get("source_ids", []):
+        SOURCE_TO_COURSES.setdefault(source_id, []).append(course)
+
+DOMAIN_TO_MODULE = {
+    "onboarding": "MOD-01", "company": "MOD-01", "reception": "MOD-01", "sales_skills": "MOD-01",
+    "point_wave": "MOD-02", "point_wave_ops": "MOD-02", "professional_qa": "MOD-02", "training_video": "MOD-02",
+    "super_v": "MOD-03", "point_wave_super_v": "MOD-03",
+    "beauty": "MOD-04", "beauty_ops": "MOD-04",
+    "slimming": "MOD-05", "slimming_reception": "MOD-05", "slimming_product": "MOD-05", "slimming_science": "MOD-05",
+    "objections": "MOD-06", "comparison": "MOD-06",
+    "safety": "MOD-07", "service_safety": "MOD-07", "operations": "MOD-07", "product_ops": "MOD-07",
+}
+
+DOMAIN_LABELS = {
+    "onboarding": "新员工成长路径",
+    "reception": "顾客接待与需求分析",
+    "sales_skills": "顾客沟通与信任建立",
+    "objections": "异议沟通与回应",
+    "follow_up": "体验后回访与跟进",
+    "point_wave": "点阵波项目知识",
+    "super_v": "超V热动力项目知识",
+    "beauty": "美容护理项目知识",
+    "slimming": "科学体重管理",
+    "slimming_reception": "体重管理接待流程",
+    "slimming_product": "体重管理产品安全",
+    "service_safety": "顾客服务与安全",
+    "safety": "安全与合规底线",
+    "operations": "门店运营规则",
+    "product_ops": "项目与运营知识",
+    "comparison": "项目比较与异议处理",
+    "training_video": "基础项目培训要点",
+}
+
+
+def matches_any(text: str, patterns: list[str]) -> bool:
+    return any(re.search(pattern, text, flags=re.I) for pattern in patterns)
+
+
+def unique_items(values: list[str]) -> list[str]:
+    seen = set()
+    result = []
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            result.append(value)
+    return result
+
+
+def route_customer_question(query: str) -> dict[str, Any]:
+    """Deterministically map a customer question to the approved knowledge modules."""
+    text = clean_text(query)
+    intent_routes = sorted(METHODOLOGY.get("intent_routes", []), key=lambda item: -item.get("priority", 0))
+    intent = next((item for item in intent_routes if matches_any(text, item.get("patterns", []))), None)
+    matched_intent = intent is not None
+    topics = [item for item in METHODOLOGY.get("topic_routes", []) if matches_any(text, item.get("patterns", []))]
+    default = METHODOLOGY.get("default_route", {})
+    if not intent:
+        intent = {
+            "id": default.get("intent_id", "INTENT-INFORMATION"),
+            "label": default.get("intent_label", "一般需求咨询"),
+            "primary_module_id": default.get("primary_module_id", "MOD-01"),
+            "support_module_ids": default.get("support_module_ids", ["MOD-07"]),
+            "course_ids": default.get("course_ids", []),
+            "focus": default.get("focus", "先确认顾客目标和必要安全信息。"),
+            "stop_sales": default.get("stop_sales", False),
+        }
+
+    topic_primary = topics[0].get("module_id") if topics else None
+    intent_primary = intent.get("primary_module_id")
+    if not matched_intent and topic_primary:
+        primary_module_id = topic_primary
+    elif intent_primary == "DYNAMIC":
+        primary_module_id = topic_primary or default.get("primary_module_id", "MOD-01")
+    else:
+        primary_module_id = intent_primary or topic_primary or default.get("primary_module_id", "MOD-01")
+
+    support_module_ids = []
+    if topic_primary and topic_primary != primary_module_id:
+        support_module_ids.append(topic_primary)
+    for topic in topics:
+        support_module_ids.extend(topic.get("support_module_ids", []))
+        if topic.get("module_id") != primary_module_id:
+            support_module_ids.append(topic.get("module_id"))
+    support_module_ids.extend(intent.get("support_module_ids", []))
+    if primary_module_id != "MOD-07":
+        support_module_ids.append("MOD-07")
+    support_module_ids = [item for item in unique_items(support_module_ids) if item in MODULE_BY_ID and item != primary_module_id]
+
+    course_ids = [*intent.get("course_ids", [])]
+    knowledge_points = []
+    for topic in topics:
+        course_ids.extend(topic.get("course_ids", []))
+        knowledge_points.extend(topic.get("knowledge_points", []))
+    if not topics:
+        course_ids.extend(default.get("course_ids", []))
+    if primary_module_id == "MOD-07" or intent.get("stop_sales"):
+        course_ids.extend(["COURSE-SERVICE-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"])
+    course_ids = [item for item in unique_items(course_ids) if item in COURSE_BY_ID]
+
+    if intent.get("stop_sales"):
+        method_step = "安全确认与停止分流"
+    elif intent.get("id") in {"INTENT-PRICE", "INTENT-RESULT", "INTENT-COMPARISON", "INTENT-DECISION"}:
+        method_step = "承接异议、依据回应并确认下一步"
+    elif intent.get("id") == "INTENT-SUITABILITY":
+        method_step = "安全确认后再解释选择"
+    elif topics:
+        method_step = "定位项目、补充必要信息并解释选择"
+    else:
+        method_step = "了解目标并完成问题定位"
+
+    primary_module = MODULE_BY_ID.get(primary_module_id, {})
+    support_modules = [MODULE_BY_ID[item] for item in support_module_ids]
+    course_titles = [COURSE_BY_ID[item]["title"] for item in course_ids]
+    return {
+        "intent_id": intent.get("id", "INTENT-INFORMATION"),
+        "intent_label": intent.get("label", "一般需求咨询"),
+        "topic_labels": [topic.get("label", "") for topic in topics],
+        "primary_module_id": primary_module_id,
+        "primary_module": primary_module.get("title", "新客接待与需求洞察"),
+        "support_module_ids": support_module_ids,
+        "support_modules": [module.get("title", "") for module in support_modules],
+        "required_course_ids": course_ids,
+        "required_courses": course_titles,
+        "knowledge_points": unique_items(knowledge_points)[:6],
+        "focus": intent.get("focus", default.get("focus", "先确认顾客目标和必要安全信息。")),
+        "recommended_next": next((topic.get("recommended_next") for topic in topics if topic.get("recommended_next")), default.get("focus", "先确认顾客目标和必要安全信息。")),
+        "method_step": method_step,
+        "stop_sales": bool(intent.get("stop_sales")),
+    }
+
+
+def public_route(route: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "intent": route.get("intent_label", "一般需求咨询"),
+        "primary_module": route.get("primary_module", "新客接待与需求洞察"),
+        "supporting_modules": route.get("support_modules", []),
+        "knowledge_points": route.get("knowledge_points", [])[:4],
+        "courses": route.get("required_courses", [])[:5],
+        "method_step": route.get("method_step", "了解目标并完成问题定位"),
+        "stop_sales": route.get("stop_sales", False),
+    }
+
+
+def route_context_block(route: dict[str, Any]) -> str:
+    return json.dumps({
+        "问题类型": route.get("intent_label"),
+        "主要知识模块": route.get("primary_module"),
+        "辅助知识模块": route.get("support_modules", []),
+        "必须调用课程": route.get("required_courses", []),
+        "回答重点": route.get("focus"),
+        "项目或主题知识点": route.get("knowledge_points", []),
+        "推荐下一步": route.get("recommended_next"),
+        "是否停止销售推进": route.get("stop_sales", False),
+    }, ensure_ascii=False)
+
+
+def clean_text(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def text_terms(text: str) -> set[str]:
+    value = clean_text(text).lower()
+    terms = set(re.findall(r"[a-z0-9_]+|[\u4e00-\u9fff]", value))
+    terms.update(value[i : i + 2] for i in range(len(value) - 1) if "\u4e00" <= value[i] <= "\u9fff" and "\u4e00" <= value[i + 1] <= "\u9fff")
+    return terms
+
+
+def related_course(doc: dict[str, Any]) -> dict[str, Any] | None:
+    document_id = str(doc.get("document_id", ""))
+    metadata = doc.get("metadata", {})
+    if metadata.get("course_id") in COURSE_BY_ID:
+        return COURSE_BY_ID[metadata["course_id"]]
+    if document_id in COURSE_BY_KNOWLEDGE_ID:
+        return COURSE_BY_KNOWLEDGE_ID[document_id]
+    candidates = SOURCE_TO_COURSES.get(str(metadata.get("source_id", "")), [])
+    if not candidates:
+        module_id = DOMAIN_TO_MODULE.get(str(metadata.get("domain", "")))
+        candidates = [course for course in LEARNING_CATALOG["courses"] if course.get("module_id") == module_id]
+    if not candidates:
+        return None
+    doc_terms = text_terms(f"{metadata.get('title', '')} {doc.get('text', '')}")
+    return max(
+        candidates,
+        key=lambda course: len(doc_terms & text_terms(json.dumps(course, ensure_ascii=False))),
+    )
+
+
+def retrieve(query: str, limit: int = 8, domain: str | None = None, route: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    query = clean_text(query)
+    if not query:
+        return []
+    q_terms = text_terms(query)
+    scored: list[tuple[float, dict[str, Any]]] = []
+    required_course_ids = set((route or {}).get("required_course_ids", []))
+    routed_module_ids = {
+        (route or {}).get("primary_module_id"),
+        *((route or {}).get("support_module_ids", [])),
+    }
+    routed_module_ids.discard(None)
+    for doc in RAG_DOCUMENTS:
+        metadata = doc.get("metadata", {})
+        # 原始资料保留用于审计，但不直接进入机器人上下文；机器人只使用已重写的
+        # 课程、结构化卡片、异议案例和安全规则，避免旧版医疗化/绝对化话术复现。
+        if metadata.get("doc_type") == "source":
+            continue
+        if domain and metadata.get("domain") not in {domain, "safety", "objections"}:
+            continue
+        doc_text = clean_text(doc.get("text", ""))
+        d_terms = text_terms(doc_text)
+        overlap = len(q_terms & d_terms)
+        phrase = 1.0 if query.lower() in doc_text.lower() else 0.0
+        title_bonus = len(q_terms & text_terms(metadata.get("title", ""))) * 0.7
+        base_score = overlap + phrase * 5 + title_bonus
+        course_bonus = 2.5 if metadata.get("doc_type") == "course_section" else 0.0
+        route_bonus = 0.0
+        if metadata.get("course_id") in required_course_ids:
+            route_bonus += 10.0
+        if metadata.get("module_id") in routed_module_ids:
+            route_bonus += 3.0
+        score = base_score + course_bonus + route_bonus
+        if base_score > 0 or route_bonus > 0:
+            scored.append((score, doc))
+    scored.sort(key=lambda item: (-item[0], item[1].get("document_id", "")))
+    selected = []
+    per_course: dict[str, int] = {}
+    for score, doc in scored:
+        course_id = str(doc.get("metadata", {}).get("course_id") or doc.get("document_id", ""))
+        if per_course.get(course_id, 0) >= 2:
+            continue
+        selected.append({**doc, "retrieval_score": round(score, 2)})
+        per_course[course_id] = per_course.get(course_id, 0) + 1
+        if len(selected) >= limit:
+            break
+    return selected
+
+
+def public_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
+    persona = scenario.get("persona", {})
+    return {
+        "id": scenario.get("id"),
+        "domain": scenario.get("domain"),
+        "age": persona.get("age"),
+        "gender": persona.get("gender"),
+        "occupation": persona.get("occupation"),
+        "style": persona.get("style"),
+        "goal": persona.get("goal"),
+        "opening": scenario.get("opening"),
+    }
+
+
+def public_doc_title(doc: dict[str, Any]) -> str:
+    document_id = str(doc.get("document_id", ""))
+    course = related_course(doc)
+    if course:
+        return course["title"]
+    metadata = doc.get("metadata", {})
+    domain = metadata.get("domain", "")
+    if document_id.startswith("OB-"):
+        title = clean_text(metadata.get("title", ""))
+        return f"常见顾客异议：{title}" if title else "常见顾客异议处理"
+    if document_id == "COMPLIANCE-MEDICAL-001":
+        return PUBLIC_TITLE_BY_ID.get(document_id, "医疗与营销安全底线")
+    return DOMAIN_LABELS.get(domain, "企业培训知识")
+
+
+def public_doc_category(doc: dict[str, Any]) -> str:
+    metadata = doc.get("metadata", {})
+    doc_type = metadata.get("doc_type", "")
+    if doc_type == "objection":
+        return "话术案例"
+    if doc_type in {"platform_policy", "safety"} or metadata.get("domain") == "safety":
+        return "安全规则"
+    if doc_type == "source":
+        return "企业知识"
+    return "标准课程"
+
+
+def public_citations(docs: list[dict[str, Any]]) -> list[dict[str, str]]:
+    seen = set()
+    citations = []
+    for doc in docs:
+        label = public_doc_title(doc)
+        if label in seen:
+            continue
+        seen.add(label)
+        course = related_course(doc)
+        module = MODULE_BY_ID.get(course.get("module_id"), {}) if course else {}
+        citations.append({
+            "label": label,
+            "category": public_doc_category(doc),
+            "module": module.get("short_name", ""),
+            "chapter": course.get("group_title", "") if course else "",
+        })
+    return citations
+
+
+def public_retrieved(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    items = []
+    seen = set()
+    for doc in docs:
+        course = related_course(doc)
+        title = course.get("title") if course else public_doc_title(doc)
+        if title in seen:
+            continue
+        seen.add(title)
+        module = MODULE_BY_ID.get(course.get("module_id"), {}) if course else {}
+        items.append({
+            "title": title,
+            "category": public_doc_category(doc),
+            "module": module.get("short_name", ""),
+            "chapter": course.get("group_title", "") if course else "",
+        })
+    return items
+
+
+def sanitize_public_string(value: str) -> str:
+    value = re.sub(r"\bSRC-\d+(?:\s*,\s*SRC-\d+)*\b", "企业知识库", value)
+    value = re.sub(r"\b(?:FLOW|PROD|OP|KNOW|SERVICE|OPS|COMPLIANCE|OB|SCN)-[A-Z0-9-]+\b", "相关课程", value)
+    value = re.sub(r"(?:document_id|source_id)\s*=\s*[^\s，。；]+", "", value, flags=re.I)
+    value = re.sub(r"[^，。；：\n]{1,80}\.(?:docx?|pptx?|xlsx?|xls|pdf|mp4)\b", "企业培训资料", value, flags=re.I)
+    value = re.sub(r"\bCHUNK-\d+\b", "", value)
+    return clean_text(value)
+
+
+def sanitize_public_result(value: Any) -> Any:
+    if isinstance(value, str):
+        return sanitize_public_string(value)
+    if isinstance(value, list):
+        return [sanitize_public_result(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: sanitize_public_result(item)
+            for key, item in value.items()
+            if key not in {"safety_filter_matches"}
+        }
+    return value
+
+
+ASSESSMENT_SPECIFIC_ADVICE = re.compile(r"(?:古方|口服|注射|用药|药品|剂量|停药|隔天一次|每天\s*\d+\s*次)", re.I)
+
+
+def sanitize_assessment_advice(result: dict[str, Any]) -> dict[str, Any]:
+    """Keep scoring evidence intact while removing unverified product or usage advice."""
+    if not isinstance(result, dict):
+        return result
+    for dimension in result.get("dimension_scores", []):
+        if isinstance(dimension, dict) and ASSESSMENT_SPECIFIC_ADVICE.search(clean_text(dimension.get("comment"))):
+            dimension["comment"] = "员工尚未把顾客顾虑转化为可执行的下一步。建议先澄清时间、预算和服务偏好，再给出门店当前已核验且符合安全边界的选择。"
+    improvements = result.get("improvements")
+    if isinstance(improvements, list):
+        result["improvements"] = [
+            "不要替顾客直接选择具体产品或使用安排；先核验适用条件和门店当前标准，再提供非医疗、可选择的下一步。"
+            if ASSESSMENT_SPECIFIC_ADVICE.search(clean_text(item)) else item
+            for item in improvements
+        ]
+    if ASSESSMENT_SPECIFIC_ADVICE.search(clean_text(result.get("summary"))):
+        result["summary"] = "本轮需要加强需求分析和个性化表达。后续重点练习在不承诺结果、不擅自补充具体产品或使用安排的前提下，把顾客顾虑转化为可执行的服务下一步。"
+    return result
+
+
+def context_block(docs: list[dict[str, Any]]) -> str:
+    blocks = []
+    for index, doc in enumerate(docs, start=1):
+        blocks.append(
+            f"[知识内容{index}] 主题={public_doc_title(doc)}；类别={public_doc_category(doc)}\n"
+            f"{doc.get('text', '')}"
+        )
+    return "\n\n".join(blocks)
+
+
+SAFETY_POLICY = """安全边界：不做诊断、处方、剂量建议或停药建议；不承诺治愈、根治、百分百有效、固定减重斤数或不反弹；不使用恐吓、羞辱身材、隐瞒病史、贬低医院/竞品来成交。出现胸痛、呼吸困难、晕厥、突发剧痛、进行性麻木无力、发热红肿、外伤后明显受限等红旗信号时，停止营销和操作，建议由有资质人员/医疗机构评估。"""
+
+METHODOLOGY_POLICY = """
+
+统一接待与回答方法（必须执行）：
+1. 先读取输入中的“方法路由”。它已经根据知识库确定了问题类型、主要模块、辅助模块、必须调用课程和安全优先级；不得自行换成无关项目或凭常识补充公司标准。
+2. 先过安全闸门。路由要求停止销售时，只做风险承接、必要问询、停止/升级/转介和记录，不继续项目介绍、成交或产品推荐。
+3. 正常回答依次完成：承接当前问题 → 只补一个必要信息 → 使用指定课程回应 → 说明必要边界或待核验点 → 给一个可执行下一步并确认顾客意愿。
+4. 只回答顾客当前最关心的一件事。不要一次倾倒全部知识，不用模块名或内部分析代替对顾客说的话。
+5. 推荐必须来自顾客已表达的目标、时间、预算、舒适度和风险信息；信息不足时先提问，不直接推荐具体项目、次数、产品或价格。
+6. 动态价格、活动、次数和门店政策必须先确认城市、门店、项目、日期及当前版本；无法确认就明确待核验。
+"""
+
+HIGH_RISK_CLAIM_PATTERNS = [
+    r"自动诊疗",
+    r"替代手术",
+    r"保证(?:效果|结果|瘦|减重)",
+    r"(?:治愈|根治|治疗).{0,8}(?:疾病|颈椎病|糖尿病|三高|脂肪肝|炎症)",
+    r"(?:有效|能够|可以|会).{0,10}(?:治疗|治好|根治|改善糖尿病|改善三高|改善脂肪肝|提高免疫力|增强免疫力)",
+    r"(?:固定|保证).{0,8}(?:减重|减肥).{0,8}(?:斤|公斤)",
+    r"不反弹",
+    r"百分之百|百分百|100%",
+    r"白血球.{0,10}(?:增加|提高)",
+    r"(?:宫寒|卵巢|肾虚).{0,12}(?:受孕|衰老|疾病|治疗)",
+    r"国家药监局.{0,20}(?:批准|认证)",
+    r"单次治疗|后续疗程|按疗程|进入疗程",
+    r"压迫.{0,8}(?:血管|神经)",
+    r"(?:可能)?涉及.{0,6}(?:神经|血管)",
+    r"脑部.{0,8}供血|供血供氧.{0,8}不足",
+    r"(?:检查|查体).{0,12}(?:僵硬程度|结节|体征)",
+    r"(?:一定|肯定|保证).{0,8}(?:有效|缓解|改善)",
+]
+
+
+def unsafe_claim_hits(text: str) -> list[str]:
+    hits = []
+    for pattern in HIGH_RISK_CLAIM_PATTERNS:
+        for match in re.finditer(pattern, text, flags=re.I):
+            prefix = text[max(0, match.start() - 14):match.start()]
+            if re.search(r"(?:不能|不可|不应|无法|不得|不会|不做|避免|禁止|拒绝).{0,10}$", prefix):
+                continue
+            hits.append(pattern)
+            break
+    return hits
+
+
+def safety_filter(result: dict[str, Any], mode: str, user_text: str = "") -> dict[str, Any]:
+    """Prevent legacy source claims from becoming unqualified model advice."""
+    if not isinstance(result, dict):
+        return result
+    feedback = result.get("feedback") if isinstance(result.get("feedback"), dict) else {}
+    fields = [
+        clean_text(result.get("answer")),
+        clean_text(result.get("recommended_action")),
+        clean_text(result.get("suggested_reply")),
+        clean_text(feedback.get("issue")),
+        clean_text(feedback.get("why")),
+        clean_text(feedback.get("suggested_reply")),
+        clean_text(feedback.get("next_goal")),
+    ]
+    combined = " ".join(fields)
+    hits = unsafe_claim_hits(combined)
+    if mode == "qa" and re.search(r"敏感肌|皮肤过敏|容易过敏|医美恢复", user_text, flags=re.I):
+        result["answer"] = "不能只凭‘敏感肌’三个字判断能不能做。先确认目前有没有持续泛红、刺痛、破损、渗出、明显痘痘炎症或过敏发作，以及近期是否做过医美、刷酸、激光或使用强刺激产品。存在这些情况时先不操作，并建议由皮肤科或原医疗机构确认；状态稳定时，也要再核对具体项目、成分、设备禁忌和门店当前SOP，先做小范围感受测试，过程中一旦刺痛、灼热或泛红加重立即停止。降低次数不能替代适用性判断。"
+        result["uncertainties"] = ["需要确认当前皮肤是否处于急性敏感或治疗恢复期。", "需要核对具体产品成分、设备型号和当前门店SOP。"]
+        result["recommended_action"] = "先完成皮肤状态、过敏史、近期项目史和成分核对；无法确认时不操作。"
+        result["safety_filter_triggered"] = True
+        return result
+    if mode == "qa" and re.search(r"孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|慢病|糖尿病|高血压|三高", user_text, flags=re.I):
+        result["answer"] = "这类情况不能仅凭聊天直接判断‘可以做’。先暂停项目或产品推荐，确认具体年龄/阶段、疾病与用药、当前症状和产品或设备说明书，再由有资质的医生、药师或相应专业人员确认。门店不能通过降低能量、缩短时间或减少次数来替代适用性评估。"
+        result["uncertainties"] = ["需要更具体的健康信息和当前用药信息。", "需要核对产品标签、设备说明书和门店当前合规版本。"]
+        result["recommended_action"] = "核实信息并转有资质人员确认；确认前不操作、不销售具体方案。"
+        result["safety_filter_triggered"] = True
+        return result
+    if not hits:
+        return result
+    if mode == "qa":
+        result["answer"] = "不能承诺做一次就一定有效。更合适的回答是：‘每个人的情况和感受不同，我们先了解您最想改善的问题、持续时间和既往情况；体验前记录您关心的指标，体验后再一起对照当次感受和可观察变化。一次体验、固定次数或固定结果都不能保证。如果涉及疾病、药品或明显不适，需要先由有资质人员或医疗机构评估。’"
+        result["uncertainties"] = ["需要确认顾客具体咨询的项目与主要诉求。", "需要确认顾客是否存在明显不适或应先行转介的情况。"]
+        result["recommended_action"] = "使用‘体验、观察、个体差异、阶段复盘’等表达，不使用‘治疗、疗程、保证结果’等医疗化或绝对化说法。"
+    elif mode == "training":
+        result["feedback"] = result.get("feedback") or {}
+        user_hits = unsafe_claim_hits(user_text)
+        if user_hits:
+            result["feedback"]["level"] = "critical"
+            result["feedback"]["issue"] = "员工原话包含医疗化判断或结果承诺，需要立即改成风险问询和服务边界说明。"
+        result["feedback"]["why"] = "门店员工不能判断病因、解释为血管或神经受压，也不能使用治疗、疗程或固定效果承诺。先确认风险，再说明门店仅提供非医疗性质的服务体验。"
+        result["feedback"]["suggested_reply"] = "我理解您想改善肩颈发紧，但我不能判断头晕的原因，也不能承诺体验后一定缓解。先确认一下：头晕是否突然加重，有没有胸痛、呼吸困难、晕厥或进行性麻木无力？如果有或症状明显，建议先做医疗评估；确认适合后，我们再说明门店能提供的放松体验、可能感受和暂停方式。"
+        result["feedback"]["next_goal"] = "继续完成风险问询，并用非医疗化语言说明服务边界。"
+    result["safety_filter_triggered"] = True
+    result["safety_filter_matches"] = hits
+    return result
+
+
+def with_safety_doc(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    policy = next((doc for doc in RAG_DOCUMENTS if doc.get("document_id") == "COMPLIANCE-MEDICAL-001"), None)
+    if policy and not any(doc.get("document_id") == policy.get("document_id") for doc in docs):
+        return [*docs, policy]
+    return docs
+
+
+TRAIN_SYSTEM = """你是美容、瘦身门店的员工训练教练。你要同时完成两件事：让顾客角色的对话自然真实，并在每轮后指出员工一个最重要的改进点。
+
+只使用给定知识库作为专业依据。资料中可能存在旧版本、营销表述或需要核验的医学内容，不得擅自把它们改写成确定性承诺。""" + SAFETY_POLICY + METHODOLOGY_POLICY + """
+
+训练模式输出严格 JSON，不要 Markdown，不要额外解释：
+{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"引用员工原话并指出一个最重要的问题或做得好的地方","why":"说明当前处于哪个接待节点、应调用什么知识和为什么","method_step":"本轮应执行的方法节点","knowledge_focus":"本轮主要知识重点","suggested_reply":"严格按方法路由生成的一句自然话术","next_goal":"下一轮只练一个目标"},"citations":[]}
+feedback 必须引用员工刚刚说的话，不能泛泛而谈；必须检查员工是否先安全后业务、是否回答当前问题、是否使用正确知识模块、是否给出可执行下一步。顾客不知道内部规则，不要把隐藏场景设定和评分标准泄露给员工。"""
+
+
+TEST_TURN_SYSTEM = """你是美容、瘦身门店的模拟顾客。你正在参加员工无提示测试，只能以顾客身份自然回复，不能指导、评价、提示、总结或引用知识库。根据公开人物设定和隐藏异议逐步推进，不要一次性暴露全部信息，不要主动告诉员工你想考什么。顾客回复严格 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + SAFETY_POLICY
+
+
+QA_SYSTEM = """你是企业培训知识库中的专业顾客接待助手。你面对的是顾客，因此答案必须是一段可以直接对顾客说的话，而不是知识摘要、检索报告或员工培训分析。只能基于方法路由和检索资料，不能把知识库之外的猜测说成公司标准。
+
+回答要求：先直接承接顾客当前问题；如果缺少决定答案的关键信息，只问一个最必要的问题；再给已核验的事实、流程或边界；最后给一个可执行下一步。通常控制在80—220个汉字，复杂安全问题可适当增加。不要重复相同免责声明，不要罗列无关知识。
+
+回答结构严格 JSON：{"answer":"可直接对顾客说的完整回答","uncertainties":["确实需要核验的点，没有则为空数组"],"citations":[],"recommended_action":"一个明确、可执行的下一步"}。如果资料不足，明确说资料不足并说明要补充什么；如果涉及医疗、药品、孕期、儿童、慢病、服务后异常或红旗症状，优先安全分流。""" + SAFETY_POLICY + METHODOLOGY_POLICY
+
+
+ASSESS_SYSTEM = """你是企业培训考核官。根据给定评分表和员工完整对话，进行统一评分。测试期间不给员工任何提示；现在只输出考后结果。必须引用对话证据，不得只给空泛评价。评分时检查员工是否遵守统一方法：先安全后业务、回答当前问题、调用正确知识、只补必要问题、说明边界并给出正确下一步。输出严格 JSON：
+{"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"对话证据","comment":"评价"}],"critical_failures":[{"code":"CF-xx","reason":"...","evidence":"...","score_cap":59}],"strengths":["..."],"improvements":["..."],"next_training_scene":"SCN-...","summary":"..."}
+先按各维度评分，再应用关键失败封顶规则；没有关键失败时 critical_failures 必须为空。D3评价是否使用正确课程知识，D4评价是否把顾客问题定位到正确模块并形成个性化下一步，D5评价是否按承接—澄清—回应—选择—确认处理异议。不得替员工补充具体产品、口服/注射方案、剂量、用法或频次；员工没有给出具体方案时，只评价该能力缺失，并建议继续澄清需求、核验门店标准。""" + SAFETY_POLICY + METHODOLOGY_POLICY
+
+
+PUBLIC_OUTPUT_POLICY = """
+
+用户界面输出规则（高优先级）：
+1. 只使用员工和顾客能理解的课程名称，不展示或提及原始文件名、文件扩展名、来源编号、document_id、source_id、CHUNK、内部权威等级或技术检索字段。
+2. 不要说“根据某某.docx/PPT/PDF/视频文件”；可以说“根据接待标准”“根据安全规则”“根据体重管理课程”。
+3. 语言要像一位专业、清楚、温和的培训教练，避免内部术语堆砌。
+4. 如输出 citations，只允许格式 [{"label":"员工可理解的知识主题"}]，不得包含任何内部编号。
+5. 门店服务统一使用“体验、基础观察、顾客感受、阶段复盘”等非医疗表述；不得把服务称为“治疗、疗程、检查”，不得推断血管、神经、供血供氧等医学原因，也不得承诺固定效果。
+"""
+
+TRAIN_SYSTEM += PUBLIC_OUTPUT_POLICY + "\n训练模式的 citations 固定返回空数组。"
+TEST_TURN_SYSTEM += PUBLIC_OUTPUT_POLICY
+QA_SYSTEM += PUBLIC_OUTPUT_POLICY
+ASSESS_SYSTEM += PUBLIC_OUTPUT_POLICY
+
+
+def extract_json(content: str) -> dict[str, Any] | None:
+    content = (content or "").strip()
+    if content.startswith("```"):
+        content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.I | re.S).strip()
+    try:
+        value = json.loads(content)
+        return value if isinstance(value, dict) else None
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", content, flags=re.S)
+        if not match:
+            return None
+        try:
+            value = json.loads(match.group(0))
+            return value if isinstance(value, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+
+def call_model(system: str, messages: list[dict[str, str]], model: str, api_key: str, temperature: float = 0.4) -> tuple[str, dict[str, Any]]:
+    if MOCK_MODE or not api_key:
+        raise RuntimeError("mock_or_missing_key")
+    payload = {
+        "model": model,
+        "messages": [{"role": "system", "content": system}, *messages],
+        "temperature": temperature,
+        "top_p": 0.7,
+        "max_tokens": 1600,
+        "enable_thinking": False,
+        "stream": False,
+    }
+    request = urllib.request.Request(
+        SILICONFLOW_URL,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:800]
+        raise RuntimeError(f"SiliconFlow API {exc.code}: {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"SiliconFlow network error: {exc.reason}") from exc
+    content = body.get("choices", [{}])[0].get("message", {}).get("content", "")
+    return content, {"model": body.get("model", model), "usage": body.get("usage", {})}
+
+
+def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any] | None, history: list[dict[str, str]], docs: list[dict[str, Any]]) -> dict[str, Any]:
+    if mode == "training":
+        weak = not any(word in message for word in ["了解", "多久", "哪里", "感受", "目标", "担心", "方便", "预算", "疼", "病史"])
+        return {
+            "customer_reply": "我主要是肩颈总是紧，偶尔会头痛，想先了解一下你们怎么判断适不适合。",
+            "feedback": {
+                "level": "needs_work" if weak else "good",
+                "issue": "还没有围绕顾客的目标、症状时间和影响做追问。" if weak else "你有继续追问顾客目标，方向正确。",
+                "why": "新客接待要先完成需求分析，再进入项目介绍；不能只背项目卖点。",
+                "method_step": "了解目标并完成问题定位",
+                "knowledge_focus": "目标、持续时间、影响和安全信息",
+                "suggested_reply": "我先了解一下：这种紧和头痛大概多久了？什么情况下更明显？对工作或睡眠有影响吗？",
+                "next_goal": "下一轮先问清目标、持续时间和影响，再决定是否介绍项目。",
+            },
+            "citations": [{"document_id": d.get("document_id"), "source_id": d.get("metadata", {}).get("source_id"), "title": d.get("metadata", {}).get("title")} for d in docs[:2]],
+        }
+    if mode == "test" and action == "turn":
+        opening = scenario.get("opening") if scenario else "我最近有点困扰，想先了解一下你们的项目。"
+        reply = opening if not history else "我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？"
+        return {"reply": reply, "emotion": "hesitant", "should_continue": True}
+    return {
+        "answer": "当前是本地演示模式。已经检索到相关资料，但尚未调用真实模型。配置 SiliconFlow API Key 后，可生成基于这些资料的正式回答。",
+        "uncertainties": ["请以当前门店价格、项目标签和合规版本为准。"],
+        "citations": [{"document_id": d.get("document_id"), "source_id": d.get("metadata", {}).get("source_id"), "title": d.get("metadata", {}).get("title")} for d in docs[:3]],
+        "recommended_action": "先核对门店当前版本的价格、频次和适用边界。",
+    }
+
+
+def scenario_by_id(scenario_id: str | None) -> dict[str, Any]:
+    if scenario_id:
+        for item in SCENARIOS:
+            if item.get("id") == scenario_id:
+                return item
+    return SCENARIOS[0]
+
+
+def response_payload(mode: str, result: dict[str, Any], docs: list[dict[str, Any]], meta: dict[str, Any]) -> dict[str, Any]:
+    citations = public_citations(docs)
+    result = sanitize_public_result(result)
+    if mode == "qa":
+        result["citations"] = citations
+    elif isinstance(result, dict):
+        result.pop("citations", None)
+        citations = []
+    return {
+        "ok": True,
+        "mode": mode,
+        "result": result,
+        "citations": citations,
+        "retrieved": public_retrieved(docs) if mode == "qa" else [],
+        "meta": meta,
+    }
+
+
+def apply_methodology_result(result: dict[str, Any], mode: str, route: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(result, dict):
+        return result
+    if mode == "qa":
+        result["route"] = public_route(route)
+        if not clean_text(result.get("recommended_action")):
+            result["recommended_action"] = route.get("recommended_next", "先确认顾客目标和必要安全信息。")
+        if not isinstance(result.get("uncertainties"), list):
+            result["uncertainties"] = []
+    elif mode == "training":
+        feedback = result.get("feedback") if isinstance(result.get("feedback"), dict) else {}
+        feedback.setdefault("method_step", route.get("method_step", "了解目标并完成问题定位"))
+        knowledge_focus = "；".join(route.get("knowledge_points", [])[:2]) or route.get("focus", "先确认顾客目标和必要安全信息。")
+        feedback.setdefault("knowledge_focus", knowledge_focus)
+        result["feedback"] = feedback
+    return result
+
+
+def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
+    mode = payload.get("mode", "qa")
+    action = payload.get("action", "turn")
+    message = clean_text(payload.get("message", ""))
+    history = payload.get("history") or []
+    api_key = payload.get("api_key") or ENV_API_KEY
+    model = payload.get("model") or DEFAULT_MODEL
+    scenario = scenario_by_id(payload.get("scenario_id")) if mode == "test" else None
+
+    if action == "start" and mode in {"training", "test"}:
+        return {"ok": True, "mode": mode, "scenario": public_scenario(scenario_by_id(payload.get("scenario_id"))), "message": scenario_by_id(payload.get("scenario_id")).get("opening"), "source_refs": []}
+    if not message and action != "finish":
+        raise ValueError("请输入内容")
+
+    recent_dialogue = " ".join(clean_text(item.get("content", "")) for item in history[-6:])
+    query = clean_text(f"{recent_dialogue} {message}")
+    route = route_customer_question(query)
+    docs = retrieve(query, limit=8, route=route)
+    if mode in {"qa", "training", "test"}:
+        docs = with_safety_doc(docs)
+    citation_refs = public_citations(docs)
+
+    if mode == "qa":
+        user_message = f"顾客当前问题：{message}\n\n方法路由：\n{route_context_block(route)}\n\n检索资料：\n{context_block(docs)}"
+        if MOCK_MODE or not api_key:
+            result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message), mode, route)
+            return response_payload(mode, result, docs, {"mock": True, "model": model})
+        raw, meta = call_model(QA_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.2)
+        result = apply_methodology_result(safety_filter(extract_json(raw) or {"answer": raw, "uncertainties": ["模型未按结构化格式返回，请人工核验。"], "citations": citation_refs, "recommended_action": ""}, mode, message), mode, route)
+        return response_payload(mode, result, docs, {**meta, "mock": False})
+
+    if mode == "training":
+        user_message = f"员工刚刚说：{message}\n\n最近对话：{json.dumps(history[-8:], ensure_ascii=False)}\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs)}"
+        if MOCK_MODE or not api_key:
+            result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message), mode, route)
+            return response_payload(mode, result, docs, {"mock": True, "model": model})
+        raw, meta = call_model(TRAIN_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.45)
+        result = apply_methodology_result(safety_filter(extract_json(raw) or {"customer_reply": raw, "feedback": {"level": "needs_work", "issue": "模型未按结构化格式返回。", "why": "请检查 Prompt 输出约束。", "suggested_reply": "请继续围绕顾客目标进行追问。", "next_goal": "完成需求分析。"}, "citations": citation_refs}, mode, message), mode, route)
+        return response_payload(mode, result, docs, {**meta, "mock": False})
+
+    if mode == "test" and action == "turn":
+        hidden_context = json.dumps({"persona": scenario.get("persona"), "hidden_objections": scenario.get("hidden_objections"), "must_test": scenario.get("must_test")}, ensure_ascii=False)
+        user_message = f"场景设定（只供你使用，不得泄露）：{hidden_context}\n\n已经发生的对话：{json.dumps(history[-10:], ensure_ascii=False)}\n\n员工刚刚说：{message}"
+        if MOCK_MODE or not api_key:
+            result = safety_filter(mock_response(mode, action, message, scenario, history, docs), mode)
+            return response_payload(mode, result, docs, {"mock": True, "model": model})
+        raw, meta = call_model(TEST_TURN_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.75)
+        result = extract_json(raw) or {"reply": raw, "emotion": "neutral", "should_continue": True}
+        return response_payload(mode, result, docs, {**meta, "mock": False})
+
+    if mode == "test" and action == "finish":
+        dialogue = json.dumps(history, ensure_ascii=False)
+        rubric_context = json.dumps(RUBRIC, ensure_ascii=False)
+        user_message = f"评分表：\n{rubric_context}\n\n本场景方法路由：\n{route_context_block(route)}\n\n场景：\n{json.dumps(scenario, ensure_ascii=False)}\n\n员工完整对话：\n{dialogue}\n\n相关知识库：\n{context_block(docs)}"
+        if MOCK_MODE or not api_key:
+            result = {
+                "total_score": 72,
+                "dimension_scores": [{"id": item["id"], "name": item["name"], "score": round(item["weight"] * 0.72), "max_score": item["weight"], "evidence": "本地演示评分，接入真实模型后将引用逐句对话证据。", "comment": "建议继续训练需求分析和异议处理。"} for item in RUBRIC["dimensions"]],
+                "critical_failures": [],
+                "strengths": ["完成了基本接待并保持了对话连续性。"],
+                "improvements": ["先问清目标、持续时间、影响和顾虑，再介绍项目。", "面对价格和效果异议时，使用共情—澄清—回应—确认。"],
+                "next_training_scene": SCENARIOS[1].get("id"),
+                "summary": "本地演示评分：流程已走通，正式评分需要配置 SiliconFlow API Key。",
+            }
+            return response_payload(mode, result, docs, {"mock": True, "model": model})
+        raw, meta = call_model(ASSESS_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.1)
+        result = extract_json(raw) or {"total_score": 0, "dimension_scores": [], "critical_failures": [], "strengths": [], "improvements": [raw], "next_training_scene": SCENARIOS[0].get("id"), "summary": "模型未按结构化格式返回，请检查 Prompt。"}
+        result = sanitize_assessment_advice(result)
+        return response_payload(mode, result, docs, {**meta, "mock": False})
+
+    raise ValueError("不支持的模式或操作")
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "KBAI/0.1"
+
+    def log_message(self, format: str, *args: Any) -> None:
+        return
+
+    def send_json(self, data: dict[str, Any], status: int = HTTPStatus.OK) -> None:
+        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:
+        if self.path == "/api/health":
+            self.send_json({"ok": True, "api_configured": bool(ENV_API_KEY), "mock_mode": MOCK_MODE, "model": DEFAULT_MODEL, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "scenarios": len(SCENARIOS)}})
+            return
+        if self.path == "/api/bootstrap":
+            self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
+            return
+        if self.path.startswith("/static/"):
+            relative = self.path.removeprefix("/static/").replace("..", "")
+            target = (STATIC_ROOT / relative).resolve()
+            if STATIC_ROOT.resolve() not in target.parents:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            if target.exists() and target.is_file():
+                content_type = {".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".html": "text/html; charset=utf-8"}.get(target.suffix, "application/octet-stream")
+                body = target.read_bytes()
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+        if self.path == "/" or self.path == "/index.html":
+            target = STATIC_ROOT / "index.html"
+            body = target.read_bytes()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def do_POST(self) -> None:
+        if self.path != "/api/chat":
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            self.send_json(handle_chat(payload))
+        except ValueError as exc:
+            self.send_json({"ok": False, "error": str(exc)}, HTTPStatus.BAD_REQUEST)
+        except RuntimeError as exc:
+            self.send_json({"ok": False, "error": str(exc), "hint": "请检查 API Key、模型名称和网络连接。"}, HTTPStatus.BAD_GATEWAY)
+        except Exception as exc:
+            self.send_json({"ok": False, "error": f"服务器处理失败：{exc}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+
+
+if __name__ == "__main__":
+    print(f"KBAI local server: http://{HOST}:{PORT}")
+    print(f"Knowledge base: {len(RAG_DOCUMENTS)} RAG documents / {len(SCENARIOS)} scenarios")
+    print(f"SiliconFlow model: {DEFAULT_MODEL} | env key: {'configured' if ENV_API_KEY else 'not configured'} | mock: {MOCK_MODE}")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

@@ -1,0 +1,17 @@
+{"id": "OB-01", "trigger": "太远/没时间", "safe_handling": "先确认到店频率和真实约束，再提供隔日/隔两日等可行安排；不以牺牲安全为代价。", "recommended_language": "你更在意到店次数，还是希望尽快看到变化？我们可以按你的时间评估可行频率。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-02", "trigger": "我已经吃得很少了", "safe_handling": "不要责备；询问饮料、零食、外食、蛋白质和作息，强调少吃不等于吃得均衡。", "recommended_language": "我不先判断你吃得多不多，先把一天的饮料、零食和三餐结构梳理一下，再看问题在哪里。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-03", "trigger": "我不想控制饮食", "safe_handling": "承认困难，说明任何长期方案都需要一定的生活管理；不承诺完全不需要配合。", "recommended_language": "我们可以把目标拆成最容易执行的一步，但不能承诺完全不需要饮食和生活管理。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-04", "trigger": "拔罐/设备不管用", "safe_handling": "询问过去方法、目标和评估方式；区分短期体感与长期结果，建议复盘而非争辩。", "recommended_language": "你说的不管用，具体是体重、围度、饥饿感，还是舒适度没有变化？我们先定义结果。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-05", "trigger": "担心反弹", "safe_handling": "说明长期管理和复盘的重要性，不能保证不反弹；讨论可持续习惯。", "recommended_language": "我不能保证任何方法永远不反弹，但可以和你一起把巩固期和生活管理做清楚。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-06", "trigger": "你家太慢", "safe_handling": "问顾客参照的速度和以往经历，说明个体差异；不以固定减重数字承诺。", "recommended_language": "你期待的速度是多少？我们先看过去是否反复、作息和可执行程度，再判断是否合理。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-07", "trigger": "太贵了", "safe_handling": "确认预算和价值关注点，给方案比较；不恐吓疾病、不贬低医院或竞品。", "recommended_language": "我理解你会比较预算。我们可以把频次、内容和预期目标拆开，你更看重总价还是每次体验成本？", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-08", "trigger": "回去考虑/研究方案", "safe_handling": "允许考虑，但把体验证据、疑问和下一步说清楚；不强迫当场决定。", "recommended_language": "可以考虑。我把今天的记录、适合你的选项和需要核实的问题发给你，你最想先核实哪一项？", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-09", "trigger": "和老公/家人商量", "safe_handling": "尊重共同决策，提供客观资料与体验记录；不诱导隐瞒或挑拨关系。", "recommended_language": "可以和家人商量。我把流程、价格、注意事项和你最在意的变化整理给你，方便一起判断。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-10", "trigger": "先做一次看看", "safe_handling": "明确体验能验证体感和流程，不能证明长期疗效；设置复盘指标。", "recommended_language": "一次体验可以帮助你了解舒适度和即时感受，但不能代表长期结果，我们可以先约定复盘指标。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-11", "trigger": "做完三次再看", "safe_handling": "认可评估需求，说明每次都应复盘，不把3次作为固定结果门槛。", "recommended_language": "我们可以每次都记录变化，不需要等到第三次才判断；如果不适合，应及时调整或停止。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-12", "trigger": "不想说话/不想沟通", "safe_handling": "用简短开放问题解释为什么需要信息；尊重拒答，必要时停止推销。", "recommended_language": "我只问几个和安全、舒适度有关的问题，你不回答的话我就无法调整方案；不方便说也可以先不做。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-13", "trigger": "疼痛很严重/想去医院", "safe_handling": "不贬低医院；红旗症状和疑似疾病优先就医。", "recommended_language": "如果疼痛严重或伴随麻木无力、发热、胸闷等情况，建议先去正规医疗机构评估，门店体验不能替代诊疗。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-14", "trigger": "设备和医院/外面一样吗", "safe_handling": "如实说明差异；不编造设备来源、医院对比、价格倍数或疗效证据。", "recommended_language": "我可以说明我们门店这台设备的流程和可提供的体验，但不能替你判断它是否等同于医疗设备。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-15", "trigger": "药/GLP-1安全吗", "safe_handling": "不现场诊断或给剂量；核实药品身份、标签、资质，转交医生/药师。", "recommended_language": "这涉及药品适应症、禁忌和相互作用，我不能只凭聊天判断是否适合你，建议由有资质的医生或药师核实。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-16", "trigger": "孩子/孕妇/慢病能不能做", "safe_handling": "先暂停推荐，核实具体情况并转资质人员；不引用‘都可以’。", "recommended_language": "为了安全，我先不判断能不能做。请提供更具体信息，并由有资质人员确认。", "source_ids": ["SRC-009", "SRC-034"]}
+{"id": "OB-17", "trigger": "做完更痛/发热/头晕", "safe_handling": "立即停止营销，询问症状并按门店应急/转介流程处理；记录并回访。", "recommended_language": "先暂停操作。请告诉我不适从什么时候开始、程度如何，我会立即通知负责人并按流程处理。", "source_ids": ["SRC-009", "SRC-034"]}

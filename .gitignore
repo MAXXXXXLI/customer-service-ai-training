@@ -1,0 +1,20 @@
+local_app/server.stdout.log
+local_app/server.stderr.log
+local_app/.env
+local_app/__pycache__/
+__pycache__/
+.pipeline_deps/
+video_pipeline/
+*.pyc
+
+# Generated audit/render outputs and source archives
+.tmp_kb_audit/
+*.zip.part-*
+*.wav
+anchor-reconcile-restyled.png
+
+# Local editor and OS files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

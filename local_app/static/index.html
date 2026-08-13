@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d1110" />
+    <title>知练 · 门店员工 AI 成长平台</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark">知</div>
+          <div><div class="brand-en">TEAM LEARNING OS</div><div class="brand-name">知练</div></div>
+        </div>
+        <div class="nav-label">核心功能</div>
+        <nav class="mode-nav" aria-label="核心功能">
+          <div class="mode-group">
+            <div class="mode-group-head"><span class="mode-index">01</span><span><strong>学习与陪练</strong><small>分步完成知识学习和模拟练习</small></span></div>
+            <div class="submode-nav" aria-label="学习与陪练子页面">
+              <button class="mode-button submode-button active" data-mode="learning"><span class="submode-index">A</span><span><strong>课程学习</strong><small>按模块查看章节和知识</small></span></button>
+              <button class="mode-button submode-button" data-mode="training"><span class="submode-index">B</span><span><strong>情景陪练</strong><small>与 AI 顾客反复练习</small></span></button>
+            </div>
+          </div>
+          <button class="mode-button" data-mode="test"><span class="mode-index">02</span><span><strong>实战考核</strong><small>完整对话后统一评分</small></span></button>
+          <button class="mode-button" data-mode="qa"><span class="mode-index">03</span><span><strong>智能接待</strong><small>AI 基于知识库回答顾客</small></span></button>
+        </nav>
+        <div class="sidebar-spacer"></div>
+        <div class="kb-health">
+          <div class="health-ring"><span id="health-number">175</span></div>
+          <div><strong>知识库已就绪</strong><small>38 节课程 · 7 个模块</small></div>
+        </div>
+        <button class="settings-button" id="open-settings"><span>模型设置</span><span>⌘</span></button>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <div class="breadcrumb">知练 / <span id="mode-breadcrumb">学习与陪练 / 课程学习</span></div>
+            <h1 id="page-title">先把知识学明白，再进入模拟练习</h1>
+            <p id="page-description">选择一个知识模块，只查看该模块的章节和详细课程内容。</p>
+          </div>
+          <div class="api-pill"><i></i><span id="api-status">SiliconFlow 已连接</span></div>
+        </header>
+
+        <section class="product-page" id="learning-page">
+          <article class="feature-card learning-zone">
+            <div class="section-heading compact-heading">
+              <div><span class="step-tag">课程学习</span><h2>选择一个模块开始学习</h2><p>页面只展示当前模块的章节。点击课程，在独立窗口中查看完整内容。</p></div>
+              <label class="module-picker">学习模块<select id="learning-module-select" aria-label="选择学习模块"></select></label>
+            </div>
+            <div class="selected-module-summary" id="learning-module-summary"></div>
+            <div class="chapter-list" id="learning-chapters"></div>
+          </article>
+        </section>
+
+        <section class="product-page hidden" id="training-page">
+          <article class="feature-card coaching-zone">
+            <div class="section-heading compact-heading">
+              <div><span class="step-tag">情景陪练</span><h2>选择模块，进入对应顾客情景</h2><p>场景与本轮重点集中展示；每轮回答后获得即时纠正和推荐表达。</p></div>
+              <label class="module-picker">陪练模块<select id="practice-module-select" aria-label="选择陪练模块"></select></label>
+            </div>
+            <div class="scenario-frame" id="training-scenario-frame"></div>
+          </article>
+        </section>
+
+        <section class="product-page hidden" id="test-page">
+          <article class="feature-card exam-zone">
+            <div class="section-heading compact-heading">
+              <div><span class="step-tag">实战考核</span><h2>选择本次考核模块</h2><p>确认场景与考核重点后开始对话。过程中不提供提示，结束后统一评分。</p></div>
+              <label class="module-picker">考核模块<select id="test-module-select" aria-label="选择考核模块"></select></label>
+            </div>
+            <div class="scenario-frame exam-frame" id="test-scenario-frame"></div>
+          </article>
+        </section>
+
+        <section class="product-page hidden" id="qa-page">
+          <article class="qa-welcome">
+            <span class="step-tag">AI 顾客接待</span>
+            <h2>像顾客一样提问，AI 依据企业知识库接待</h2>
+            <p>直接询问项目、体验流程、顾虑或注意事项。AI 会先定位问题和知识模块，再按公司流程回答，并列出可继续学习的参考课程。</p>
+            <div class="qa-examples">
+              <button data-question="这个项目做一次是不是一定有效？">做一次一定有效吗？</button>
+              <button data-question="体验之前，你们需要先了解我哪些情况？">体验前需要问什么？</button>
+              <button data-question="如果体验中觉得不舒服，应该怎么办？">不舒服时怎么办？</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="conversation-stage" id="conversation-stage">
+          <div class="conversation-head">
+            <div class="customer-identity">
+              <div class="customer-avatar" id="conversation-avatar">客</div>
+              <div><span id="conversation-kicker">情景陪练</span><h3 id="conversation-title">AI 顾客对话</h3></div>
+            </div>
+            <div class="conversation-actions">
+              <button class="subtle-button" id="clear-chat">重新开始</button>
+              <button class="finish-button" id="finish-session" disabled>结束并查看报告</button>
+            </div>
+          </div>
+          <div class="messages" id="messages"></div>
+          <div class="composer-wrap">
+            <div class="composer"><textarea id="message-input" rows="2" aria-label="输入对话" placeholder="输入你会对顾客说的话…"></textarea><button class="send-button" id="send-button"><span>发送</span><b>↗</b></button></div>
+            <div class="composer-foot"><span id="composer-hint">每轮回答后提供一个关键改进点</span><span id="turn-count">0 轮对话</span></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="course-modal">
+      <div class="modal course-modal" role="dialog" aria-modal="true" aria-labelledby="course-modal-title">
+        <button class="modal-close" data-close="course-modal" aria-label="关闭">×</button>
+        <div id="course-modal-content"></div>
+      </div>
+    </div>
+    <div class="modal-backdrop hidden" id="settings-modal">
+      <div class="modal">
+        <button class="modal-close" data-close="settings-modal" aria-label="关闭">×</button>
+        <span class="step-tag">MODEL SETTINGS</span><h2>连接 SiliconFlow</h2>
+        <p class="modal-copy">Key 只发送给当前本地服务，不写入知识库文件。公开网站上线时，每位使用者自行输入。</p>
+        <label>API Key<input id="api-key" type="password" placeholder="sk-…" autocomplete="off" /></label>
+        <label>模型名称<input id="model-name" type="text" placeholder="Qwen/Qwen3.5-35B-A3B" /></label>
+        <div class="modal-actions"><button class="secondary-button" id="demo-mode">演示模式</button><button class="primary-button" id="save-settings">保存设置</button></div>
+      </div>
+    </div>
+    <div class="toast hidden" id="toast"></div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
