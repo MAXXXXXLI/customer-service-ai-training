@@ -177,6 +177,7 @@
       "primary_module_id": "MOD-07",
       "course_ids": ["COURSE-COMPLIANCE-MEDICAL-001", "COURSE-SERVICE-SAFETY-001", "COURSE-KNOW-PAIN-001"],
       "focus": "停止营销和操作，询问关键症状并建议及时医疗评估。",
+      "recommended_next": "今天先不安排项目；确认症状开始时间和变化，症状明显、持续或加重时及时医疗评估。",
       "stop_sales": true
     },
     {
@@ -188,6 +189,7 @@
       "support_module_ids": ["MOD-06"],
       "course_ids": ["COURSE-SERVICE-SAFETY-001", "COURSE-FLOW-FOLLOWUP-001", "COURSE-OB-17"],
       "focus": "先暂停、问开始时间和程度、排查红旗、通知负责人、记录并回访；异常未解决前不销售。",
+      "recommended_next": "暂停后续安排，记录症状并通知负责人；排查红旗，必要时建议及时医疗评估。",
       "stop_sales": true
     },
     {
@@ -199,6 +201,7 @@
       "support_module_ids": ["MOD-06"],
       "course_ids": ["COURSE-OPS-DYNAMIC-001", "COURSE-FLOW-OBJECTION-001", "COURSE-OB-07"],
       "focus": "确认城市、门店、日期和项目，查当前系统；价值异议再澄清总预算、单次成本或结果不确定。",
+      "recommended_next": "确认城市、门店、具体项目和日期，再按当前系统的有效版本回复价格与活动。",
       "stop_sales": false
     },
     {
@@ -210,16 +213,18 @@
       "support_module_ids": ["MOD-07"],
       "course_ids": ["COURSE-FLOW-OBJECTION-001", "COURSE-OB-04", "COURSE-OB-05", "COURSE-OB-06", "COURSE-OB-10", "COURSE-OB-11", "COURSE-COMPLIANCE-MEDICAL-001"],
       "focus": "先澄清顾客用什么指标定义效果，再说明个体差异、当次体验与长期结果的区别，并约定阶段复盘。",
+      "recommended_next": "先确定顾客最在意的一个可观察指标和必要安全信息，再约定阶段复盘。",
       "stop_sales": false
     },
     {
       "id": "INTENT-SUITABILITY",
       "priority": 70,
       "label": "适用性、安全与体验感受",
-      "patterns": ["能不能做|可以做吗|适不适合|安全吗|会不会痛|怕疼|会不会烫|怕烫|有风险吗|禁忌|副作用"],
+      "patterns": ["能不能做|能做吗|可以做吗|适不适合|安全吗|会不会痛|怕疼|会不会烫|怕烫|有风险吗|禁忌|副作用"],
       "primary_module_id": "MOD-07",
       "course_ids": ["COURSE-SERVICE-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"],
       "focus": "不直接回答绝对可以或安全；先确认当前状态、既往情况和具体项目禁忌，再说明监测和暂停机制。",
+      "recommended_next": "先确认当前状态、既往情况和具体项目禁忌；无法确认时不操作。",
       "stop_sales": false
     },
     {
@@ -231,6 +236,7 @@
       "support_module_ids": ["MOD-07"],
       "course_ids": ["COURSE-FLOW-OBJECTION-001", "COURSE-OB-14", "COURSE-COMPLIANCE-MEDICAL-001"],
       "focus": "只比较可核验的流程与服务差异，不贬低、不编造设备来源、价格倍数或疗效证据。",
+      "recommended_next": "列出顾客真正想比较的流程、服务、时间或价格，并只核对当前可验证的差异。",
       "stop_sales": false
     },
     {
@@ -241,6 +247,7 @@
       "primary_module_id": "MOD-06",
       "course_ids": ["COURSE-FLOW-OBJECTION-001", "COURSE-OB-01", "COURSE-OB-08", "COURSE-OB-09", "COURSE-OB-10", "COURSE-OB-12"],
       "focus": "承接真实约束，问清时间、价值还是决策问题，提供资料、可执行选择或明确退出选项。",
+      "recommended_next": "先确认真实顾虑，再提供资料、一个可执行选择或明确的暂不决定选项。",
       "stop_sales": false
     },
     {
@@ -251,6 +258,7 @@
       "primary_module_id": "DYNAMIC",
       "course_ids": [],
       "focus": "用顾客听得懂的语言说明项目定位、流程、可能感受、可暂停方式和边界。",
+      "recommended_next": "只补一个决定答案的必要信息，再按对应项目课程说明流程、感受和边界。",
       "stop_sales": false
     }
   ],

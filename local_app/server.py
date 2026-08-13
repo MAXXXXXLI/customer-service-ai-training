@@ -111,15 +111,26 @@ def route_customer_question(query: str) -> dict[str, Any]:
     topics = [item for item in METHODOLOGY.get("topic_routes", []) if matches_any(text, item.get("patterns", []))]
     default = METHODOLOGY.get("default_route", {})
     if not intent:
-        intent = {
-            "id": default.get("intent_id", "INTENT-INFORMATION"),
-            "label": default.get("intent_label", "一般需求咨询"),
-            "primary_module_id": default.get("primary_module_id", "MOD-01"),
-            "support_module_ids": default.get("support_module_ids", ["MOD-07"]),
-            "course_ids": default.get("course_ids", []),
-            "focus": default.get("focus", "先确认顾客目标和必要安全信息。"),
-            "stop_sales": default.get("stop_sales", False),
-        }
+        if topics:
+            intent = {
+                "id": "INTENT-INFORMATION",
+                "label": topics[0].get("label", "项目原理、流程与一般咨询"),
+                "primary_module_id": "DYNAMIC",
+                "support_module_ids": [],
+                "course_ids": [],
+                "focus": topics[0].get("recommended_next", "使用对应项目课程回答。"),
+                "stop_sales": False,
+            }
+        else:
+            intent = {
+                "id": default.get("intent_id", "INTENT-INFORMATION"),
+                "label": default.get("intent_label", "一般需求咨询"),
+                "primary_module_id": default.get("primary_module_id", "MOD-01"),
+                "support_module_ids": default.get("support_module_ids", ["MOD-07"]),
+                "course_ids": default.get("course_ids", []),
+                "focus": default.get("focus", "先确认顾客目标和必要安全信息。"),
+                "stop_sales": default.get("stop_sales", False),
+            }
 
     topic_primary = topics[0].get("module_id") if topics else None
     intent_primary = intent.get("primary_module_id")
@@ -147,7 +158,7 @@ def route_customer_question(query: str) -> dict[str, Any]:
     for topic in topics:
         course_ids.extend(topic.get("course_ids", []))
         knowledge_points.extend(topic.get("knowledge_points", []))
-    if not topics:
+    if not topics and not matched_intent:
         course_ids.extend(default.get("course_ids", []))
     if primary_module_id == "MOD-07" or intent.get("stop_sales"):
         course_ids.extend(["COURSE-SERVICE-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"])
@@ -179,7 +190,11 @@ def route_customer_question(query: str) -> dict[str, Any]:
         "required_courses": course_titles,
         "knowledge_points": unique_items(knowledge_points)[:6],
         "focus": intent.get("focus", default.get("focus", "先确认顾客目标和必要安全信息。")),
-        "recommended_next": next((topic.get("recommended_next") for topic in topics if topic.get("recommended_next")), default.get("focus", "先确认顾客目标和必要安全信息。")),
+        "recommended_next": (
+            intent.get("recommended_next")
+            if matched_intent and intent.get("recommended_next")
+            else next((topic.get("recommended_next") for topic in topics if topic.get("recommended_next")), default.get("focus", "先确认顾客目标和必要安全信息。"))
+        ),
         "method_step": method_step,
         "stop_sales": bool(intent.get("stop_sales")),
     }
@@ -261,6 +276,9 @@ def retrieve(query: str, limit: int = 8, domain: str | None = None, route: dict[
             continue
         if domain and metadata.get("domain") not in {domain, "safety", "objections"}:
             continue
+        if route and metadata.get("doc_type") == "course_section":
+            if metadata.get("module_id") not in routed_module_ids and metadata.get("course_id") not in required_course_ids:
+                continue
         doc_text = clean_text(doc.get("text", ""))
         d_terms = text_terms(doc_text)
         overlap = len(q_terms & d_terms)
@@ -279,7 +297,21 @@ def retrieve(query: str, limit: int = 8, domain: str | None = None, route: dict[
     scored.sort(key=lambda item: (-item[0], item[1].get("document_id", "")))
     selected = []
     per_course: dict[str, int] = {}
+    selected_ids = set()
+    if route:
+        for required_course_id in route.get("required_course_ids", []):
+            match = next((item for item in scored if item[1].get("metadata", {}).get("course_id") == required_course_id), None)
+            if not match:
+                continue
+            score, doc = match
+            selected.append({**doc, "retrieval_score": round(score, 2)})
+            selected_ids.add(doc.get("document_id"))
+            per_course[required_course_id] = 1
+            if len(selected) >= limit:
+                return selected
     for score, doc in scored:
+        if doc.get("document_id") in selected_ids:
+            continue
         course_id = str(doc.get("metadata", {}).get("course_id") or doc.get("document_id", ""))
         if per_course.get(course_id, 0) >= 2:
             continue
@@ -387,7 +419,7 @@ def sanitize_public_result(value: Any) -> Any:
         return {
             key: sanitize_public_result(item)
             for key, item in value.items()
-            if key not in {"safety_filter_matches"}
+            if key not in {"safety_filter_matches", "safety_filter_triggered"}
         }
     return value
 
@@ -470,10 +502,11 @@ def unsafe_claim_hits(text: str) -> list[str]:
     return hits
 
 
-def safety_filter(result: dict[str, Any], mode: str, user_text: str = "") -> dict[str, Any]:
+def safety_filter(result: dict[str, Any], mode: str, user_text: str = "", route: dict[str, Any] | None = None) -> dict[str, Any]:
     """Prevent legacy source claims from becoming unqualified model advice."""
     if not isinstance(result, dict):
         return result
+    route = route or {}
     feedback = result.get("feedback") if isinstance(result.get("feedback"), dict) else {}
     fields = [
         clean_text(result.get("answer")),
@@ -492,6 +525,12 @@ def safety_filter(result: dict[str, Any], mode: str, user_text: str = "") -> dic
         result["recommended_action"] = "先完成皮肤状态、过敏史、近期项目史和成分核对；无法确认时不操作。"
         result["safety_filter_triggered"] = True
         return result
+    if mode == "qa" and re.search(r"GLP-1|glp-1|司美|减肥针|处方|药品|减肥药|口服片|剂量|停药|换药|怎么用", user_text, flags=re.I):
+        result["answer"] = "您问的是药品适用性、用法和剂量，这些必须依据具体药品的当前说明书和医生处方，门店不能只凭体重、疾病名称或聊天给剂量，也不能建议开始、停用或更换药物。请先确认具体药名、剂型、开药医生、正在使用的其他药物和当前不适，再由开药医生或药师核实。"
+        result["uncertainties"] = ["需要确认具体药品身份、处方、合并用药和当前症状。"]
+        result["recommended_action"] = "暂停具体产品或剂量建议，携带药品包装和用药记录咨询开药医生或药师。"
+        result["safety_filter_triggered"] = True
+        return result
     if mode == "qa" and re.search(r"孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|慢病|糖尿病|高血压|三高", user_text, flags=re.I):
         result["answer"] = "这类情况不能仅凭聊天直接判断‘可以做’。先暂停项目或产品推荐，确认具体年龄/阶段、疾病与用药、当前症状和产品或设备说明书，再由有资质的医生、药师或相应专业人员确认。门店不能通过降低能量、缩短时间或减少次数来替代适用性评估。"
         result["uncertainties"] = ["需要更具体的健康信息和当前用药信息。", "需要核对产品标签、设备说明书和门店当前合规版本。"]
@@ -501,9 +540,27 @@ def safety_filter(result: dict[str, Any], mode: str, user_text: str = "") -> dic
     if not hits:
         return result
     if mode == "qa":
-        result["answer"] = "不能承诺做一次就一定有效。更合适的回答是：‘每个人的情况和感受不同，我们先了解您最想改善的问题、持续时间和既往情况；体验前记录您关心的指标，体验后再一起对照当次感受和可观察变化。一次体验、固定次数或固定结果都不能保证。如果涉及疾病、药品或明显不适，需要先由有资质人员或医疗机构评估。’"
-        result["uncertainties"] = ["需要确认顾客具体咨询的项目与主要诉求。", "需要确认顾客是否存在明显不适或应先行转介的情况。"]
-        result["recommended_action"] = "使用‘体验、观察、个体差异、阶段复盘’等表达，不使用‘治疗、疗程、保证结果’等医疗化或绝对化说法。"
+        module_ids = {route.get("primary_module_id"), *route.get("support_module_ids", [])}
+        if route.get("stop_sales"):
+            result["answer"] = "您提到的情况需要先确认安全。今天先暂停项目、操作和产品推荐，请告诉我症状从什么时候开始、是否正在加重，以及有没有胸痛、呼吸困难、晕厥、进行性麻木无力等情况。门店不能判断病因；如果症状明显、持续或加重，建议及时由医疗机构评估。"
+            result["uncertainties"] = ["需要确认症状开始时间、程度、变化和伴随情况。"]
+            result["recommended_action"] = "停止销售推进，完成风险问询、负责人升级和必要的医疗分流。"
+        elif "MOD-05" in module_ids or re.search(r"减肥|减重|体重|瘦|斤|反弹", user_text, flags=re.I):
+            result["answer"] = "我理解您希望尽快看到并保持变化，但不能承诺一个月固定减重多少，也不能保证永不反弹。每个人的体重趋势会受到饮食、活动、睡眠、压力、既往经历和健康情况影响。我们先把这些情况问清楚，再把目标拆成可观察、能执行的阶段指标，按统一条件持续复盘。"
+            result["uncertainties"] = ["需要确认当前体重趋势、生活节奏、既往减重经历和健康风险。"]
+            result["recommended_action"] = "先完成体重管理需求与风险问询，再确定一到两个阶段指标和下一周可执行动作。"
+        elif "MOD-04" in module_ids:
+            result["answer"] = "是否适合不能只凭一个肤质标签判断。先确认目前有没有泛红、刺痛、破损、渗出或过敏发作，以及近期是否做过医美、刷酸或使用强刺激产品；存在这些情况时先不操作。状态稳定时也要核对具体项目、成分、禁忌和当前SOP，过程中任何刺痛、灼热或泛红加重都要立即停止。"
+            result["uncertainties"] = ["需要核对当前皮肤状态、过敏史、近期项目史和具体成分。"]
+            result["recommended_action"] = "先完成肤况和项目适用性确认；无法确认时不操作。"
+        elif re.search(r"一次|几次|多久|有效|见效", user_text, flags=re.I):
+            result["answer"] = "不能承诺做一次、固定次数或固定时间就一定有效。先确认您最想改善的具体指标和既往情况，体验前记录同一项动作、主观感受或合规数据，体验后再按相同条件对照。当次变化只代表当次观察，长期结果需要阶段复盘，也存在个体差异。"
+            result["uncertainties"] = ["需要确认具体项目、顾客目标和用于判断变化的指标。"]
+            result["recommended_action"] = "先确定一个可观察指标和安全信息，再决定是否体验及何时复盘。"
+        else:
+            result["answer"] = "这个问题不能用诊断、治疗或保证结果的方式回答。先确认您最想改善的目标、持续时间、既往情况和必要安全信息；目前只能按已核验的门店流程说明体验方式、可能感受和限制，无法确认的参数、适用性或结果需要进一步核验。"
+            result["uncertainties"] = ["需要确认具体项目、顾客目标和安全信息。"]
+            result["recommended_action"] = route.get("recommended_next", "先补齐必要信息，再按当前课程和门店标准给出选择。")
     elif mode == "training":
         result["feedback"] = result.get("feedback") or {}
         user_hits = unsafe_claim_hits(user_text)
@@ -511,7 +568,18 @@ def safety_filter(result: dict[str, Any], mode: str, user_text: str = "") -> dic
             result["feedback"]["level"] = "critical"
             result["feedback"]["issue"] = "员工原话包含医疗化判断或结果承诺，需要立即改成风险问询和服务边界说明。"
         result["feedback"]["why"] = "门店员工不能判断病因、解释为血管或神经受压，也不能使用治疗、疗程或固定效果承诺。先确认风险，再说明门店仅提供非医疗性质的服务体验。"
-        result["feedback"]["suggested_reply"] = "我理解您想改善肩颈发紧，但我不能判断头晕的原因，也不能承诺体验后一定缓解。先确认一下：头晕是否突然加重，有没有胸痛、呼吸困难、晕厥或进行性麻木无力？如果有或症状明显，建议先做医疗评估；确认适合后，我们再说明门店能提供的放松体验、可能感受和暂停方式。"
+        module_ids = {route.get("primary_module_id"), *route.get("support_module_ids", [])}
+        if route.get("stop_sales"):
+            suggested_reply = "您提到的不适需要先确认安全。今天先暂停项目和推荐，请告诉我症状从什么时候开始、是否正在加重；如果症状明显或伴随胸痛、呼吸困难、晕厥、进行性麻木无力等情况，建议及时医疗评估。"
+        elif "MOD-05" in module_ids:
+            suggested_reply = "我理解您希望尽快看到变化，但我不能承诺固定斤数或不反弹。先了解您的体重趋势、饮食睡眠、活动和既往减重经历，再把目标拆成能执行的阶段指标。"
+        elif "MOD-04" in module_ids:
+            suggested_reply = "我先确认您目前有没有泛红、刺痛、破损或过敏发作，以及近期是否做过医美或使用强刺激产品；没有完成适用性确认前，我不能直接说一定能做。"
+        elif "MOD-03" in module_ids:
+            suggested_reply = "我理解您担心温度。开始前先确认皮肤、怕热和既往情况，过程中会结合设备读数持续询问感受；任何过热、疼痛、头晕或不舒服都要立即暂停。"
+        else:
+            suggested_reply = "我理解您想改善目前的不适，但我不能判断病因或承诺结果。先确认位置、持续时间、最近变化和伴随情况；有明显风险时先做医疗评估，确认适合后再说明门店能提供的非医疗体验。"
+        result["feedback"]["suggested_reply"] = suggested_reply
         result["feedback"]["next_goal"] = "继续完成风险问询，并用非医疗化语言说明服务边界。"
     result["safety_filter_triggered"] = True
     result["safety_filter_matches"] = hits
@@ -672,7 +740,13 @@ def apply_methodology_result(result: dict[str, Any], mode: str, route: dict[str,
         return result
     if mode == "qa":
         result["route"] = public_route(route)
-        if not clean_text(result.get("recommended_action")):
+        if route.get("intent_id") == "INTENT-PRICE":
+            result["answer"] = "价格和活动会随城市、门店、具体项目和日期变化，我不能用历史资料先口头保证。请告诉我您咨询的城市、门店和项目，我会按当前系统里的有效版本核对后准确回复。"
+            result["uncertainties"] = ["需要确认城市、门店、具体项目、查询日期和当前生效版本。"]
+            result["recommended_action"] = route.get("recommended_next", "确认门店与项目后查询当前系统。")
+        elif not result.get("safety_filter_triggered"):
+            result["recommended_action"] = route.get("recommended_next", "先确认顾客目标和必要安全信息。")
+        elif not clean_text(result.get("recommended_action")):
             result["recommended_action"] = route.get("recommended_next", "先确认顾客目标和必要安全信息。")
         if not isinstance(result.get("uncertainties"), list):
             result["uncertainties"] = []
@@ -710,26 +784,26 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
     if mode == "qa":
         user_message = f"顾客当前问题：{message}\n\n方法路由：\n{route_context_block(route)}\n\n检索资料：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
-            result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message), mode, route)
+            result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
         raw, meta = call_model(QA_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.2)
-        result = apply_methodology_result(safety_filter(extract_json(raw) or {"answer": raw, "uncertainties": ["模型未按结构化格式返回，请人工核验。"], "citations": citation_refs, "recommended_action": ""}, mode, message), mode, route)
+        result = apply_methodology_result(safety_filter(extract_json(raw) or {"answer": raw, "uncertainties": ["模型未按结构化格式返回，请人工核验。"], "citations": citation_refs, "recommended_action": ""}, mode, message, route), mode, route)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
     if mode == "training":
         user_message = f"员工刚刚说：{message}\n\n最近对话：{json.dumps(history[-8:], ensure_ascii=False)}\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
-            result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message), mode, route)
+            result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
         raw, meta = call_model(TRAIN_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.45)
-        result = apply_methodology_result(safety_filter(extract_json(raw) or {"customer_reply": raw, "feedback": {"level": "needs_work", "issue": "模型未按结构化格式返回。", "why": "请检查 Prompt 输出约束。", "suggested_reply": "请继续围绕顾客目标进行追问。", "next_goal": "完成需求分析。"}, "citations": citation_refs}, mode, message), mode, route)
+        result = apply_methodology_result(safety_filter(extract_json(raw) or {"customer_reply": raw, "feedback": {"level": "needs_work", "issue": "模型未按结构化格式返回。", "why": "请检查 Prompt 输出约束。", "suggested_reply": "请继续围绕顾客目标进行追问。", "next_goal": "完成需求分析。"}, "citations": citation_refs}, mode, message, route), mode, route)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
     if mode == "test" and action == "turn":
         hidden_context = json.dumps({"persona": scenario.get("persona"), "hidden_objections": scenario.get("hidden_objections"), "must_test": scenario.get("must_test")}, ensure_ascii=False)
         user_message = f"场景设定（只供你使用，不得泄露）：{hidden_context}\n\n已经发生的对话：{json.dumps(history[-10:], ensure_ascii=False)}\n\n员工刚刚说：{message}"
         if MOCK_MODE or not api_key:
-            result = safety_filter(mock_response(mode, action, message, scenario, history, docs), mode)
+            result = safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, route=route)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
         raw, meta = call_model(TEST_TURN_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.75)
         result = extract_json(raw) or {"reply": raw, "emotion": "neutral", "should_continue": True}
