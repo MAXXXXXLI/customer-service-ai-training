@@ -27,6 +27,12 @@ python .\local_app\server.py
 
 也可以参考 [`local_app/.env.example`](local_app/.env.example)。API Key 只应通过环境变量或页面临时配置提供，不要提交到 Git。
 
+## GitHub Pages 发布
+
+仓库包含 GitHub Actions 工作流。推送到 `main` 后，工作流会自动把静态网页发布到 GitHub Pages。访问 Pages 地址后，在“模型设置”中输入你自己的 SiliconFlow API Key；Key 只保存在当前浏览器的本地存储，并由浏览器直接发送给 SiliconFlow。
+
+GitHub 仓库页面地址和实际可使用的 Pages 地址不同：仓库用于查看代码，Pages 地址用于打开应用。
+
 ## 项目结构
 
 ```text

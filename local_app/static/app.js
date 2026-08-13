@@ -87,7 +87,112 @@ const modeCopy = {
 
 const VALID_MODES = new Set(["learning", "training", "test", "qa"]);
 
+const STATIC_PAGES = window.location.hostname.endsWith(".github.io");
+const staticAsset = (name) => STATIC_PAGES ? `./${name}` : `/static/${name}`;
+let staticDataPromise = null;
+
+function parseJsonl(text) {
+  return text.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+}
+
+async function loadStaticData() {
+  if (!staticDataPromise) {
+    staticDataPromise = Promise.all([
+      fetch("./data/scenario_library.jsonl").then((response) => response.text()).then(parseJsonl),
+      fetch("./data/rag_documents.jsonl").then((response) => response.text()).then(parseJsonl),
+      fetch("./data/scoring_rubric.json").then((response) => response.json()),
+    ]).then(([scenarios, documents, rubric]) => ({ scenarios, documents, rubric }));
+  }
+  return staticDataPromise;
+}
+
+function publicStaticDocument(document) {
+  const metadata = document.metadata || {};
+  return {
+    document_id: document.document_id,
+    title: metadata.title || document.document_id || "知识库资料",
+    module: metadata.module || metadata.domain || "知识库",
+    chapter: metadata.chapter || "",
+  };
+}
+
+function staticRetrieve(query, documents, limit = 8) {
+  const text = String(query || "").toLowerCase();
+  const terms = [...new Set(text.match(/[a-z0-9_]{2,}|[\u4e00-\u9fff]{2}/gi) || [])];
+  return documents.map((document) => {
+    const haystack = `${document.text || ""} ${JSON.stringify(document.metadata || {})}`.toLowerCase();
+    const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), 0);
+    return { document, score };
+  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map((item) => item.document);
+}
+
+function extractStaticJson(content) {
+  const cleaned = String(content || "").replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    try { return match ? JSON.parse(match[0]) : null; } catch { return null; }
+  }
+}
+
+async function callStaticModel(system, user, model, apiKey, temperature) {
+  const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model, messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      temperature, top_p: 0.7, max_tokens: 1600, enable_thinking: false, stream: false,
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(`SiliconFlow API ${response.status}: ${data.error?.message || "请求失败"}`);
+  return { content: data.choices?.[0]?.message?.content || "", meta: { model: data.model || model, usage: data.usage || {} } };
+}
+
+function staticMock(mode, action, scenario) {
+  if (mode === "training") return {
+    customer_reply: "我主要是肩颈总是紧，偶尔会头晕，想先了解一下你们怎么判断适不适合。",
+    feedback: { level: "needs_work", issue: "还可以继续追问顾客的目标、持续时间和影响。", why: "先完成需求分析，再介绍项目。", method_step: "了解目标并完成问题定位", knowledge_focus: "目标、持续时间、影响和安全信息", suggested_reply: "这种情况大概持续多久了？对工作或睡眠有影响吗？", next_goal: "下一轮先问清目标、持续时间和影响。" },
+  };
+  if (mode === "test" && action === "turn") return { reply: scenario?.opening || "我最近有点困扰，想先了解一下你们的项目。", emotion: "hesitant", should_continue: true };
+  if (mode === "test" && action === "finish") return { total_score: 72, dimension_scores: [], critical_failures: [], strengths: ["完成了基本接待并保持对话连续"], improvements: ["先问清目标、持续时间、影响和顾虑，再介绍项目"], summary: "演示评分：流程已走通，配置 API Key 后可使用模型评分。" };
+  return { answer: "当前是演示模式。保存 SiliconFlow API Key 后，就能生成基于知识库的正式回答。", uncertainties: ["请以门店当前价格、项目标签和合规版本为准。"], recommended_action: "先核对门店当前版本的价格、频次和适用边界。" };
+}
+
+async function staticApi(path, body) {
+  const data = await loadStaticData();
+  if (path === "/api/bootstrap") {
+    return { ok: true, scenarios: data.scenarios, knowledge: { rag_documents: data.documents.length, scenarios: data.scenarios.length }, rubric: { total: data.rubric.total, dimensions: data.rubric.dimensions || [] } };
+  }
+  if (path === "/api/health") return { ok: true, api_configured: Boolean(state.apiKey), mock_mode: !state.apiKey, model: state.model, knowledge: { rag_documents: data.documents.length } };
+  if (path !== "/api/chat") throw new Error("静态模式不支持该接口");
+
+  const mode = body.mode || "qa";
+  const action = body.action || "turn";
+  const apiKey = body.api_key || state.apiKey;
+  const model = body.model || state.model;
+  const scenario = data.scenarios.find((item) => item.id === body.scenario_id) || data.scenarios[0];
+  const message = body.message || "";
+  const query = [...(body.history || []).slice(-8).map((item) => item.content), message].join(" ");
+  const docs = staticRetrieve(query, data.documents);
+  const context = docs.map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, 1200)}`).join("\n\n");
+  if (!apiKey) return { ok: true, mode, result: staticMock(mode, action, scenario), citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { mock: true, model } };
+
+  let system = "你是顾客服务培训平台的 AI。只基于给定知识库回答，不诊断疾病、不承诺疗效、不推荐处方药；遇到胸痛、呼吸困难、晕厥等红旗症状时先建议停止项目并寻求医疗评估。请严格返回 JSON，不要 Markdown。";
+  if (mode === "training") system += " 你扮演顾客，并同时评价员工回复。返回 customer_reply 和 feedback（level、issue、why、suggested_reply、next_goal、method_step、knowledge_focus）。";
+  else if (mode === "test" && action === "turn") system += " 你扮演顾客。返回 reply、emotion、should_continue。不要泄露场景设定。";
+  else if (mode === "test" && action === "finish") system += " 你是考核评分员。根据对话和评分表返回 total_score、dimension_scores、critical_failures、strengths、improvements、summary。";
+  else system += " 返回 answer、uncertainties、recommended_action。";
+  const user = `场景：${JSON.stringify(scenario)}\n历史对话：${JSON.stringify(body.history || [])}\n员工/顾客最新消息：${message}\n评分表：${JSON.stringify(data.rubric)}\n相关知识库：\n${context}`;
+  const modelResult = await callStaticModel(system, user, model, apiKey, mode === "test" ? 0.6 : 0.3);
+  const result = extractStaticJson(modelResult.content) || (mode === "test" && action === "turn" ? { reply: modelResult.content, emotion: "neutral", should_continue: true } : { answer: modelResult.content, uncertainties: [], recommended_action: "" });
+  if (mode === "qa") result.route = { intent: "一般需求咨询", primary_module: "新客接待与需求洞察", method_step: "先确认目标和必要安全信息，再解释选择" };
+  return { ok: true, mode, result, citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { ...modelResult.meta, mock: false } };
+}
+
 async function api(path, body) {
+  if (STATIC_PAGES) return staticApi(path, body);
   const response = await fetch(path, body ? {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -481,8 +586,8 @@ async function boot() {
   try {
     const [bootstrap, moduleData, catalogData, health] = await Promise.all([
       api("/api/bootstrap"),
-      fetch("/static/learning_modules.json").then((response) => response.json()),
-      fetch("/static/learning_catalog.json").then((response) => response.json()),
+      fetch(staticAsset("learning_modules.json")).then((response) => response.json()),
+      fetch(staticAsset("learning_catalog.json")).then((response) => response.json()),
       api("/api/health"),
     ]);
     state.scenarios = bootstrap.scenarios || [];
