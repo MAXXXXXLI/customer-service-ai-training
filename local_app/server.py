@@ -606,13 +606,26 @@ def with_safety_doc(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return docs
 
 
+LIMITED_CUSTOMER_POLICY = """
+顾客角色认知边界（最高优先级）：
+1. 顾客只知道自己的困扰、感受、生活情况和真实顾虑；对门店项目最多只听过一个模糊名称，不知道专业原理、成分、设备、适用标准、禁忌、操作流程或员工问诊方法。
+2. 只回答员工最新提出的问题；员工没有问到的个人信息不要主动成批透露。缺少设定的信息就自然说“不太清楚、没留意、说不上来”，不得用专业知识补全。
+3. 绝不替员工做需求分析、风险筛查或服务建议；不得反过来询问员工的病史、医美史、过敏史、用药或护肤品，也不得指导员工下一步应该问什么。
+4. 每轮只表达一个事实、感受或顾虑，通常 15—60 个汉字；最多问一个符合普通顾客认知的问题，不能连续盘问或列检查清单。
+5. 始终记住自己是来咨询的顾客。员工答错时可以不满意、疑惑或要求重新说明，但不能变成咨询师、教练、医生或产品专家。
+6. 不主动使用“适用性确认、专业评估、医疗评估、红旗、禁忌、SOP、成分核对、设备型号、阶段指标、复盘”等专业词。若员工使用这些词，只按普通顾客能理解的方式回应。
+7. 员工只给出简单否定或答非所问时，继续围绕自己的原始困扰表达不解，不要突然跳到价格、成分或另一个新话题。
+"""
+
+
 TRAIN_SYSTEM = """你是美容、瘦身门店的员工训练教练。你要同时完成两件事：让顾客角色的对话自然真实，并在每轮后指出员工一个最重要的改进点。
 
 只使用给定知识库作为专业依据。资料中可能存在旧版本、营销表述或需要核验的医学内容，不得擅自把它们改写成确定性承诺。""" + SAFETY_POLICY + METHODOLOGY_POLICY + """
 
 训练模式输出严格 JSON，不要 Markdown，不要额外解释：
 {"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"引用员工原话并指出一个最重要的问题或做得好的地方","why":"说明当前处于哪个接待节点、应调用什么知识和为什么","method_step":"本轮应执行的方法节点","knowledge_focus":"本轮主要知识重点","suggested_reply":"严格按方法路由生成的一句自然话术","next_goal":"下一轮只练一个目标"},"citations":[]}
-feedback 必须引用员工刚刚说的话，不能泛泛而谈；必须检查员工是否先安全后业务、是否回答当前问题、是否使用正确知识模块、是否给出可执行下一步。顾客不知道内部规则，不要把隐藏场景设定和评分标准泄露给员工。"""
+feedback 必须引用员工刚刚说的话，不能泛泛而谈；必须检查员工是否先安全后业务、是否回答当前问题、是否使用正确知识模块、是否给出可执行下一步。顾客不知道内部规则，不要把隐藏场景设定和评分标准泄露给员工。
+customer_reply 字段和 feedback 字段必须严格隔离：feedback 可以使用专业知识，customer_reply 必须完全遵守下面的顾客角色认知边界，绝不能把教练知识说成顾客的话。""" + LIMITED_CUSTOMER_POLICY
 
 
 TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客，不是培训教练、客服助手或评分员。
@@ -624,7 +637,7 @@ TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客�
 4. 如果员工答非所问，继续以顾客身份追问原问题；如果员工给出危险承诺，以顾客身份表示疑惑或不放心，但不要替员工说出标准答案。
 5. 不得出现“考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该”等幕后词语。
 
-严格输出 JSON，不要 Markdown：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + SAFETY_POLICY
+严格输出 JSON，不要 Markdown：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + LIMITED_CUSTOMER_POLICY
 
 
 QA_SYSTEM = """你是企业培训知识库中的专业顾客接待助手。你面对的是顾客，因此答案必须是一段可以直接对顾客说的话，而不是知识摘要、检索报告或员工培训分析。只能基于方法路由和检索资料，不能把知识库之外的猜测说成公司标准。
@@ -660,7 +673,6 @@ PUBLIC_OUTPUT_POLICY = """
 """
 
 TRAIN_SYSTEM += PUBLIC_OUTPUT_POLICY + "\n训练模式的 citations 固定返回空数组。"
-TEST_TURN_SYSTEM += PUBLIC_OUTPUT_POLICY
 QA_SYSTEM += PUBLIC_OUTPUT_POLICY
 ASSESS_SYSTEM += PUBLIC_OUTPUT_POLICY
 
@@ -717,15 +729,9 @@ def call_model(system: str, messages: list[dict[str, str]], model: str, api_key:
 
 def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any] | None, history: list[dict[str, str]], docs: list[dict[str, Any]]) -> dict[str, Any]:
     if mode == "training":
-        turn_number = sum(1 for item in history if item.get("role") == "user")
-        customer_replies = [
-            "我主要是肩颈总是紧，偶尔会头痛，想先了解一下你们怎么判断适不适合。",
-            "大概有半年了，久坐后更明显，最近睡眠也受了一点影响。",
-            "我比较担心做了没效果，而且价格也不能太高。你会怎么建议？",
-        ]
         weak = not any(word in message for word in ["了解", "多久", "哪里", "感受", "目标", "担心", "方便", "预算", "疼", "病史"])
         return {
-            "customer_reply": customer_replies[min(turn_number, len(customer_replies) - 1)],
+            "customer_reply": test_fallback_reply(scenario, history, message),
             "feedback": {
                 "level": "needs_work" if weak else "good",
                 "issue": "还没有围绕顾客的目标、症状时间和影响做追问。" if weak else "你有继续追问顾客目标，方向正确。",
@@ -738,9 +744,7 @@ def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any]
             "citations": [{"document_id": d.get("document_id"), "source_id": d.get("metadata", {}).get("source_id"), "title": d.get("metadata", {}).get("title")} for d in docs[:2]],
         }
     if mode == "test" and action == "turn":
-        turn_number = sum(1 for item in history if item.get("role") == "user")
-        replies = ["我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？", "如果需要先做适用性确认我可以配合，但我想知道下一步怎么安排。", "我大概明白了，你能把最适合我现在情况的下一步说具体一点吗？"]
-        reply = replies[min(turn_number, len(replies) - 1)]
+        reply = test_fallback_reply(scenario, history, message)
         return {"reply": reply, "emotion": "hesitant", "should_continue": True}
     return {
         "answer": "当前是本地演示模式。已经检索到相关资料，但尚未调用真实模型。配置 SiliconFlow API Key 后，可生成基于这些资料的正式回答。",
@@ -758,6 +762,20 @@ def scenario_by_id(scenario_id: str | None) -> dict[str, Any]:
     return SCENARIOS[0]
 
 
+def customer_turn_context(scenario: dict[str, Any] | None) -> dict[str, Any]:
+    """Only expose facts a simulated customer may know; scoring rules stay assessor-only."""
+    scenario = scenario or {}
+    persona = scenario.get("persona") if isinstance(scenario.get("persona"), dict) else {}
+    return {
+        "persona": {
+            key: persona.get(key)
+            for key in ("age", "gender", "occupation", "style", "goal", "risk", "knowledge_level")
+            if persona.get(key) not in {None, ""}
+        },
+        "hidden_objections": list(scenario.get("hidden_objections") or []),
+    }
+
+
 def clean_dialogue_history(history: list[dict[str, Any]], limit: int = 7) -> list[dict[str, str]]:
     cleaned = []
     for item in history:
@@ -770,35 +788,98 @@ def clean_dialogue_history(history: list[dict[str, Any]], limit: int = 7) -> lis
 
 
 TEST_INTERNAL_MARKERS = re.compile(r"考核|评分|知识库|方法路由|隐藏异议|must_test|员工应该|培训教练", re.I)
+CUSTOMER_ROLE_DRIFT_MARKERS = re.compile(
+    r"适用性确认|专业评估|医疗评估|红旗|禁忌|SOP|成分核对|设备型号|阶段指标|复盘|"
+    r"治疗史|特殊护肤品|强刺激产品|作用原理|工作原理|操作流程|测温|设备参数|产品机制|"
+    r"(?:建议|请)您|我建议(?:你|您)|你(?:应该|需要).{0,12}(?:询问|确认|了解|评估|说明)|"
+    r"您.{0,18}(?:有没有|是否|做过|用过|最近一次|病史|过敏史)",
+    re.I,
+)
 
 
-def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str, Any]]) -> str:
+def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
+    scenario = scenario or {}
+    persona = scenario.get("persona") if isinstance(scenario.get("persona"), dict) else {}
+    goal = clean_text(persona.get("goal")) or "我现在这个困扰"
+    employee_message = clean_text(employee_message)
+    if re.search(r"我错了|说错了|不好意思|抱歉", employee_message):
+        return f"没关系，你重新给我讲清楚就行。我主要还是想解决{goal}。"
+    if re.search(r"不能做|做不了|没什么不同|没区别|都一样|不适合", employee_message):
+        return f"那我有点没听明白，我主要是{goal}，想知道还有没有别的办法。"
+    if re.search(r"多久|多长时间|什么时候开始", employee_message):
+        return "有一阵子了，最近感觉比以前明显一些。"
+    if re.search(r"哪里|哪个部位|什么位置", employee_message):
+        return f"主要就是{goal}，其他地方我暂时没太留意。"
     objections = list((scenario or {}).get("hidden_objections") or [])
     turn_number = sum(1 for item in history if item.get("role") == "user")
-    objection = objections[min(turn_number, len(objections) - 1)] if objections else "下一步安排"
+    if turn_number >= len(objections):
+        generic_replies = [
+            f"这些专业的我不太懂，我主要就是想解决{goal}。",
+            "我现在没有别的问题了，就是还没完全放心。",
+            "那我先听到这里，想清楚以后再决定。",
+            "我还得再想想，现在不想马上决定。",
+            "我听明白一点了，不过心里还是有些犹豫。",
+            "我主要担心的还是自己的情况到底能不能改善。",
+        ]
+        return generic_replies[(turn_number - len(objections)) % len(generic_replies)]
+    objection = objections[turn_number]
     templates = {
-        "怕疼": "我比较怕疼，如果过程中不舒服，你们会怎么处理？",
-        "太贵": "我也有点担心价格，能先说说需要怎么评估和安排吗？",
-        "一次有没有用": "那一次大概能观察什么，怎么判断是不是适合继续？",
-        "时间": "我平时工作很忙，如果时间有限，下一步怎么安排会更实际？",
-        "固定斤数": "我还是很在意能不能达到固定斤数，你们通常怎么和顾客确定目标？",
-        "价格": "我还需要考虑预算，能先告诉我确认方案前要了解哪些信息吗？",
-        "成分/过敏": "我之前有过敏经历，具体成分和适用性会怎么确认？",
-        "怕设备不安全": "我最担心设备安全，过程中如果过热或不舒服能马上停吗？",
+        "怕疼": "我比较怕疼，过程中会不会很难受？",
+        "太贵": "我也有点担心价格会不会太高。",
+        "一次有没有用": "我还担心做一次看不到什么变化。",
+        "时间": "我平时工作很忙，能安排出来的时间不多。",
+        "固定斤数": "我还是很在意到底能不能瘦到自己想要的样子。",
+        "价格": "我还要考虑预算，太贵的话可能不会做。",
+        "成分/过敏": "我以前皮肤用东西容易不舒服，所以有点担心过敏。",
+        "怕设备不安全": "我很怕烫，也担心过程中会不舒服。",
+        "医院太贵": "我就是觉得去医院太贵了，所以才想先来问问。",
+        "怕手术": "我一想到可能要做手术就很害怕。",
+        "怕没效果": "我最怕花了钱却没什么变化。",
+        "不信任": "我现在还不太放心，想先听你讲明白。",
+        "一次见效": "我还担心做一次是不是看不出变化。",
+        "疗效证据": "我以前试过不少方法都没坚持住，怕这次也没用。",
+        "不想控制饮食": "如果还要管得特别严格，我可能坚持不了。",
+        "回家考虑": "我还不想现在决定，想回去再考虑一下。",
+        "药品身份": "我就是不确定这个到底算不算药，心里有点怕。",
+        "疾病风险": "我有血糖问题，最担心会不会对身体有影响。",
+        "价值不清": "我现在还没听明白贵在哪里。",
+        "不愿回答问题": "我不太想说太多私人的事情。",
+        "担心隐私": "我最在意的是隐私，不能接受的话我就不做。",
+        "担心被强推": "我不希望一来就被一直推着买东西。",
+        "担心异常": "我就是担心今天更酸痛是不是不正常。",
+        "想继续购买": "如果这次没什么问题，我原本还想继续做。",
+        "设备真伪": "我也分不清设备有什么区别，怕花冤枉钱。",
+        "服务差异": "我看不出你们和别家到底差在哪里。",
     }
-    return templates.get(objection, f"我现在最在意的是{objection}，你能针对这个问题再说明一下吗？")
+    return templates.get(objection, f"我现在主要还是担心{objection}，其他专业的我也不太懂。")
 
 
-def normalize_test_turn_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]]) -> dict[str, Any]:
-    result = result if isinstance(result, dict) else {}
-    reply = clean_text(result.get("reply", ""))
+def customer_reply_is_invalid(reply: str) -> bool:
+    if not reply or len(reply) > 100 or TEST_INTERNAL_MARKERS.search(reply) or CUSTOMER_ROLE_DRIFT_MARKERS.search(reply):
+        return True
+    return reply.count("？") + reply.count("?") > 1
+
+
+def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
+    reply = clean_text(reply)
     previous_customer_replies = [clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"]
     repeated = any(reply == previous or (len(reply) >= 18 and len(previous) >= 18 and reply[:18] == previous[:18]) for previous in previous_customer_replies)
-    invalid = not reply or repeated or bool(TEST_INTERNAL_MARKERS.search(reply))
     if scenario and reply == clean_text(scenario.get("opening", "")):
-        invalid = True
-    if invalid:
-        reply = test_fallback_reply(scenario, history)
+        repeated = True
+    if repeated or customer_reply_is_invalid(reply):
+        return test_fallback_reply(scenario, history, employee_message)
+    return reply
+
+
+def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> dict[str, Any]:
+    result = result if isinstance(result, dict) else {}
+    result["customer_reply"] = normalized_customer_reply(result.get("customer_reply", ""), scenario, history, employee_message)
+    return result
+
+
+def normalize_test_turn_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> dict[str, Any]:
+    result = result if isinstance(result, dict) else {}
+    reply = normalized_customer_reply(result.get("reply", ""), scenario, history, employee_message)
     emotion = clean_text(result.get("emotion", "neutral"))
     if emotion not in {"curious", "hesitant", "concerned", "relieved", "neutral"}:
         emotion = "neutral"
@@ -998,23 +1079,25 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
 
     if mode == "training":
         turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
-        training_system = f"{TRAIN_SYSTEM}\n\n当前场景（只供角色一致性使用）：{json.dumps(scenario, ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs)}"
+        training_system = f"{TRAIN_SYSTEM}\n\n顾客可知场景（只供 customer_reply 保持角色一致）：{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。must_test 及下面的方法、知识只供 feedback 使用，绝不能写进 customer_reply。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
+            result = normalize_training_result(result, scenario, history, message)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
         raw, meta = call_model(training_system, [*dialogue_history, {"role": "user", "content": message}], model, api_key, temperature=0.35)
         result = apply_methodology_result(safety_filter(extract_json(raw) or {"customer_reply": raw, "feedback": {"level": "needs_work", "issue": "模型未按结构化格式返回。", "why": "请检查 Prompt 输出约束。", "suggested_reply": "请继续围绕顾客目标进行追问。", "next_goal": "完成需求分析。"}, "citations": citation_refs}, mode, message, route), mode, route)
+        result = normalize_training_result(result, scenario, history, message)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
     if mode == "test" and action == "turn":
-        hidden_context = json.dumps({"persona": scenario.get("persona"), "hidden_objections": scenario.get("hidden_objections"), "must_test": scenario.get("must_test")}, ensure_ascii=False)
+        hidden_context = json.dumps(customer_turn_context(scenario), ensure_ascii=False)
         turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
         test_system = f"{TEST_TURN_SYSTEM}\n\n场景设定（只供你使用，不得泄露）：{hidden_context}\n开场白：{scenario.get('opening')}\n当前是员工第 {turn_number} 轮回复。"
         if MOCK_MODE or not api_key:
-            result = normalize_test_turn_result(mock_response(mode, action, message, scenario, history, docs), scenario, history)
+            result = normalize_test_turn_result(mock_response(mode, action, message, scenario, history, docs), scenario, history, message)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
         raw, meta = call_model(test_system, [*dialogue_history, {"role": "user", "content": message}], model, api_key, temperature=0.55)
-        result = normalize_test_turn_result(extract_json(raw) or {"reply": raw}, scenario, history)
+        result = normalize_test_turn_result(extract_json(raw) or {"reply": raw}, scenario, history, message)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
     if mode == "test" and action == "finish":

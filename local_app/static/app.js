@@ -185,7 +185,7 @@ async function callStaticModel(system, messages, model, apiKey, temperature, max
 
 function staticMock(mode, action, scenario) {
   if (mode === "training") return {
-    customer_reply: "我主要是肩颈总是紧，偶尔会头晕，想先了解一下你们怎么判断适不适合。",
+    customer_reply: staticCustomerFallback(scenario, [], ""),
     feedback: { level: "needs_work", issue: "还可以继续追问顾客的目标、持续时间和影响。", why: "先完成需求分析，再介绍项目。", method_step: "了解目标并完成问题定位", knowledge_focus: "目标、持续时间、影响和安全信息", suggested_reply: "这种情况大概持续多久了？对工作或睡眠有影响吗？", next_goal: "下一轮先问清目标、持续时间和影响。" },
   };
   if (mode === "test" && action === "turn") return { reply: scenario?.opening || "我最近有点困扰，想先了解一下你们的项目。", emotion: "hesitant", should_continue: true };
@@ -203,15 +203,10 @@ function staticCriticalHits(message) {
 function staticMockProgressive(mode, action, scenario, history = [], rubric = null, message = "") {
   const userTurns = history.filter((item) => item?.role === "user").length;
   if (mode === "training") {
-    const customerReplies = [
-      "我主要是肩颈总是紧，偶尔会头晕，想先了解一下你们怎么判断适不适合。",
-      "大概有半年了，久坐后更明显，最近睡眠也受了一点影响。",
-      "我比较担心做了没效果，而且价格也不能太高。你会怎么建议？",
-    ];
     const strong = ["了解", "多久", "哪里", "感受", "目标", "担心", "方便", "预算", "疼", "病史"].some((word) => String(message).includes(word));
     const critical = staticCriticalHits(message).length > 0;
     return {
-      customer_reply: customerReplies[Math.min(userTurns, customerReplies.length - 1)],
+      customer_reply: staticCustomerFallback(scenario, history, message),
       feedback: {
         level: critical ? "critical" : (strong ? "good" : "needs_work"),
         issue: critical ? "出现了不能承诺疗效或替代专业评估的高风险表达。" : (strong ? "你已围绕顾客的目标和情况继续追问，方向正确。" : "还可以继续追问顾客的目标、持续时间和影响。"),
@@ -224,12 +219,7 @@ function staticMockProgressive(mode, action, scenario, history = [], rubric = nu
     };
   }
   if (mode === "test" && action === "turn") {
-    const replies = [
-      "我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？",
-      "如果需要先做适用性确认我可以配合，但我想知道下一步怎么安排。",
-      "我大概明白了，你能把最适合我现在情况的下一步说具体一点吗？",
-    ];
-    return { reply: replies[Math.min(userTurns, replies.length - 1)], emotion: userTurns > 0 ? "concerned" : "hesitant", should_continue: true };
+    return { reply: staticCustomerFallback(scenario, history, message), emotion: userTurns > 0 ? "concerned" : "hesitant", should_continue: true };
   }
   if (mode === "test" && action === "finish") {
     const dimensions = (rubric?.dimensions || []).map((item) => ({
@@ -246,30 +236,79 @@ function staticMockProgressive(mode, action, scenario, history = [], rubric = nu
 }
 
 const TEST_INTERNAL_MARKERS = /考核|评分|知识库|方法路由|隐藏异议|must_test|员工应该|培训教练/i;
+const CUSTOMER_ROLE_DRIFT_MARKERS = /适用性确认|专业评估|医疗评估|红旗|禁忌|SOP|成分核对|设备型号|阶段指标|复盘|治疗史|特殊护肤品|强刺激产品|作用原理|工作原理|操作流程|测温|设备参数|产品机制|(?:建议|请)您|我建议(?:你|您)|你(?:应该|需要).{0,12}(?:询问|确认|了解|评估|说明)|您.{0,18}(?:有没有|是否|做过|用过|最近一次|病史|过敏史)/i;
+const LIMITED_CUSTOMER_POLICY = `顾客认知边界（最高优先级）：顾客只知道自己的困扰、感受、生活情况和真实顾虑；最多听过一个模糊项目名，不知道原理、成分、设备、适用标准、禁忌或操作流程。只回答员工最新问题，每轮只说一个事实、感受或顾虑，通常15—60个汉字，最多问一个普通顾客会问的问题。不得替员工做需求分析、风险筛查或建议，不得反问员工的病史、医美史、过敏史、用药和护肤品。员工答错时可以不满意或要求重讲，但始终保持来咨询的普通顾客身份。不得使用适用性确认、专业评估、医疗评估、红旗、禁忌、SOP、成分核对、设备型号、阶段指标、复盘等专业词。员工只给出简单否定或答非所问时，继续围绕原始困扰表达不解，不得突然跳到价格、成分或另一个新话题。`;
 
-function staticTestFallback(scenario, history = []) {
-  const objections = scenario?.hidden_objections || [];
-  const userTurns = history.filter((item) => item?.role === "user").length;
-  const objection = objections[Math.min(userTurns, Math.max(objections.length - 1, 0))] || "下一步安排";
-  const templates = {
-    "怕疼": "我比较怕疼，如果过程中不舒服，你们会怎么处理？",
-    "太贵": "我也有点担心价格，能先说说需要怎么评估和安排吗？",
-    "一次有没有用": "那一次大概能观察什么，怎么判断是不是适合继续？",
-    "时间": "我平时工作很忙，如果时间有限，下一步怎么安排会更实际？",
-    "固定斤数": "我还是很在意能不能达到固定斤数，你们通常怎么和顾客确定目标？",
-    "价格": "我还需要考虑预算，能先告诉我确认方案前要了解哪些信息吗？",
-    "成分/过敏": "我之前有过敏经历，具体成分和适用性会怎么确认？",
-    "怕设备不安全": "我最担心设备安全，过程中如果过热或不舒服能马上停吗？",
+function staticCustomerScenario(scenario = {}) {
+  const persona = scenario.persona || {};
+  return {
+    persona: Object.fromEntries(["age", "gender", "occupation", "style", "goal", "risk", "knowledge_level"].filter((key) => persona[key] != null && persona[key] !== "").map((key) => [key, persona[key]])),
+    hidden_objections: scenario.hidden_objections || [],
   };
-  return templates[objection] || `我现在最在意的是${objection}，你能针对这个问题再说明一下吗？`;
 }
 
-function normalizeStaticTestTurn(result, scenario, history = []) {
-  const normalized = result && typeof result === "object" ? result : {};
-  let reply = String(normalized.reply || "").trim();
+function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
+  const persona = scenario?.persona || {};
+  const goal = String(persona.goal || "我现在这个困扰").trim();
+  const employee = String(employeeMessage || "").trim();
+  if (/我错了|说错了|不好意思|抱歉/.test(employee)) return `没关系，你重新给我讲清楚就行。我主要还是想解决${goal}。`;
+  if (/不能做|做不了|没什么不同|没区别|都一样|不适合/.test(employee)) return `那我有点没听明白，我主要是${goal}，想知道还有没有别的办法。`;
+  if (/多久|多长时间|什么时候开始/.test(employee)) return "有一阵子了，最近感觉比以前明显一些。";
+  if (/哪里|哪个部位|什么位置/.test(employee)) return `主要就是${goal}，其他地方我暂时没太留意。`;
+  const objections = scenario?.hidden_objections || [];
+  const userTurns = history.filter((item) => item?.role === "user").length;
+  if (userTurns >= objections.length) {
+    const genericReplies = [`这些专业的我不太懂，我主要就是想解决${goal}。`, "我现在没有别的问题了，就是还没完全放心。", "那我先听到这里，想清楚以后再决定。", "我还得再想想，现在不想马上决定。", "我听明白一点了，不过心里还是有些犹豫。", "我主要担心的还是自己的情况到底能不能改善。"];
+    return genericReplies[(userTurns - objections.length) % genericReplies.length];
+  }
+  const objection = objections[userTurns];
+  const templates = {
+    "怕疼": "我比较怕疼，过程中会不会很难受？",
+    "太贵": "我也有点担心价格会不会太高。",
+    "一次有没有用": "我还担心做一次看不到什么变化。",
+    "时间": "我平时工作很忙，能安排出来的时间不多。",
+    "固定斤数": "我还是很在意到底能不能瘦到自己想要的样子。",
+    "价格": "我还要考虑预算，太贵的话可能不会做。",
+    "成分/过敏": "我以前皮肤用东西容易不舒服，所以有点担心过敏。",
+    "怕设备不安全": "我很怕烫，也担心过程中会不舒服。",
+    "医院太贵": "我就是觉得去医院太贵了，所以才想先来问问。",
+    "怕手术": "我一想到可能要做手术就很害怕。",
+    "怕没效果": "我最怕花了钱却没什么变化。",
+    "不信任": "我现在还不太放心，想先听你讲明白。",
+    "一次见效": "我还担心做一次是不是看不出变化。",
+    "疗效证据": "我以前试过不少方法都没坚持住，怕这次也没用。",
+    "不想控制饮食": "如果还要管得特别严格，我可能坚持不了。",
+    "回家考虑": "我还不想现在决定，想回去再考虑一下。",
+    "药品身份": "我就是不确定这个到底算不算药，心里有点怕。",
+    "疾病风险": "我有血糖问题，最担心会不会对身体有影响。",
+    "价值不清": "我现在还没听明白贵在哪里。",
+    "不愿回答问题": "我不太想说太多私人的事情。",
+    "担心隐私": "我最在意的是隐私，不能接受的话我就不做。",
+    "担心被强推": "我不希望一来就被一直推着买东西。",
+    "担心异常": "我就是担心今天更酸痛是不是不正常。",
+    "想继续购买": "如果这次没什么问题，我原本还想继续做。",
+    "设备真伪": "我也分不清设备有什么区别，怕花冤枉钱。",
+    "服务差异": "我看不出你们和别家到底差在哪里。",
+  };
+  return templates[objection] || `我现在主要还是担心${objection}，其他专业的我也不太懂。`;
+}
+
+function invalidStaticCustomerReply(reply) {
+  const questionCount = (reply.match(/[？?]/g) || []).length;
+  return !reply || reply.length > 100 || TEST_INTERNAL_MARKERS.test(reply) || CUSTOMER_ROLE_DRIFT_MARKERS.test(reply) || questionCount > 1;
+}
+
+function normalizeStaticCustomerReply(reply, scenario, history = [], employeeMessage = "") {
+  let normalized = String(reply || "").trim();
   const previous = history.filter((item) => item?.role === "assistant").map((item) => String(item.content || "").trim());
-  const repeated = previous.some((item) => reply === item || (reply.length >= 18 && item.length >= 18 && reply.slice(0, 18) === item.slice(0, 18)));
-  if (!reply || repeated || TEST_INTERNAL_MARKERS.test(reply) || reply === String(scenario?.opening || "").trim()) reply = staticTestFallback(scenario, history);
+  const repeated = previous.some((item) => normalized === item || (normalized.length >= 18 && item.length >= 18 && normalized.slice(0, 18) === item.slice(0, 18)));
+  if (repeated || invalidStaticCustomerReply(normalized) || normalized === String(scenario?.opening || "").trim()) normalized = staticCustomerFallback(scenario, history, employeeMessage);
+  return normalized;
+}
+
+function normalizeStaticTestTurn(result, scenario, history = [], employeeMessage = "") {
+  const normalized = result && typeof result === "object" ? result : {};
+  const reply = normalizeStaticCustomerReply(normalized.reply, scenario, history, employeeMessage);
   const emotions = new Set(["curious", "hesitant", "concerned", "relieved", "neutral"]);
   return { reply, emotion: emotions.has(normalized.emotion) ? normalized.emotion : "neutral", should_continue: normalized.should_continue !== false };
 }
@@ -346,11 +385,11 @@ function normalizeStaticResult(result, mode, action, scenario, history, rubric, 
   let normalized = result && typeof result === "object" ? result : {};
   if (mode === "training") {
     const fallback = staticMockProgressive(mode, action, scenario, history, rubric, message);
-    normalized.customer_reply = normalized.customer_reply || fallback.customer_reply;
+    normalized.customer_reply = normalizeStaticCustomerReply(normalized.customer_reply || fallback.customer_reply, scenario, history, message);
     normalized.feedback = { ...fallback.feedback, ...(normalized.feedback || {}) };
     if (staticCriticalHits(message).length) normalized.feedback.level = "critical";
   }
-  if (mode === "test" && action === "turn") normalized = normalizeStaticTestTurn(normalized, scenario, history);
+  if (mode === "test" && action === "turn") normalized = normalizeStaticTestTurn(normalized, scenario, history, message);
   if (mode === "test" && action === "finish") normalized = normalizeStaticAssessment(normalized, history, rubric);
   return normalized;
 }
@@ -386,11 +425,11 @@ async function staticApi(path, body) {
   let temperature = 0.3;
   let maxTokens = 1800;
   if (mode === "training") {
-    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n当前场景：${JSON.stringify(scenario)}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n相关知识库：\n${context}`;
+    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n顾客可知场景：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。customer_reply 只能使用顾客可知信息；下面的专业知识只供 feedback 使用，绝不能写进 customer_reply。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n相关知识库：\n${context}`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.35;
   } else if (mode === "test" && action === "turn") {
-    system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。${safety}\n隐藏场景（不得泄露）：${JSON.stringify(scenario)}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句，每轮 1—3 句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
+    system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.55;
   } else if (mode === "test" && action === "finish") {
