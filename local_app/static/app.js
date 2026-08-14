@@ -160,6 +160,81 @@ function staticMock(mode, action, scenario) {
   return { answer: "当前是演示模式。保存 SiliconFlow API Key 后，就能生成基于知识库的正式回答。", uncertainties: ["请以门店当前价格、项目标签和合规版本为准。"], recommended_action: "先核对门店当前版本的价格、频次和适用边界。" };
 }
 
+const STATIC_CRITICAL_PATTERNS = ["保证治愈", "百分百", "包治", "替代手术", "不需要看医生", "停药", "口服", "注射", "剂量", "不反弹"];
+
+function staticCriticalHits(message) {
+  const text = String(message || "");
+  return STATIC_CRITICAL_PATTERNS.filter((pattern) => text.includes(pattern));
+}
+
+function staticMockProgressive(mode, action, scenario, history = [], rubric = null, message = "") {
+  const userTurns = history.filter((item) => item?.role === "user").length;
+  if (mode === "training") {
+    const customerReplies = [
+      "我主要是肩颈总是紧，偶尔会头晕，想先了解一下你们怎么判断适不适合。",
+      "大概有半年了，久坐后更明显，最近睡眠也受了一点影响。",
+      "我比较担心做了没效果，而且价格也不能太高。你会怎么建议？",
+    ];
+    const strong = ["了解", "多久", "哪里", "感受", "目标", "担心", "方便", "预算", "疼", "病史"].some((word) => String(message).includes(word));
+    const critical = staticCriticalHits(message).length > 0;
+    return {
+      customer_reply: customerReplies[Math.min(userTurns, customerReplies.length - 1)],
+      feedback: {
+        level: critical ? "critical" : (strong ? "good" : "needs_work"),
+        issue: critical ? "出现了不能承诺疗效或替代专业评估的高风险表达。" : (strong ? "你已围绕顾客的目标和情况继续追问，方向正确。" : "还可以继续追问顾客的目标、持续时间和影响。"),
+        why: critical ? "安全边界优先，不能用确定性承诺或医疗化表达推进成交。" : "先完成需求分析，再介绍项目。",
+        method_step: "了解目标并完成问题定位",
+        knowledge_focus: "目标、持续时间、影响和安全信息",
+        suggested_reply: critical ? "我不能承诺结果或替代专业评估，先确认您的具体情况和安全边界，再说明可以提供的服务。" : "这种情况大概持续多久了？对工作或睡眠有影响吗？",
+        next_goal: critical ? "下一轮先纠正表达，完成必要安全问询。" : "下一轮先问清目标、持续时间和影响。",
+      },
+    };
+  }
+  if (mode === "test" && action === "turn") {
+    const replies = [
+      scenario?.opening || "我最近有点困扰，想先了解一下你们的项目。",
+      "我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？",
+      "如果需要先做适用性确认我可以配合，但我想知道下一步怎么安排。",
+    ];
+    return { reply: replies[Math.min(userTurns, replies.length - 1)], emotion: userTurns > 0 ? "concerned" : "hesitant", should_continue: true };
+  }
+  if (mode === "test" && action === "finish") {
+    const dimensions = (rubric?.dimensions || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      score: Math.round(Number(item.weight || item.max_score || 0) * 0.72),
+      max_score: Number(item.weight || item.max_score || 0),
+      evidence: "本地演示评分：已根据当前对话完成基础评估。",
+      comment: "建议继续训练需求分析和异议处理。",
+    }));
+    return { total_score: 72, dimension_scores: dimensions, critical_failures: [], strengths: ["完成了基本接待并保持了对话连续性。"], improvements: ["先问清目标、持续时间、影响和顾虑，再介绍项目。", "面对价格和效果异议时，使用共情—澄清—回应—确认。"], summary: "本地演示评分：流程已走通，配置 API Key 后可使用模型评分。" };
+  }
+  return staticMock(mode, action, scenario);
+}
+
+function normalizeStaticResult(result, mode, action, scenario, history, rubric, message) {
+  let normalized = result && typeof result === "object" ? result : {};
+  if (mode === "training") {
+    const fallback = staticMockProgressive(mode, action, scenario, history, rubric, message);
+    normalized.customer_reply = normalized.customer_reply || fallback.customer_reply;
+    normalized.feedback = { ...fallback.feedback, ...(normalized.feedback || {}) };
+    if (staticCriticalHits(message).length) normalized.feedback.level = "critical";
+  }
+  if (mode === "test" && action === "turn") {
+    const fallback = staticMockProgressive(mode, action, scenario, history, rubric, message);
+    normalized.reply = normalized.reply || fallback.reply;
+    normalized.emotion = normalized.emotion || fallback.emotion;
+    normalized.should_continue = normalized.should_continue !== false;
+  }
+  if (mode === "test" && action === "finish" && !Array.isArray(normalized.dimension_scores)) {
+    normalized = { ...staticMockProgressive(mode, action, scenario, history, rubric, message), ...normalized };
+  }
+  if (mode === "test" && action === "finish" && !normalized.dimension_scores.length) {
+    normalized = { ...normalized, dimension_scores: staticMockProgressive(mode, action, scenario, history, rubric, message).dimension_scores };
+  }
+  return normalized;
+}
+
 async function staticApi(path, body) {
   const data = await loadStaticData();
   if (path === "/api/bootstrap") {
@@ -177,7 +252,7 @@ async function staticApi(path, body) {
   const query = [...(body.history || []).slice(-8).map((item) => item.content), message].join(" ");
   const docs = staticRetrieve(query, data.documents);
   const context = docs.map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, 1200)}`).join("\n\n");
-  if (!apiKey) return { ok: true, mode, result: staticMock(mode, action, scenario), citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { mock: true, model } };
+  if (!apiKey) return { ok: true, mode, result: staticMockProgressive(mode, action, scenario, body.history || [], data.rubric, message), citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { mock: true, model } };
 
   let system = "你是顾客服务培训平台的 AI。只基于给定知识库回答，不诊断疾病、不承诺疗效、不推荐处方药；遇到胸痛、呼吸困难、晕厥等红旗症状时先建议停止项目并寻求医疗评估。请严格返回 JSON，不要 Markdown。";
   if (mode === "training") system += " 你扮演顾客，并同时评价员工回复。返回 customer_reply 和 feedback（level、issue、why、suggested_reply、next_goal、method_step、knowledge_focus）。";
@@ -186,7 +261,8 @@ async function staticApi(path, body) {
   else system += " 返回 answer、uncertainties、recommended_action。";
   const user = `场景：${JSON.stringify(scenario)}\n历史对话：${JSON.stringify(body.history || [])}\n员工/顾客最新消息：${message}\n评分表：${JSON.stringify(data.rubric)}\n相关知识库：\n${context}`;
   const modelResult = await callStaticModel(system, user, model, apiKey, mode === "test" ? 0.6 : 0.3);
-  const result = extractStaticJson(modelResult.content) || (mode === "test" && action === "turn" ? { reply: modelResult.content, emotion: "neutral", should_continue: true } : { answer: modelResult.content, uncertainties: [], recommended_action: "" });
+  let result = extractStaticJson(modelResult.content) || (mode === "test" && action === "turn" ? { reply: modelResult.content, emotion: "neutral", should_continue: true } : { answer: modelResult.content, uncertainties: [], recommended_action: "" });
+  result = normalizeStaticResult(result, mode, action, scenario, body.history || [], data.rubric, message);
   if (mode === "qa") result.route = { intent: "一般需求咨询", primary_module: "新客接待与需求洞察", method_step: "先确认目标和必要安全信息，再解释选择" };
   return { ok: true, mode, result, citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { ...modelResult.meta, mock: false } };
 }

@@ -519,6 +519,9 @@ def safety_filter(result: dict[str, Any], mode: str, user_text: str = "", route:
     ]
     combined = " ".join(fields)
     hits = unsafe_claim_hits(combined)
+    user_hits = unsafe_claim_hits(user_text) if mode == "training" else []
+    if user_hits:
+        hits.extend(item for item in user_hits if item not in hits)
     if mode == "qa" and re.search(r"敏感肌|皮肤过敏|容易过敏|医美恢复", user_text, flags=re.I):
         result["answer"] = "不能只凭‘敏感肌’三个字判断能不能做。先确认目前有没有持续泛红、刺痛、破损、渗出、明显痘痘炎症或过敏发作，以及近期是否做过医美、刷酸、激光或使用强刺激产品。存在这些情况时先不操作，并建议由皮肤科或原医疗机构确认；状态稳定时，也要再核对具体项目、成分、设备禁忌和门店当前SOP，先做小范围感受测试，过程中一旦刺痛、灼热或泛红加重立即停止。降低次数不能替代适用性判断。"
         result["uncertainties"] = ["需要确认当前皮肤是否处于急性敏感或治疗恢复期。", "需要核对具体产品成分、设备型号和当前门店SOP。"]
@@ -683,9 +686,15 @@ def call_model(system: str, messages: list[dict[str, str]], model: str, api_key:
 
 def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any] | None, history: list[dict[str, str]], docs: list[dict[str, Any]]) -> dict[str, Any]:
     if mode == "training":
+        turn_number = sum(1 for item in history if item.get("role") == "user")
+        customer_replies = [
+            "我主要是肩颈总是紧，偶尔会头痛，想先了解一下你们怎么判断适不适合。",
+            "大概有半年了，久坐后更明显，最近睡眠也受了一点影响。",
+            "我比较担心做了没效果，而且价格也不能太高。你会怎么建议？",
+        ]
         weak = not any(word in message for word in ["了解", "多久", "哪里", "感受", "目标", "担心", "方便", "预算", "疼", "病史"])
         return {
-            "customer_reply": "我主要是肩颈总是紧，偶尔会头痛，想先了解一下你们怎么判断适不适合。",
+            "customer_reply": customer_replies[min(turn_number, len(customer_replies) - 1)],
             "feedback": {
                 "level": "needs_work" if weak else "good",
                 "issue": "还没有围绕顾客的目标、症状时间和影响做追问。" if weak else "你有继续追问顾客目标，方向正确。",
@@ -699,7 +708,9 @@ def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any]
         }
     if mode == "test" and action == "turn":
         opening = scenario.get("opening") if scenario else "我最近有点困扰，想先了解一下你们的项目。"
-        reply = opening if not history else "我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？"
+        turn_number = sum(1 for item in history if item.get("role") == "user")
+        replies = [opening, "我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？", "如果需要先做适用性确认我可以配合，但我想知道下一步怎么安排。"]
+        reply = replies[min(turn_number, len(replies) - 1)]
         return {"reply": reply, "emotion": "hesitant", "should_continue": True}
     return {
         "answer": "当前是本地演示模式。已经检索到相关资料，但尚未调用真实模型。配置 SiliconFlow API Key 后，可生成基于这些资料的正式回答。",
