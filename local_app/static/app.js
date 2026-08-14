@@ -112,7 +112,8 @@ async function loadStaticData() {
       fetch("./data/scenario_library.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/rag_documents.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/scoring_rubric.json").then((response) => response.json()),
-    ]).then(([scenarios, documents, rubric]) => ({ scenarios, documents, rubric }));
+      fetch("./data/customer_service_methodology.json").then((response) => response.json()),
+    ]).then(([scenarios, documents, rubric, methodology]) => ({ scenarios, documents, rubric, methodology }));
   }
   return staticDataPromise;
 }
@@ -130,22 +131,148 @@ function publicStaticDocument(document) {
   };
 }
 
-function staticRetrieve(query, documents, limit = 8) {
+function staticMatchesAny(text, patterns = []) {
+  return patterns.some((pattern) => {
+    try { return new RegExp(pattern, "i").test(text); } catch { return false; }
+  });
+}
+
+function uniqueStaticItems(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function staticRouteCustomerQuestion(query, methodology = {}) {
+  const text = String(query || "").replace(/\s+/g, " ").trim();
+  const intents = [...(methodology.intent_routes || [])].sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
+  const matchedIntent = intents.find((item) => staticMatchesAny(text, item.patterns)) || null;
+  const topics = (methodology.topic_routes || []).filter((item) => staticMatchesAny(text, item.patterns));
+  const fallback = methodology.default_route || {};
+  const intent = matchedIntent || (topics.length ? {
+    id: "INTENT-INFORMATION",
+    label: topics[0].label || "项目原理、流程与一般咨询",
+    primary_module_id: "DYNAMIC",
+    support_module_ids: [],
+    course_ids: [],
+    focus: topics[0].recommended_next || "使用对应项目课程回答。",
+    stop_sales: false,
+  } : {
+    id: fallback.intent_id || "INTENT-INFORMATION",
+    label: fallback.intent_label || "一般需求咨询",
+    primary_module_id: fallback.primary_module_id || "MOD-01",
+    support_module_ids: fallback.support_module_ids || ["MOD-07"],
+    course_ids: fallback.course_ids || [],
+    focus: fallback.focus || "先确认顾客目标和必要安全信息。",
+    stop_sales: Boolean(fallback.stop_sales),
+  });
+  const topicPrimary = topics[0]?.module_id || null;
+  const intentPrimary = intent.primary_module_id;
+  const primaryModuleId = !matchedIntent && topicPrimary ? topicPrimary : intentPrimary === "DYNAMIC" ? (topicPrimary || fallback.primary_module_id || "MOD-01") : (intentPrimary || topicPrimary || fallback.primary_module_id || "MOD-01");
+  const supportModuleIds = [];
+  if (topicPrimary && topicPrimary !== primaryModuleId) supportModuleIds.push(topicPrimary);
+  topics.forEach((topic) => {
+    supportModuleIds.push(...(topic.support_module_ids || []));
+    if (topic.module_id !== primaryModuleId) supportModuleIds.push(topic.module_id);
+  });
+  supportModuleIds.push(...(intent.support_module_ids || []));
+  if (primaryModuleId !== "MOD-07") supportModuleIds.push("MOD-07");
+  const validModuleIds = new Set(state.modules.map((item) => item.id));
+  const cleanSupportIds = uniqueStaticItems(supportModuleIds).filter((id) => validModuleIds.has(id) && id !== primaryModuleId);
+  const courseIds = [...(intent.course_ids || [])];
+  const knowledgePoints = [];
+  topics.forEach((topic) => {
+    courseIds.push(...(topic.course_ids || []));
+    knowledgePoints.push(...(topic.knowledge_points || []));
+  });
+  if (!topics.length && !matchedIntent) courseIds.push(...(fallback.course_ids || []));
+  if (primaryModuleId === "MOD-07" || intent.stop_sales) courseIds.push("COURSE-SERVICE-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001");
+  const validCourseIds = new Set(state.courses.map((item) => item.id));
+  const cleanCourseIds = uniqueStaticItems(courseIds).filter((id) => validCourseIds.has(id));
+  const moduleByRouteId = (id) => state.modules.find((item) => item.id === id);
+  const courseByRouteId = (id) => state.courses.find((item) => item.id === id);
+  const objectionIntents = new Set(["INTENT-PRICE", "INTENT-RESULT", "INTENT-COMPARISON", "INTENT-DECISION"]);
+  const methodStep = intent.stop_sales ? "安全确认与停止分流" : objectionIntents.has(intent.id) ? "承接异议、依据回应并确认下一步" : intent.id === "INTENT-SUITABILITY" ? "安全确认后再解释选择" : topics.length ? "定位项目、补充必要信息并解释选择" : "了解目标并完成问题定位";
+  return {
+    intent_id: intent.id || "INTENT-INFORMATION",
+    intent_label: intent.label || "一般需求咨询",
+    topic_ids: topics.map((item) => item.id),
+    topic_labels: topics.map((item) => item.label).filter(Boolean),
+    primary_module_id: primaryModuleId,
+    primary_module: moduleByRouteId(primaryModuleId)?.title || "新客接待与需求洞察",
+    support_module_ids: cleanSupportIds,
+    support_modules: cleanSupportIds.map((id) => moduleByRouteId(id)?.title).filter(Boolean),
+    required_course_ids: cleanCourseIds,
+    required_courses: cleanCourseIds.map((id) => courseByRouteId(id)?.title).filter(Boolean),
+    knowledge_points: uniqueStaticItems(knowledgePoints).slice(0, 6),
+    focus: intent.focus || fallback.focus || "先确认顾客目标和必要安全信息。",
+    recommended_next: matchedIntent?.recommended_next || topics.find((item) => item.recommended_next)?.recommended_next || fallback.focus || "先确认顾客目标和必要安全信息。",
+    method_step: methodStep,
+    stop_sales: Boolean(intent.stop_sales),
+  };
+}
+
+function publicStaticRoute(route = {}) {
+  return {
+    intent: route.intent_label || "一般需求咨询",
+    primary_module: route.primary_module || "新客接待与需求洞察",
+    supporting_modules: route.support_modules || [],
+    knowledge_points: (route.knowledge_points || []).slice(0, 4),
+    courses: (route.required_courses || []).slice(0, 5),
+    method_step: route.method_step || "了解目标并完成问题定位",
+    stop_sales: Boolean(route.stop_sales),
+  };
+}
+
+function staticRouteContext(route = {}) {
+  return JSON.stringify({
+    问题类型: route.intent_label,
+    主要知识模块: route.primary_module,
+    辅助知识模块: route.support_modules || [],
+    必须调用课程: route.required_courses || [],
+    回答重点: route.focus,
+    项目或主题知识点: route.knowledge_points || [],
+    推荐下一步: route.recommended_next,
+    是否停止销售推进: Boolean(route.stop_sales),
+  });
+}
+
+function staticQaQuery(message, history = []) {
+  const current = String(message || "").replace(/\s+/g, " ").trim();
+  const contextual = /^(?:那|这个|这种|它|刚才|如果|那么|可是|但是)/.test(current)
+    || /^(?:那我|我)?(?:现在|接下来)?(?:应该|该)?(?:怎么办|做什么)(?:呢)?[？?]?$/.test(current)
+    || /^(?:可以吗|为什么|多少钱|多少|多久|呢)[？?]?$/.test(current);
+  if (!contextual) return current;
+  const priorQuestions = history.filter((item) => item?.role === "user").slice(-3).map((item) => item.content);
+  return [...priorQuestions, current].filter(Boolean).join(" ");
+}
+
+function staticRetrieve(query, documents, limit = 8, route = null) {
   const text = String(query || "").toLowerCase();
   const terms = new Set(text.match(/[a-z0-9_]{2,}/gi) || []);
   (text.match(/[\u4e00-\u9fff]+/g) || []).forEach((segment) => {
     if (segment.length <= 8) terms.add(segment);
     for (let index = 0; index < segment.length - 1; index += 1) terms.add(segment.slice(index, index + 2));
   });
+  const requiredCourseIds = new Set(route?.required_course_ids || []);
+  const routedModuleIds = new Set([route?.primary_module_id, ...(route?.support_module_ids || [])].filter(Boolean));
   const ranked = documents.map((document, index) => {
     const metadata = document.metadata || {};
+    if (metadata.doc_type === "source") return null;
+    if (route && metadata.doc_type === "course_section" && !routedModuleIds.has(metadata.module_id) && !requiredCourseIds.has(metadata.course_id)) return null;
     const title = String(metadata.title || "").toLowerCase();
     const haystack = `${document.text || ""} ${JSON.stringify(metadata)}`.toLowerCase();
-    const score = [...terms].reduce((total, term) => total + (title.includes(term) ? 4 : haystack.includes(term) ? 1 : 0), 0);
+    const baseScore = [...terms].reduce((total, term) => total + (title.includes(term) ? 4 : haystack.includes(term) ? 1 : 0), 0);
+    const score = baseScore + (requiredCourseIds.has(metadata.course_id) ? 10 : 0) + (routedModuleIds.has(metadata.module_id) ? 3 : 0);
     return { document, score, index };
-  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
+  }).filter((item) => item && item.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
   const selected = [];
   const seen = new Set();
+  for (const courseId of requiredCourseIds) {
+    const item = ranked.find((candidate) => candidate.document.metadata?.course_id === courseId);
+    if (!item) continue;
+    selected.push(item.document);
+    seen.add(courseId);
+    if (selected.length >= limit) return selected;
+  }
   for (const item of ranked) {
     const metadata = item.document.metadata || {};
     const key = metadata.course_id || metadata.source_id || item.document.document_id;
@@ -193,11 +320,21 @@ function staticMock(mode, action, scenario) {
   return { answer: "当前是演示模式。保存 SiliconFlow API Key 后，就能生成基于知识库的正式回答。", uncertainties: ["请以门店当前价格、项目标签和合规版本为准。"], recommended_action: "先核对门店当前版本的价格、频次和适用边界。" };
 }
 
-const STATIC_CRITICAL_PATTERNS = ["保证治愈", "百分百", "包治", "替代手术", "不需要看医生", "停药", "口服", "注射", "剂量", "不反弹"];
+const STATIC_CRITICAL_PATTERNS = [
+  /治愈|根治|治好|包治/,
+  /百分百|100%|替代手术|不需要看医生|不反弹/,
+  /(?:一定|肯定|保证).{0,8}(?:有效|见效|缓解|改善|结果|减重|减肥)/,
+  /(?:停药|换药|口服|注射|剂量)/,
+];
 
 function staticCriticalHits(message) {
   const text = String(message || "");
-  return STATIC_CRITICAL_PATTERNS.filter((pattern) => text.includes(pattern));
+  return STATIC_CRITICAL_PATTERNS.filter((pattern) => {
+    const match = text.match(pattern);
+    if (!match) return false;
+    const prefix = text.slice(Math.max(0, match.index - 14), match.index);
+    return !/(?:不能|不可|不应|无法|不得|不会|不做|避免|禁止|拒绝).{0,10}$/.test(prefix);
+  }).map((pattern) => pattern.source);
 }
 
 function staticMockProgressive(mode, action, scenario, history = [], rubric = null, message = "") {
@@ -233,6 +370,66 @@ function staticMockProgressive(mode, action, scenario, history = [], rubric = nu
     return { total_score: 72, dimension_scores: dimensions, critical_failures: [], strengths: ["完成了基本接待并保持了对话连续性。"], improvements: ["先问清目标、持续时间、影响和顾虑，再介绍项目。", "面对价格和效果异议时，使用共情—澄清—回应—确认。"], summary: "本地演示评分：流程已走通，配置 API Key 后可使用模型评分。" };
   }
   return staticMock(mode, action, scenario);
+}
+
+function normalizeStaticQaResult(result, message, query, route, history = []) {
+  const normalized = result && typeof result === "object" ? { ...result } : {};
+  const current = String(message || "").trim();
+  const context = String(query || current);
+  const followUp = /怎么办|现在|下一步|那我|接下来/.test(current) && history.some((item) => item?.role === "user");
+  if (route.stop_sales) {
+    normalized.answer = followUp
+      ? "现在先停止体验和销售沟通，不要自行判断原因。若胸痛、呼吸困难、晕厥、明显出冷汗或进行性麻木无力正在发生、持续或加重，请尽快联系急救或前往医疗机构；情况稳定后再由门店负责人记录并跟进。"
+      : "您提到的情况需要先确认安全，今天先不要做项目，也不要继续产品推荐。请告诉我症状从什么时候开始、是否正在加重，以及有没有胸痛、呼吸困难、晕厥或进行性麻木无力；症状明显、持续或加重时，请尽快联系急救或前往医疗机构。";
+    normalized.uncertainties = ["需要确认症状开始时间、程度、变化和伴随情况。"];
+    normalized.recommended_action = "停止销售推进，完成风险问询、负责人升级和必要的医疗分流。";
+  } else if (/GLP-1|司美|减肥针|处方|药品|减肥药|口服片|剂量|停药|换药|怎么用/i.test(context)) {
+    normalized.answer = "您问的是药品适用性、用法或剂量，这些必须依据具体药品的当前说明书和医生处方，门店不能只凭聊天给剂量，也不能建议开始、停用或更换药物。请携带药品包装和用药记录，由开药医生或药师核实。";
+    normalized.uncertainties = ["需要确认具体药品身份、处方、合并用药和当前症状。"];
+    normalized.recommended_action = "暂停具体产品或剂量建议，咨询开药医生或药师。";
+  } else if (/孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|慢病|糖尿病|高血压|三高/i.test(context)) {
+    normalized.answer = "这类情况不能仅凭聊天直接判断可以做。先暂停项目或产品推荐，确认具体年龄或阶段、疾病与用药、当前症状和产品或设备说明，再由有资质的医生、药师或相应专业人员确认。";
+    normalized.uncertainties = ["需要更具体的健康信息、用药信息和产品说明。"];
+    normalized.recommended_action = "确认前不操作、不销售具体方案，先转有资质人员核实。";
+  } else if (/敏感肌|皮肤过敏|容易过敏|医美恢复|泛红|刺痛|破损/i.test(context)) {
+    normalized.answer = "不能只凭敏感肌判断能不能做。先确认目前有没有持续泛红、刺痛、破损、渗出或过敏发作，以及近期是否做过医美、刷酸、激光或使用强刺激产品；存在这些情况时先不操作，状态稳定后也要核对具体项目和成分。";
+    normalized.uncertainties = ["需要确认当前皮肤状态、过敏史和近期项目史。"];
+    normalized.recommended_action = "先完成肤况和项目适用性确认；无法确认时不操作。";
+  } else if (route.intent_id === "INTENT-PRICE") {
+    normalized.answer = "价格和活动会随城市、门店、具体项目和日期变化，我不能用历史资料先口头保证。请告诉我您咨询的城市、门店和项目，再按当前系统里的有效版本核对。";
+    normalized.uncertainties = ["需要确认城市、门店、具体项目、查询日期和当前生效版本。"];
+    normalized.recommended_action = "确认门店与项目后查询当前系统。";
+  } else if (route.intent_id === "INTENT-RESULT") {
+    normalized.answer = "我理解您希望尽快看到变化，但不能承诺一次、固定时间或固定结果，也不能保证不反弹。先确认您最想改善的指标和既往情况，再按相同条件记录并做阶段观察，长期变化还会受到生活方式和个体差异影响。";
+    normalized.uncertainties = ["需要确认具体项目、顾客目标和用于判断变化的指标。"];
+    normalized.recommended_action = "先确定一个可观察指标和必要安全信息，再决定是否体验及何时复盘。";
+  } else if (route.intent_id === "INTENT-COMPARISON") {
+    normalized.answer = "不同项目不能只按名称判断谁更好，需要围绕您想改善的问题、可接受的体验、时间安排和必要安全信息来比较。请先告诉我您正在比较哪两个项目，以及最在意效果感受、时间还是预算中的哪一点。";
+    normalized.uncertainties = ["需要确认正在比较的具体项目和最重要的选择标准。"];
+    normalized.recommended_action = "先补齐比较对象和选择标准，再按当前课程与门店有效版本逐项说明。";
+  } else if (!String(normalized.answer || "").trim() || String(normalized.answer).includes("演示模式")) {
+    normalized.answer = `我先回答您当前最关心的问题：${route.focus || "先确认顾客目标和必要安全信息。"} 目前还不能只凭这一句话直接推荐项目、次数或效果。请再告诉我具体想改善什么，以及这种情况大概持续多久。`;
+    normalized.uncertainties = ["需要确认具体目标、持续时间和必要安全信息。"];
+    normalized.recommended_action = route.recommended_next || "先补充一个必要信息，再确认下一步。";
+  }
+  normalized.answer = String(normalized.answer || "暂时没有找到足够依据，请补充具体项目和最想解决的问题。").trim();
+  normalized.uncertainties = Array.isArray(normalized.uncertainties) ? normalized.uncertainties.filter(Boolean).slice(0, 4) : [];
+  normalized.recommended_action = String(normalized.recommended_action || route.recommended_next || "先补充一个必要信息，再按当前标准确认下一步。").trim();
+  normalized.route = publicStaticRoute(route);
+  return normalized;
+}
+
+function normalizeStaticTrainingFeedback(result, scenario, history, rubric, message) {
+  const fallback = staticMockProgressive("training", "turn", scenario, history, rubric, message).feedback;
+  const provided = result?.feedback && typeof result.feedback === "object" ? result.feedback : {};
+  const feedback = {};
+  ["level", "issue", "why", "method_step", "knowledge_focus", "suggested_reply", "next_goal"].forEach((key) => {
+    const value = String(provided[key] || "").trim();
+    feedback[key] = value || fallback[key];
+  });
+  if (!new Set(["good", "needs_work", "critical"]).has(feedback.level)) feedback.level = "needs_work";
+  if (staticCriticalHits(message).length) feedback.level = "critical";
+  return feedback;
 }
 
 const TEST_INTERNAL_MARKERS = /考核|评分|知识库|方法路由|隐藏异议|must_test|员工应该|培训教练/i;
@@ -381,16 +578,16 @@ function normalizeStaticAssessment(result, history = [], rubric = {}) {
   };
 }
 
-function normalizeStaticResult(result, mode, action, scenario, history, rubric, message) {
+function normalizeStaticResult(result, mode, action, scenario, history, rubric, message, query = "", route = {}) {
   let normalized = result && typeof result === "object" ? result : {};
   if (mode === "training") {
     const fallback = staticMockProgressive(mode, action, scenario, history, rubric, message);
     normalized.customer_reply = normalizeStaticCustomerReply(normalized.customer_reply || fallback.customer_reply, scenario, history, message);
-    normalized.feedback = { ...fallback.feedback, ...(normalized.feedback || {}) };
-    if (staticCriticalHits(message).length) normalized.feedback.level = "critical";
+    normalized.feedback = normalizeStaticTrainingFeedback(normalized, scenario, history, rubric, message);
   }
   if (mode === "test" && action === "turn") normalized = normalizeStaticTestTurn(normalized, scenario, history, message);
   if (mode === "test" && action === "finish") normalized = normalizeStaticAssessment(normalized, history, rubric);
+  if (mode === "qa") normalized = normalizeStaticQaResult(normalized, message, query, route, history);
   return normalized;
 }
 
@@ -412,20 +609,26 @@ async function staticApi(path, body) {
   const model = body.model || state.model;
   const scenario = data.scenarios.find((item) => item.id === body.scenario_id) || data.scenarios[0];
   const message = body.message || "";
-  const query = [...(body.history || []).slice(-8).map((item) => item.content), message].join(" ");
-  const docs = staticRetrieve(query, data.documents);
+  const history = body.history || [];
+  const query = mode === "qa" ? staticQaQuery(message, history) : [...history.slice(-8).map((item) => item.content), message].join(" ");
+  const route = staticRouteCustomerQuestion(query, data.methodology);
+  const docs = staticRetrieve(query, data.documents, 8, route);
   const context = docs.map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, 1200)}`).join("\n\n");
-  if (!apiKey) return { ok: true, mode, result: staticMockProgressive(mode, action, scenario, body.history || [], data.rubric, message), citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { mock: true, model } };
+  if (!apiKey) {
+    const result = normalizeStaticResult(staticMockProgressive(mode, action, scenario, history, data.rubric, message), mode, action, scenario, history, data.rubric, message, query, route);
+    return { ok: true, mode, result, citations: mode === "qa" ? docs.slice(0, 3).map(publicStaticDocument) : [], retrieved: mode === "qa" ? docs.map(publicStaticDocument) : [], meta: { mock: true, model } };
+  }
 
-  const dialogue = cleanStaticHistory(body.history || []);
+  const dialogue = cleanStaticHistory(history);
   const turnNumber = dialogue.filter((item) => item.role === "user").length + 1;
   const safety = "不得诊断疾病、承诺治愈或固定效果、推荐药品剂量或停药；遇到红旗症状时优先停止项目并建议医疗评估。";
+  const routeContext = staticRouteContext(route);
   let system;
   let messages;
   let temperature = 0.3;
   let maxTokens = 1800;
   if (mode === "training") {
-    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n顾客可知场景：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。customer_reply 只能使用顾客可知信息；下面的专业知识只供 feedback 使用，绝不能写进 customer_reply。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n相关知识库：\n${context}`;
+    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n顾客可知场景：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。customer_reply 只能使用顾客可知信息；下面的方法路由和专业知识只供 feedback 使用，绝不能写进 customer_reply。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.35;
   } else if (mode === "test" && action === "turn") {
@@ -438,14 +641,13 @@ async function staticApi(path, body) {
     temperature = 0.1;
     maxTokens = 3200;
   } else {
-    system = `你是企业知识库中的顾客接待助手。只基于给定资料直接回答顾客当前问题。${safety}\n先承接问题，只补一个必要信息，再给已核验内容、边界和一个可执行下一步。严格输出 JSON：{"answer":"...","uncertainties":[],"recommended_action":"..."}。\n相关知识库：\n${context}`;
-    messages = [{ role: "user", content: message }];
+    system = `你是企业知识库中的顾客接待助手。只基于给定的方法路由和资料直接回答顾客当前问题。${safety}\n这是连续对话，必须结合最近问题和上一轮回答理解“这个、那、它、怎么办”等指代，但只回答当前这一问，不要机械重复上一轮。先承接问题，只补一个必要信息，再给已核验内容、边界和一个可执行下一步。严格输出 JSON：{"answer":"...","uncertainties":[],"recommended_action":"..."}。`;
+    messages = [...dialogue, { role: "user", content: `顾客当前问题：${message}\n方法路由：\n${routeContext}\n相关知识库：\n${context}` }];
   }
   const modelResult = await callStaticModel(system, messages, model, apiKey, temperature, maxTokens);
   let result = extractStaticJson(modelResult.content) || (mode === "test" && action === "turn" ? { reply: modelResult.content, emotion: "neutral", should_continue: true } : { answer: modelResult.content, uncertainties: [], recommended_action: "" });
-  result = normalizeStaticResult(result, mode, action, scenario, body.history || [], data.rubric, message);
-  if (mode === "qa") result.route = { intent: "一般需求咨询", primary_module: "新客接待与需求洞察", method_step: "先确认目标和必要安全信息，再解释选择" };
-  return { ok: true, mode, result, citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { ...modelResult.meta, mock: false } };
+  result = normalizeStaticResult(result, mode, action, scenario, history, data.rubric, message, query, route);
+  return { ok: true, mode, result, citations: mode === "qa" ? docs.slice(0, 3).map(publicStaticDocument) : [], retrieved: mode === "qa" ? docs.map(publicStaticDocument) : [], meta: { ...modelResult.meta, mock: false } };
 }
 
 async function api(path, body) {

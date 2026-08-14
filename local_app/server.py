@@ -483,7 +483,7 @@ HIGH_RISK_CLAIM_PATTERNS = [
     r"自动诊疗",
     r"替代手术",
     r"保证(?:效果|结果|瘦|减重)",
-    r"(?:治愈|根治|治疗).{0,8}(?:疾病|颈椎病|糖尿病|三高|脂肪肝|炎症)",
+    r"(?:治愈|根治|治疗|治好).{0,8}(?:疾病|颈椎病|糖尿病|三高|脂肪肝|炎症)",
     r"(?:有效|能够|可以|会).{0,10}(?:治疗|治好|根治|改善糖尿病|改善三高|改善脂肪肝|提高免疫力|增强免疫力)",
     r"(?:固定|保证).{0,8}(?:减重|减肥).{0,8}(?:斤|公斤)",
     r"不反弹",
@@ -548,6 +548,17 @@ def safety_filter(result: dict[str, Any], mode: str, user_text: str = "", route:
         result["answer"] = "这类情况不能仅凭聊天直接判断‘可以做’。先暂停项目或产品推荐，确认具体年龄/阶段、疾病与用药、当前症状和产品或设备说明书，再由有资质的医生、药师或相应专业人员确认。门店不能通过降低能量、缩短时间或减少次数来替代适用性评估。"
         result["uncertainties"] = ["需要更具体的健康信息和当前用药信息。", "需要核对产品标签、设备说明书和门店当前合规版本。"]
         result["recommended_action"] = "核实信息并转有资质人员确认；确认前不操作、不销售具体方案。"
+        result["safety_filter_triggered"] = True
+        return result
+    if mode == "qa" and route.get("stop_sales"):
+        follow_up = bool(re.search(r"怎么办|现在|下一步|那我|接下来", user_text, flags=re.I))
+        result["answer"] = (
+            "现在先停止体验和销售沟通，不要自行判断原因。若胸痛、呼吸困难、晕厥、明显出冷汗或进行性麻木无力正在发生、持续或加重，请尽快联系急救或前往医疗机构；情况稳定后再由门店负责人记录并跟进。"
+            if follow_up
+            else "您提到的情况需要先确认安全，今天先不要做项目，也不要继续产品推荐。请告诉我症状从什么时候开始、是否正在加重，以及有没有胸痛、呼吸困难、晕厥或进行性麻木无力；症状明显、持续或加重时，请尽快联系急救或前往医疗机构。"
+        )
+        result["uncertainties"] = ["需要确认症状开始时间、程度、变化和伴随情况。"]
+        result["recommended_action"] = "停止销售推进，完成风险问询、负责人升级和必要的医疗分流。"
         result["safety_filter_triggered"] = True
         return result
     if not hits:
@@ -642,7 +653,7 @@ TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客�
 
 QA_SYSTEM = """你是企业培训知识库中的专业顾客接待助手。你面对的是顾客，因此答案必须是一段可以直接对顾客说的话，而不是知识摘要、检索报告或员工培训分析。只能基于方法路由和检索资料，不能把知识库之外的猜测说成公司标准。
 
-回答要求：先直接承接顾客当前问题；如果缺少决定答案的关键信息，只问一个最必要的问题；再给已核验的事实、流程或边界；最后给一个可执行下一步。通常控制在80—220个汉字，复杂安全问题可适当增加。不要重复相同免责声明，不要罗列无关知识。
+回答要求：这是连续对话，必须结合最近的顾客问题和你的上一轮回答理解“这个、那、它、怎么办”等指代，但只回答顾客当前这一问。先直接承接顾客当前问题；如果缺少决定答案的关键信息，只问一个最必要的问题；再给已核验的事实、流程或边界；最后给一个可执行下一步。通常控制在80—220个汉字，复杂安全问题可适当增加。不要机械重复上一轮答案，不要重复相同免责声明，不要罗列无关知识。
 
 回答结构严格 JSON：{"answer":"可直接对顾客说的完整回答","uncertainties":["确实需要核验的点，没有则为空数组"],"citations":[],"recommended_action":"一个明确、可执行的下一步"}。如果资料不足，明确说资料不足并说明要补充什么；如果涉及医疗、药品、孕期、儿童、慢病、服务后异常或红旗症状，优先安全分流。""" + SAFETY_POLICY + METHODOLOGY_POLICY
 
@@ -754,6 +765,42 @@ def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any]
     }
 
 
+def mock_qa_response(message: str, route: dict[str, Any], docs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Provide a useful, deterministic QA answer when no provider key is configured."""
+    intent_id = route.get("intent_id")
+    module_ids = {route.get("primary_module_id"), *route.get("support_module_ids", [])}
+    if intent_id == "INTENT-RESULT" or re.search(r"一次|几次|多久|有效|见效|保证|反弹", message, re.I):
+        answer = "我理解您希望尽快看到变化，但不能承诺一次、固定时间或固定结果，也不能保证不反弹。先确认您最想改善的指标和既往情况，再按相同条件记录并做阶段观察；长期变化还会受到生活方式和个体差异影响。"
+        uncertainties = ["需要确认具体项目、顾客目标和用于判断变化的指标。"]
+        recommended_action = "先确定一个可观察指标和必要安全信息，再决定是否体验及何时复盘。"
+    elif intent_id == "INTENT-COMPARISON":
+        answer = "不同项目不能只按名称判断谁更好，需要围绕您想改善的问题、可接受的体验、时间安排和必要安全信息来比较。请先告诉我您正在比较哪两个项目，以及最在意效果感受、时间还是预算中的哪一点。"
+        uncertainties = ["需要确认正在比较的具体项目和最重要的选择标准。"]
+        recommended_action = "先补齐比较对象和选择标准，再按当前课程与门店有效版本逐项说明。"
+    elif "MOD-05" in module_ids:
+        answer = "体重管理不能只凭一个数字直接推荐方案，也不能承诺固定减重斤数。先了解当前体重趋势、饮食、活动、睡眠、既往经历和健康情况，再把目标拆成可观察、能执行的阶段指标。"
+        uncertainties = ["需要确认当前体重趋势、生活节奏、既往经历和必要健康信息。"]
+        recommended_action = "先完成需求与风险问询，再确定一到两个阶段指标。"
+    elif "MOD-04" in module_ids:
+        answer = "是否适合不能只凭一个肤质标签判断。先确认当前是否有泛红、刺痛、破损、渗出或过敏发作，以及近期是否做过医美、刷酸、激光或使用强刺激产品；无法确认时先不操作。"
+        uncertainties = ["需要确认当前皮肤状态、过敏史、近期项目史和具体成分。"]
+        recommended_action = "先完成肤况和项目适用性确认，再说明可选服务。"
+    else:
+        focus = clean_text(route.get("focus")) or "先确认顾客目标和必要安全信息。"
+        answer = f"我先回答您当前最关心的问题：{focus} 目前还不能只凭这一句话直接推荐项目、次数或效果。请再告诉我具体想改善什么，以及这种情况大概持续多久。"
+        uncertainties = ["需要确认具体目标、持续时间和必要安全信息。"]
+        recommended_action = clean_text(route.get("recommended_next")) or "先补充一个必要信息，再确认下一步。"
+    return {
+        "answer": answer,
+        "uncertainties": uncertainties,
+        "citations": [
+            {"document_id": item.get("document_id"), "title": item.get("metadata", {}).get("title")}
+            for item in docs[:3]
+        ],
+        "recommended_action": recommended_action,
+    }
+
+
 def scenario_by_id(scenario_id: str | None) -> dict[str, Any]:
     if scenario_id:
         for item in SCENARIOS:
@@ -785,6 +832,20 @@ def clean_dialogue_history(history: list[dict[str, Any]], limit: int = 7) -> lis
         if content:
             cleaned.append({"role": item["role"], "content": content})
     return cleaned[-limit:]
+
+
+def qa_context_query(message: str, history: list[dict[str, str]]) -> str:
+    """Use prior customer questions only when the latest QA turn depends on context."""
+    message = clean_text(message)
+    contextual = bool(
+        re.search(r"^(?:那|这个|这种|它|刚才|如果|那么|可是|但是)", message, re.I)
+        or re.fullmatch(r"(?:那我|我)?(?:现在|接下来)?(?:应该|该)?(?:怎么办|做什么)(?:呢)?[？?]?", message, re.I)
+        or re.fullmatch(r"(?:可以吗|为什么|多少钱|多少|多久|呢)[？?]?", message, re.I)
+    )
+    if not contextual:
+        return message
+    prior_questions = [item["content"] for item in history if item.get("role") == "user"][-3:]
+    return clean_text(" ".join([*prior_questions, message]))
 
 
 TEST_INTERNAL_MARKERS = re.compile(r"考核|评分|知识库|方法路由|隐藏异议|must_test|员工应该|培训教练", re.I)
@@ -874,6 +935,25 @@ def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, histo
 def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> dict[str, Any]:
     result = result if isinstance(result, dict) else {}
     result["customer_reply"] = normalized_customer_reply(result.get("customer_reply", ""), scenario, history, employee_message)
+    feedback = result.get("feedback") if isinstance(result.get("feedback"), dict) else {}
+    defaults = {
+        "level": "needs_work",
+        "issue": f"本轮“{clean_text(employee_message)[:60]}”还需要补充一个更明确的需求或安全问题。",
+        "why": "先回答顾客当前问题，再补充一个必要信息，并明确下一步。",
+        "method_step": "了解目标并完成问题定位",
+        "knowledge_focus": "顾客目标、持续时间、影响和必要安全信息",
+        "suggested_reply": "我先确认一个关键信息：这种情况大概持续多久了，对日常生活有什么影响？",
+        "next_goal": "下一轮只补充一个必要问题，并承接顾客刚才的回答。",
+    }
+    normalized_feedback = {}
+    for key, fallback in defaults.items():
+        value = clean_text(feedback.get(key, ""))
+        normalized_feedback[key] = value or fallback
+    if normalized_feedback["level"] not in {"good", "needs_work", "critical"}:
+        normalized_feedback["level"] = "needs_work"
+    if unsafe_claim_hits(employee_message):
+        normalized_feedback["level"] = "critical"
+    result["feedback"] = normalized_feedback
     return result
 
 
@@ -1061,7 +1141,7 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
 
     dialogue_history = clean_dialogue_history(history)
     recent_dialogue = " ".join(item["content"] for item in dialogue_history[-6:])
-    query = clean_text(f"{recent_dialogue} {message}")
+    query = qa_context_query(message, dialogue_history) if mode == "qa" else clean_text(f"{recent_dialogue} {message}")
     route = route_customer_question(query)
     docs = retrieve(query, limit=8, route=route)
     if mode in {"qa", "training", "test"}:
@@ -1071,9 +1151,9 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
     if mode == "qa":
         user_message = f"顾客当前问题：{message}\n\n方法路由：\n{route_context_block(route)}\n\n检索资料：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
-            result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
+            result = apply_methodology_result(safety_filter(mock_qa_response(message, route, docs), mode, message, route), mode, route)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(QA_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.2)
+        raw, meta = call_model(QA_SYSTEM, [*dialogue_history, {"role": "user", "content": user_message}], model, api_key, temperature=0.2)
         result = apply_methodology_result(safety_filter(extract_json(raw) or {"answer": raw, "uncertainties": ["模型未按结构化格式返回，请人工核验。"], "citations": citation_refs, "recommended_action": ""}, mode, message, route), mode, route)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
