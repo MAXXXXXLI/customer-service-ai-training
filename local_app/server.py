@@ -1064,7 +1064,7 @@ class Handler(BaseHTTPRequestHandler):
         if request_path == "/api/bootstrap":
             self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
             return
-        root_static_files = {"/app.js", "/styles.css", "/learning_modules.json", "/learning_catalog.json"}
+        root_static_files = {"/app.js", "/styles.css", "/showyu-logo.png", "/learning_modules.json", "/learning_catalog.json"}
         if request_path.startswith("/static/") or request_path in root_static_files:
             relative = request_path.removeprefix("/static/").lstrip("/").replace("..", "")
             target = (STATIC_ROOT / relative).resolve()
@@ -1072,7 +1072,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             if target.exists() and target.is_file():
-                content_type = {".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".html": "text/html; charset=utf-8", ".json": "application/json; charset=utf-8"}.get(target.suffix, "application/octet-stream")
+                content_type = {".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".html": "text/html; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png"}.get(target.suffix, "application/octet-stream")
                 body = target.read_bytes()
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", content_type)
