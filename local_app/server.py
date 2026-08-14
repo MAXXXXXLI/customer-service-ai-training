@@ -383,6 +383,7 @@ def public_citations(docs: list[dict[str, Any]]) -> list[dict[str, str]]:
         module = MODULE_BY_ID.get(course.get("module_id"), {}) if course else {}
         citations.append({
             "label": label,
+            "course_id": course.get("id", "") if course else "",
             "category": public_doc_category(doc),
             "module": module.get("short_name", ""),
             "chapter": course.get("group_title", "") if course else "",
@@ -401,6 +402,7 @@ def public_retrieved(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         seen.add(title)
         module = MODULE_BY_ID.get(course.get("module_id"), {}) if course else {}
         items.append({
+            "course_id": course.get("id", "") if course else "",
             "title": title,
             "category": public_doc_category(doc),
             "module": module.get("short_name", ""),

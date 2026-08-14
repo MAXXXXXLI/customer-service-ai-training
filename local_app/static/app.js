@@ -119,11 +119,14 @@ async function loadStaticData() {
 
 function publicStaticDocument(document) {
   const metadata = document.metadata || {};
+  const course = resolveReferenceCourse(document);
+  const module = course ? moduleById(course.module_id) : null;
   return {
     document_id: document.document_id,
-    title: metadata.title || document.document_id || "知识库资料",
-    module: metadata.module || metadata.domain || "知识库",
-    chapter: metadata.chapter || "",
+    course_id: course?.id || metadata.course_id || "",
+    title: course?.title || metadata.title || document.document_id || "知识库资料",
+    module: module?.short_name || module?.title || metadata.module || metadata.domain || "知识库",
+    chapter: course?.group_title || metadata.chapter || "",
   };
 }
 
@@ -435,6 +438,82 @@ function moduleGroups(moduleId) {
   return state.catalogIndex.find((item) => item.module_id === moduleId)?.groups || [];
 }
 
+const COURSE_DOMAIN_MODULES = {
+  onboarding: "MOD-01", company: "MOD-01", reception: "MOD-01", sales_skills: "MOD-01",
+  point_wave: "MOD-02", point_wave_ops: "MOD-02", professional_qa: "MOD-02", training_video: "MOD-02",
+  super_v: "MOD-03", point_wave_super_v: "MOD-03",
+  beauty: "MOD-04", beauty_ops: "MOD-04",
+  slimming: "MOD-05", slimming_reception: "MOD-05", slimming_product: "MOD-05", slimming_science: "MOD-05",
+  objections: "MOD-06", comparison: "MOD-06",
+  safety: "MOD-07", service_safety: "MOD-07", operations: "MOD-07", product_ops: "MOD-07",
+};
+
+const courseSearchTermCache = new Map();
+
+function searchableTerms(value) {
+  const text = String(value || "").toLowerCase();
+  const terms = new Set(text.match(/[a-z0-9_]{2,}|[\u4e00-\u9fff]/gi) || []);
+  for (let index = 0; index < text.length - 1; index += 1) {
+    const pair = text.slice(index, index + 2);
+    if (/^[\u4e00-\u9fff]{2}$/.test(pair)) terms.add(pair);
+  }
+  return terms;
+}
+
+function courseSearchTerms(course) {
+  if (!courseSearchTermCache.has(course.id)) {
+    courseSearchTermCache.set(course.id, searchableTerms(JSON.stringify(course)));
+  }
+  return courseSearchTermCache.get(course.id);
+}
+
+function bestReferenceCourse(candidates, reference) {
+  if (!candidates.length) return null;
+  if (candidates.length === 1) return candidates[0];
+  const metadata = reference.metadata || {};
+  const referenceTerms = searchableTerms(`${metadata.title || ""} ${metadata.section_title || ""} ${reference.title || ""} ${reference.text || ""}`);
+  return candidates.reduce((best, course) => {
+    const score = [...referenceTerms].reduce((total, term) => total + (courseSearchTerms(course).has(term) ? 1 : 0), 0);
+    return !best || score > best.score ? { course, score } : best;
+  }, null)?.course || candidates[0];
+}
+
+function resolveReferenceCourse(reference = {}) {
+  const metadata = reference.metadata || {};
+  const requestedId = reference.course_id || metadata.course_id;
+  if (requestedId) {
+    const direct = state.courses.find((course) => course.id === requestedId);
+    if (direct) return direct;
+  }
+
+  const documentId = String(reference.document_id || "");
+  const documentCourseId = documentId.startsWith("COURSE-")
+    ? documentId.replace(/-SECTION-\d+$/, "")
+    : documentId ? `COURSE-${documentId}` : "";
+  if (documentCourseId) {
+    const direct = state.courses.find((course) => course.id === documentCourseId);
+    if (direct) return direct;
+  }
+
+  const title = String(reference.title || metadata.title || "").trim();
+  const titleMatch = state.courses.find((course) => course.title === title);
+  if (titleMatch) return titleMatch;
+
+  const sourceIds = new Set([
+    ...(Array.isArray(reference.source_ids) ? reference.source_ids : []),
+    ...(Array.isArray(metadata.source_ids) ? metadata.source_ids : []),
+    ...String(reference.source_id || metadata.source_id || "").split(","),
+  ].map((item) => String(item).trim()).filter(Boolean));
+  if (sourceIds.size) {
+    const sourceMatches = state.courses.filter((course) => (course.source_ids || []).some((sourceId) => sourceIds.has(sourceId)));
+    if (sourceMatches.length) return bestReferenceCourse(sourceMatches, reference);
+  }
+
+  const moduleId = metadata.module_id || COURSE_DOMAIN_MODULES[metadata.domain] || COURSE_DOMAIN_MODULES[reference.domain];
+  if (moduleId) return bestReferenceCourse(state.courses.filter((course) => course.module_id === moduleId), reference);
+  return null;
+}
+
 function renderMode() {
   const copy = modeCopy[state.mode];
   els.modeButtons.forEach((button) => button.classList.toggle("active", button.dataset.mode === state.mode));
@@ -477,7 +556,7 @@ function renderLearning() {
     return `<article class="chapter-card">
       <div class="chapter-head"><div class="chapter-number">${String(index + 1).padStart(2, "0")}</div><div><h3>${escapeHtml(group.title)}</h3><p>${escapeHtml(group.description)}</p></div><span>${groupCourses.length} 节</span></div>
       <div class="chapter-courses">${groupCourses.map((course) => `
-        <button class="course-preview" data-course-title="${escapeHtml(course.title)}">
+        <button class="course-preview" data-course-id="${escapeHtml(course.id)}" data-course-title="${escapeHtml(course.title)}">
           <span class="course-type">${course.kind === "objection" ? "话术案例" : "标准课程"} · ${course.estimated_minutes} 分钟</span>
           <strong>${escapeHtml(course.title)}</strong><small>${escapeHtml(course.summary)}</small><i>打开课程 →</i>
         </button>`).join("")}</div>
@@ -505,8 +584,8 @@ function renderLearningValue(value) {
   return `<p>${escapeHtml(value)}</p>`;
 }
 
-function openCourseByTitle(title) {
-  const course = state.courses.find((item) => item.title === title);
+function openCourse(courseId, title) {
+  const course = resolveReferenceCourse({ course_id: courseId, title });
   if (!course) {
     showToast("这条依据暂时没有对应的独立课程。", true);
     return;
@@ -520,8 +599,8 @@ function openCourseByTitle(title) {
 }
 
 function bindCourseButtons(root) {
-  root.querySelectorAll("[data-course-title]").forEach((button) => {
-    button.addEventListener("click", () => openCourseByTitle(button.dataset.courseTitle));
+  root.querySelectorAll("[data-course-id], [data-course-title]").forEach((button) => {
+    button.addEventListener("click", () => openCourse(button.dataset.courseId, button.dataset.courseTitle));
   });
 }
 
@@ -683,13 +762,22 @@ function renderQAAnswer(result, retrieved, citations) {
   if (result.recommended_action) {
     row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-next-action"><span>建议下一步</span><p>${escapeHtml(result.recommended_action)}</p></div>`);
   }
-  const references = retrieved.length ? retrieved : citations.map((item) => ({ title: item.label, module: item.module, chapter: item.chapter }));
-  const unique = references.filter((item, index, all) => item.title && all.findIndex((candidate) => candidate.title === item.title) === index).slice(0, 5);
-  const referenceHtml = unique.length ? unique.map((item) => `
-    <button class="answer-reference" data-course-title="${escapeHtml(item.title)}">
-      <span>${escapeHtml(item.module || "知识模块")}${item.chapter ? ` · ${escapeHtml(item.chapter)}` : ""}</span>
-      <strong>${escapeHtml(item.title)}</strong><i>查看课程 →</i>
-    </button>`).join("") : `<div class="reference-empty">本轮主要依据安全与接待通用规则。</div>`;
+  const references = retrieved.length ? retrieved : citations.map((item) => ({ course_id: item.course_id, title: item.label, module: item.module, chapter: item.chapter }));
+  const resolvedReferences = references.map((item) => ({ item, course: resolveReferenceCourse(item) }));
+  const unique = resolvedReferences.filter(({ item, course }, index, all) => {
+    const key = course?.id || item.title;
+    return key && all.findIndex((candidate) => (candidate.course?.id || candidate.item.title) === key) === index;
+  }).slice(0, 5);
+  const referenceHtml = unique.length ? unique.map(({ item, course }) => {
+    const module = course ? moduleById(course.module_id) : null;
+    const title = course?.title || item.title;
+    const moduleLabel = module?.short_name || module?.title || item.module || "知识模块";
+    const chapter = course?.group_title || item.chapter || "";
+    if (!course) {
+      return `<div class="answer-reference answer-reference-unavailable"><span>${escapeHtml(moduleLabel)}${chapter ? ` · ${escapeHtml(chapter)}` : ""}</span><strong>${escapeHtml(title)}</strong><i>知识依据</i></div>`;
+    }
+    return `<button class="answer-reference" data-course-id="${escapeHtml(course.id)}" data-course-title="${escapeHtml(course.title)}"><span>${escapeHtml(moduleLabel)}${chapter ? ` · ${escapeHtml(chapter)}` : ""}</span><strong>${escapeHtml(course.title)}</strong><i>查看课程 →</i></button>`;
+  }).join("") : `<div class="reference-empty">本轮主要依据安全与接待通用规则。</div>`;
   row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-basis"><div class="answer-basis-title"><span>本轮回答依据</span><small>点击继续学习</small></div><div class="answer-reference-list">${referenceHtml}</div></div>`);
   bindCourseButtons(row);
 }
