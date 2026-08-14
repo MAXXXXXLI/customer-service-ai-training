@@ -640,18 +640,30 @@ function renderLearningValue(value) {
   return `<p>${escapeHtml(value)}</p>`;
 }
 
+function resetCourseModalScroll() {
+  const backdrop = $("course-modal");
+  [backdrop, backdrop.querySelector(".course-modal"), els.courseModalContent].forEach((container) => {
+    if (!container) return;
+    container.scrollTop = 0;
+    container.scrollLeft = 0;
+  });
+}
+
 function openCourse(courseId, title) {
   const course = resolveReferenceCourse({ course_id: courseId, title });
   if (!course) {
     showToast("这条依据暂时没有对应的独立课程。", true);
     return;
   }
+  resetCourseModalScroll();
   const module = moduleById(course.module_id);
   els.courseModalContent.innerHTML = `
     <div class="course-modal-breadcrumb">${escapeHtml(module?.title || "学习模块")} <span>›</span> ${escapeHtml(course.group_title || "课程")}</div>
     <div class="course-modal-header"><span>${course.kind === "objection" ? "话术案例" : "标准课程"} · 约 ${course.estimated_minutes} 分钟</span><h2 id="course-modal-title">${escapeHtml(course.title)}</h2><p>${escapeHtml(course.summary)}</p></div>
     <div class="course-sections">${course.sections.map((section) => `<section class="course-section"><h3>${escapeHtml(section.title)}</h3>${renderLearningValue(section.content)}</section>`).join("")}</div>`;
   openModal("course-modal");
+  resetCourseModalScroll();
+  requestAnimationFrame(resetCourseModalScroll);
 }
 
 function bindCourseButtons(root) {
@@ -895,6 +907,7 @@ function openModal(id) {
 }
 
 function closeModal(id) {
+  if (id === "course-modal") resetCourseModalScroll();
   $(id).classList.add("hidden");
   if (!document.querySelector(".modal-backdrop:not(.hidden)")) document.body.classList.remove("modal-open");
 }
