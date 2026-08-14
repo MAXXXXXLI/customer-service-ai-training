@@ -462,7 +462,7 @@ function staticEmployeeMessageNeedsCustomerClarification(history = [], employeeM
   if (employee.length <= 8 && !/[？?]/.test(employee)) return true;
   const lastCustomer = [...history].reverse().find((item) => item?.role === "assistant")?.content || "";
   const asksForMethod = /有没有|有适合|什么办法|什么方法|怎么|如何|方案|项目/.test(String(lastCustomer));
-  return asksForMethod && !/方法|办法|方案|项目|体验|流程|步骤|安排|介绍|说明|根据|了解|评估|确认|适合/.test(employee);
+  return asksForMethod && !/方法|办法|方案|项目|体验|流程|步骤|安排|介绍|说明|适合/.test(employee);
 }
 
 function staticHiddenObjectionIndex(history = []) {

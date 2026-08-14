@@ -894,7 +894,7 @@ def employee_message_needs_customer_clarification(history: list[dict[str, Any]],
         "",
     )
     asks_for_method = bool(re.search(r"有没有|有适合|什么办法|什么方法|怎么|如何|方案|项目", last_customer))
-    if asks_for_method and not re.search(r"方法|办法|方案|项目|体验|流程|步骤|安排|介绍|说明|根据|了解|评估|确认|适合", employee_message):
+    if asks_for_method and not re.search(r"方法|办法|方案|项目|体验|流程|步骤|安排|介绍|说明|适合", employee_message):
         return True
     return False
 

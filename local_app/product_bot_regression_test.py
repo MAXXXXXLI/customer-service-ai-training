@@ -223,6 +223,13 @@ def run() -> None:
                 if "具体" not in candidate_reply or ("办法" not in candidate_reply and "说说" not in candidate_reply):
                     all_scenario_vague_failures.append({"scenario": candidate["id"], "message": message, "reply": candidate_reply})
         check("all_scenarios_hold_on_vague_employee_answers", not all_scenario_vague_failures, all_scenario_vague_failures)
+        off_topic_method_reply = "我理解你比较怕疼，过程中我会先确认感受，不舒服就立刻停下。"
+        off_topic_result = server.test_fallback_reply(scenario, opening_history, off_topic_method_reply)
+        check(
+            "method_question_rejects_off_topic_safety_reply",
+            "具体" in off_topic_result and "办法" in off_topic_result and "怕疼" not in off_topic_result,
+            off_topic_result,
+        )
         model_jump = server.normalized_customer_reply(
             "我比较怕疼，过程中会不会很难受？",
             scenario,
