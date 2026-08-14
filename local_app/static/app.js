@@ -887,7 +887,10 @@ function updateApiStatus(meta = {}, health = null) {
 }
 
 function openModal(id) {
-  $(id).classList.remove("hidden");
+  const backdrop = $(id);
+  backdrop.classList.remove("hidden");
+  backdrop.scrollTop = 0;
+  backdrop.querySelector(".modal")?.scrollTo(0, 0);
   document.body.classList.add("modal-open");
 }
 
