@@ -113,8 +113,6 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .scenario-title-row span, .scenario-focus > span { color: var(--sand); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; }
 .scenario-title-row h3 { margin: 6px 0 0; font-size: 15px; }
 .change-scenario { flex: 0 0 auto; padding: 7px 9px; color: var(--lime); border: 1px solid var(--line); border-radius: 8px; background: transparent; font-size: 8px; }
-.persona-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
-.persona-tags span { padding: 5px 7px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; font-size: 8px; }
 .scenario-opening { margin-top: 15px; padding: 12px 13px; border: 1px solid rgba(197, 139, 33, 0.1); border-radius: 9px; background: rgba(251, 212, 148, 0.12); }
 .scenario-opening span { color: var(--faint); font-size: 8px; font-weight: 700; }
 .scenario-opening p { margin: 6px 0 0; font-size: 11px; line-height: 1.65; }

@@ -695,7 +695,6 @@ function renderScenarioFrame() {
   target.innerHTML = `
     <div class="scenario-main">
       <div class="scenario-title-row"><div><span>${state.mode === "test" ? "考核场景" : "陪练场景"}</span><h3>${escapeHtml(scenario.goal || module.title)}</h3></div><button class="change-scenario" data-random-scenario>换一个场景 ↗</button></div>
-      <div class="persona-tags"><span>${escapeHtml(scenario.age)} 岁</span><span>${escapeHtml(scenario.gender)}</span><span>${escapeHtml(scenario.occupation || "顾客")}</span><span>${escapeHtml(scenario.style || "自然沟通")}</span></div>
       <div class="scenario-opening"><span>顾客开场</span><p>“${escapeHtml(scenario.opening)}”</p></div>
     </div>
     <div class="scenario-focus"><span>${focusLabel}</span><ul>${module.objectives.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`;
