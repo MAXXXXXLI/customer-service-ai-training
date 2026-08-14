@@ -32,15 +32,15 @@
           <div class="health-ring"><span id="health-number">175</span></div>
           <div><strong>知识库已就绪</strong><small>38 节课程 · 7 个模块</small></div>
         </div>
-        <button class="settings-button" id="open-settings"><span>模型设置</span><span>⌘</span></button>
+        <button class="settings-button" id="open-settings"><span>模型与 API</span><span>›</span></button>
       </aside>
 
       <main class="main-content">
         <header class="topbar">
           <div>
             <div class="breadcrumb">秀域 AI / <span id="mode-breadcrumb">学习与陪练 / 课程学习</span></div>
-            <h1 id="page-title">先把知识学明白，再进入模拟练习</h1>
-            <p id="page-description">选择一个知识模块，只查看该模块的章节和详细课程内容。</p>
+            <h1 id="page-title">课程学习</h1>
+            <p id="page-description">学习标准课程与服务知识。</p>
           </div>
           <div class="api-pill"><i></i><span id="api-status">SiliconFlow 已连接</span></div>
         </header>
@@ -48,7 +48,7 @@
         <section class="product-page" id="learning-page">
           <article class="feature-card learning-zone">
             <div class="section-heading compact-heading">
-              <div><span class="step-tag">课程学习</span><h2>选择一个模块开始学习</h2><p>页面只展示当前模块的章节。点击课程，在独立窗口中查看完整内容。</p></div>
+              <div><span class="step-tag">课程学习</span><h2>选择学习模块</h2><p>查看模块章节与完整课程内容。</p></div>
               <label class="module-picker">学习模块<select id="learning-module-select" aria-label="选择学习模块"></select></label>
             </div>
             <div class="selected-module-summary" id="learning-module-summary"></div>
@@ -59,7 +59,7 @@
         <section class="product-page hidden" id="training-page">
           <article class="feature-card coaching-zone">
             <div class="section-heading compact-heading">
-              <div><span class="step-tag">情景陪练</span><h2>选择模块，进入对应顾客情景</h2><p>场景与本轮重点集中展示；每轮回答后获得即时纠正和推荐表达。</p></div>
+              <div><span class="step-tag">情景陪练</span><h2>选择陪练模块</h2><p>进入顾客情景，获得即时纠正与推荐表达。</p></div>
               <label class="module-picker">陪练模块<select id="practice-module-select" aria-label="选择陪练模块"></select></label>
             </div>
             <div class="scenario-frame" id="training-scenario-frame"></div>
@@ -69,7 +69,7 @@
         <section class="product-page hidden" id="test-page">
           <article class="feature-card exam-zone">
             <div class="section-heading compact-heading">
-              <div><span class="step-tag">实战考核</span><h2>选择本次考核模块</h2><p>确认场景与考核重点后开始对话。过程中不提供提示，结束后统一评分。</p></div>
+              <div><span class="step-tag">实战考核</span><h2>选择考核模块</h2><p>完成无提示对话，结束后查看评分。</p></div>
               <label class="module-picker">考核模块<select id="test-module-select" aria-label="选择考核模块"></select></label>
             </div>
             <div class="scenario-frame exam-frame" id="test-scenario-frame"></div>
@@ -79,8 +79,8 @@
         <section class="product-page hidden" id="qa-page">
           <article class="qa-welcome">
             <span class="step-tag">AI 顾客接待</span>
-            <h2>像顾客一样提问，AI 依据企业知识库接待</h2>
-            <p>直接询问项目、体验流程、顾虑或注意事项。AI 会先定位问题和知识模块，再按公司流程回答，并列出可继续学习的参考课程。</p>
+            <h2>向 AI 提问</h2>
+            <p>询问项目、流程、顾虑或注意事项，AI 将依据企业知识库回答。</p>
             <div class="qa-examples">
               <button data-question="这个项目做一次是不是一定有效？">做一次一定有效吗？</button>
               <button data-question="体验之前，你们需要先了解我哪些情况？">体验前需要问什么？</button>
@@ -109,11 +109,6 @@
       </main>
     </div>
 
-    <div class="model-switcher" aria-label="模型快速选择">
-      <label><span>当前模型</span><select id="quick-model-select" aria-label="选择 AI 模型"></select></label>
-      <button id="open-model-settings" type="button">API 设置</button>
-    </div>
-
     <div class="modal-backdrop hidden" id="course-modal">
       <div class="modal course-modal" role="dialog" aria-modal="true" aria-labelledby="course-modal-title">
         <button class="modal-close" data-close="course-modal" aria-label="关闭">×</button>
@@ -123,7 +118,7 @@
     <div class="modal-backdrop hidden" id="settings-modal">
       <div class="modal">
         <button class="modal-close" data-close="settings-modal" aria-label="关闭">×</button>
-        <span class="step-tag">MODEL SETTINGS</span><h2>连接 SiliconFlow</h2>
+        <span class="step-tag">MODEL & API</span><h2>模型与 API</h2>
         <p class="modal-copy">Key 只保存在当前浏览器并直接发送给 SiliconFlow，不写入项目或知识库。每位使用者请填写自己的 Key。</p>
         <label>API Key<input id="api-key" type="password" placeholder="sk-…" autocomplete="off" /></label>
         <label>模型名称<select id="model-name" aria-label="选择 SiliconFlow 模型"></select></label>

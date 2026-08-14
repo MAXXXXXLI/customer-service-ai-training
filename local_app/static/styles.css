@@ -63,13 +63,6 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .kb-health strong { font-size: 9px; }
 .kb-health small { margin-top: 4px; color: var(--faint); font-size: 8px; }
 .settings-button { display: flex; justify-content: space-between; width: 100%; padding: 10px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; background: transparent; font-size: 9px; }
-.model-switcher { position: fixed; right: 20px; bottom: 18px; z-index: 24; display: flex; align-items: end; gap: 8px; padding: 9px; border: 1px solid var(--line-strong); border-radius: 13px; background: rgba(255, 255, 255, 0.94); box-shadow: 0 16px 45px rgba(0, 47, 167, 0.16); backdrop-filter: blur(16px); }
-.model-switcher label { display: grid; gap: 4px; }
-.model-switcher label span { color: var(--faint); font-size: 7px; font-weight: 800; letter-spacing: 0.08em; }
-.model-switcher select { width: min(250px, 42vw); padding: 8px 30px 8px 9px; color: var(--text); border: 1px solid var(--line); border-radius: 8px; outline: 0; background: var(--surface-3); font-size: 9px; }
-.model-switcher button { padding: 9px 10px; color: var(--lime); border: 1px solid rgba(37, 90, 223, 0.22); border-radius: 8px; background: rgba(37, 90, 223, 0.07); font-size: 8px; font-weight: 700; }
-.model-switcher button:hover { background: rgba(37, 90, 223, 0.12); }
-
 .main-content { width: calc(100% - 260px); margin-left: 260px; padding: 36px 48px 64px; }
 .topbar { display: flex; justify-content: space-between; gap: 28px; max-width: 1120px; margin: 0 auto; }
 .breadcrumb { color: var(--faint); font-size: 9px; letter-spacing: 0.06em; }
@@ -269,7 +262,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .course-figures figure { margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #f7f9fe; }
 .course-figures img { display: block; width: 100%; max-height: 360px; object-fit: contain; border-radius: 6px; }
 .course-figures figcaption { margin-top: 8px; color: #697690; font-size: 11px; line-height: 1.5; text-align: center; }
-.toast { position: fixed; right: 22px; bottom: 82px; z-index: 30; max-width: 350px; padding: 12px 14px; color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-3); box-shadow: var(--shadow); font-size: 9px; }
+.toast { position: fixed; right: 22px; bottom: 22px; z-index: 30; max-width: 350px; padding: 12px 14px; color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-3); box-shadow: var(--shadow); font-size: 9px; }
 .toast.error { border-color: rgba(220, 67, 86, 0.45); }
 
 @keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
@@ -319,8 +312,5 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   .coach-method { grid-template-columns: 1fr; }
   .assessment-card { margin-left: 0; }
   .course-modal { max-height: 86vh; padding: 20px; }
-  .model-switcher { right: 10px; bottom: 10px; left: 10px; }
-  .model-switcher label { flex: 1; }
-  .model-switcher select { width: 100%; }
-  .toast { right: 10px; bottom: 78px; left: 10px; }
+  .toast { right: 10px; bottom: 12px; left: 10px; }
 }

@@ -56,7 +56,6 @@ const els = {
   turnCount: $("turn-count"),
   composerHint: $("composer-hint"),
   apiStatus: $("api-status"),
-  quickModelSelect: $("quick-model-select"),
   healthNumber: $("health-number"),
   courseModalContent: $("course-modal-content"),
   toast: $("toast"),
@@ -65,32 +64,32 @@ const els = {
 const modeCopy = {
   learning: {
     nav: "学习与陪练 / 课程学习",
-    title: "先把知识学明白，再进入模拟练习",
-    description: "选择一个知识模块，只查看该模块的章节和详细课程内容。",
+    title: "课程学习",
+    description: "学习标准课程与服务知识。",
     kicker: "",
     conversation: "",
     hint: "",
   },
   training: {
     nav: "学习与陪练 / 情景陪练",
-    title: "在真实顾客情景中，把标准练成自然表达",
-    description: "选择知识模块和顾客情景，在每轮回答后获得即时纠正与推荐话术。",
+    title: "情景陪练",
+    description: "模拟顾客对话，即时纠正表达。",
     kicker: "情景陪练",
     conversation: "与 AI 顾客练习",
     hint: "每轮回答后提供一个关键改进点",
   },
   test: {
     nav: "实战考核",
-    title: "用一段完整对话，检验真实接待能力",
-    description: "选择模块、确认考核场景，然后在无提示状态下完成整段顾客沟通。",
+    title: "实战考核",
+    description: "完成无提示对话，查看考核评分。",
     kicker: "实战考核",
     conversation: "无提示顾客对话",
     hint: "考核过程中不会出现任何提示",
   },
   qa: {
     nav: "智能接待",
-    title: "让 AI 成为随时在线的顾客接待助手",
-    description: "你扮演顾客直接提问，AI 调用完整企业知识库进行回答和接待。",
+    title: "智能接待",
+    description: "基于企业知识库回答顾客问题。",
     kicker: "AI 顾客接待",
     conversation: "请问您想了解什么？",
     hint: "回答后可打开参考课程继续学习",
@@ -757,9 +756,7 @@ function renderModelOptions() {
   const models = [...state.models];
   if (!models.some((item) => item.id === state.model)) models.unshift({ id: state.model, label: `${state.model} · 已保存` });
   const options = models.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`).join("");
-  els.quickModelSelect.innerHTML = options;
   $("model-name").innerHTML = options;
-  els.quickModelSelect.value = state.model;
   $("model-name").value = state.model;
 }
 
@@ -867,8 +864,6 @@ els.input.addEventListener("keydown", (event) => {
 els.finish.addEventListener("click", finishSession);
 $("clear-chat").addEventListener("click", resetSession);
 $("open-settings").addEventListener("click", openSettings);
-$("open-model-settings").addEventListener("click", openSettings);
-els.quickModelSelect.addEventListener("change", () => selectModel(els.quickModelSelect.value));
 $("model-name").addEventListener("change", () => selectModel($("model-name").value, false));
 $("save-settings").addEventListener("click", saveSettings);
 $("demo-mode").addEventListener("click", () => {
