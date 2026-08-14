@@ -132,12 +132,29 @@ function publicStaticDocument(document) {
 
 function staticRetrieve(query, documents, limit = 8) {
   const text = String(query || "").toLowerCase();
-  const terms = [...new Set(text.match(/[a-z0-9_]{2,}|[\u4e00-\u9fff]{2}/gi) || [])];
-  return documents.map((document) => {
-    const haystack = `${document.text || ""} ${JSON.stringify(document.metadata || {})}`.toLowerCase();
-    const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), 0);
-    return { document, score };
-  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map((item) => item.document);
+  const terms = new Set(text.match(/[a-z0-9_]{2,}/gi) || []);
+  (text.match(/[\u4e00-\u9fff]+/g) || []).forEach((segment) => {
+    if (segment.length <= 8) terms.add(segment);
+    for (let index = 0; index < segment.length - 1; index += 1) terms.add(segment.slice(index, index + 2));
+  });
+  const ranked = documents.map((document, index) => {
+    const metadata = document.metadata || {};
+    const title = String(metadata.title || "").toLowerCase();
+    const haystack = `${document.text || ""} ${JSON.stringify(metadata)}`.toLowerCase();
+    const score = [...terms].reduce((total, term) => total + (title.includes(term) ? 4 : haystack.includes(term) ? 1 : 0), 0);
+    return { document, score, index };
+  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
+  const selected = [];
+  const seen = new Set();
+  for (const item of ranked) {
+    const metadata = item.document.metadata || {};
+    const key = metadata.course_id || metadata.source_id || item.document.document_id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selected.push(item.document);
+    if (selected.length >= limit) break;
+  }
+  return selected;
 }
 
 function extractStaticJson(content) {
