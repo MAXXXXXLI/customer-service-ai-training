@@ -20,6 +20,14 @@ SILICONFLOW_URL = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/
 DEFAULT_MODEL = os.getenv("SILICONFLOW_MODEL", "Qwen/Qwen3.5-35B-A3B")
 ENV_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 MOCK_MODE = os.getenv("SILICONFLOW_MOCK", "0").lower() in {"1", "true", "yes"}
+AVAILABLE_MODELS = [
+    {"id": "Qwen/Qwen3.5-35B-A3B", "label": "Qwen 3.5 35B · 推荐"},
+    {"id": "deepseek-ai/DeepSeek-V3.2", "label": "DeepSeek V3.2 · 高质量"},
+    {"id": "Qwen/Qwen3.5-27B", "label": "Qwen 3.5 27B · 稳定"},
+    {"id": "Pro/zai-org/GLM-5.1", "label": "GLM 5.1 Pro"},
+    {"id": "Pro/moonshotai/Kimi-K2.6", "label": "Kimi K2.6 Pro"},
+    {"id": "MiniMaxAI/MiniMax-M2.5", "label": "MiniMax M2.5"},
+]
 
 
 def read_json(name: str) -> Any:
@@ -605,7 +613,16 @@ TRAIN_SYSTEM = """你是美容、瘦身门店的员工训练教练。你要同�
 feedback 必须引用员工刚刚说的话，不能泛泛而谈；必须检查员工是否先安全后业务、是否回答当前问题、是否使用正确知识模块、是否给出可执行下一步。顾客不知道内部规则，不要把隐藏场景设定和评分标准泄露给员工。"""
 
 
-TEST_TURN_SYSTEM = """你是美容、瘦身门店的模拟顾客。你正在参加员工无提示测试，只能以顾客身份自然回复，不能指导、评价、提示、总结或引用知识库。根据公开人物设定和隐藏异议逐步推进，不要一次性暴露全部信息，不要主动告诉员工你想考什么。顾客回复严格 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + SAFETY_POLICY
+TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客，不是培训教练、客服助手或评分员。
+
+对话规则：
+1. 只回应员工最新一句话，每轮用顾客口吻回复 1—3 句；不能评价员工、讲方法、给提示、总结知识或暴露评分点。
+2. 开场白已由系统展示，后续绝不重复开场白，也不原样重复之前说过的话。
+3. 根据员工实际提问，每轮最多自然透露一个尚未透露的背景、顾虑或异议；员工没有问到时不要主动把隐藏信息全部说出。
+4. 如果员工答非所问，继续以顾客身份追问原问题；如果员工给出危险承诺，以顾客身份表示疑惑或不放心，但不要替员工说出标准答案。
+5. 不得出现“考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该”等幕后词语。
+
+严格输出 JSON，不要 Markdown：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + SAFETY_POLICY
 
 
 QA_SYSTEM = """你是企业培训知识库中的专业顾客接待助手。你面对的是顾客，因此答案必须是一段可以直接对顾客说的话，而不是知识摘要、检索报告或员工培训分析。只能基于方法路由和检索资料，不能把知识库之外的猜测说成公司标准。
@@ -615,7 +632,17 @@ QA_SYSTEM = """你是企业培训知识库中的专业顾客接待助手。你�
 回答结构严格 JSON：{"answer":"可直接对顾客说的完整回答","uncertainties":["确实需要核验的点，没有则为空数组"],"citations":[],"recommended_action":"一个明确、可执行的下一步"}。如果资料不足，明确说资料不足并说明要补充什么；如果涉及医疗、药品、孕期、儿童、慢病、服务后异常或红旗症状，优先安全分流。""" + SAFETY_POLICY + METHODOLOGY_POLICY
 
 
-ASSESS_SYSTEM = """你是企业培训考核官。根据给定评分表和员工完整对话，进行统一评分。测试期间不给员工任何提示；现在只输出考后结果。必须引用对话证据，不得只给空泛评价。评分时检查员工是否遵守统一方法：先安全后业务、回答当前问题、调用正确知识、只补必要问题、说明边界并给出正确下一步。输出严格 JSON：
+ASSESS_SYSTEM = """你是企业培训考核官。只在对话结束后评分，不再扮演顾客，也不继续对话。
+
+评分边界：
+1. history 中 role=user 的内容才是员工原话；role=assistant 是模拟顾客原话，绝不能把顾客说过的话算成员工能力或员工错误。
+2. 必须严格按评分表的 7 个维度逐项评分，dimension_scores 恰好 7 项，id、name、max_score 与评分表完全一致，不得缺项、加项或改权重。
+3. 每个维度的 evidence 必须引用员工原话或明确写“对话中未体现”；未体现的能力不得凭空给高分。
+4. total_score 必须等于 7 个 score 之和；先算维度分，再应用关键失败项的 score_cap。
+5. 只评价本次对话已经发生的内容。建议写成下一轮训练动作，不要虚构员工已经说过的话，不要替员工补充产品、药品、剂量、用法或频次。
+6. 输出内容必须是考核报告，不能输出新的顾客回复或继续向员工提问。
+
+评分时检查员工是否遵守统一方法：先安全后业务、回答当前问题、调用正确知识、只补必要问题、说明边界并给出正确下一步。输出严格 JSON：
 {"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"对话证据","comment":"评价"}],"critical_failures":[{"code":"CF-xx","reason":"...","evidence":"...","score_cap":59}],"strengths":["..."],"improvements":["..."],"next_training_scene":"SCN-...","summary":"..."}
 先按各维度评分，再应用关键失败封顶规则；没有关键失败时 critical_failures 必须为空。D3评价是否使用正确课程知识，D4评价是否把顾客问题定位到正确模块并形成个性化下一步，D5评价是否按承接—澄清—回应—选择—确认处理异议。不得替员工补充具体产品、口服/注射方案、剂量、用法或频次；员工没有给出具体方案时，只评价该能力缺失，并建议继续澄清需求、核验门店标准。""" + SAFETY_POLICY + METHODOLOGY_POLICY
 
@@ -654,7 +681,7 @@ def extract_json(content: str) -> dict[str, Any] | None:
             return None
 
 
-def call_model(system: str, messages: list[dict[str, str]], model: str, api_key: str, temperature: float = 0.4) -> tuple[str, dict[str, Any]]:
+def call_model(system: str, messages: list[dict[str, str]], model: str, api_key: str, temperature: float = 0.4, max_tokens: int = 1800) -> tuple[str, dict[str, Any]]:
     if MOCK_MODE or not api_key:
         raise RuntimeError("mock_or_missing_key")
     payload = {
@@ -662,10 +689,12 @@ def call_model(system: str, messages: list[dict[str, str]], model: str, api_key:
         "messages": [{"role": "system", "content": system}, *messages],
         "temperature": temperature,
         "top_p": 0.7,
-        "max_tokens": 1600,
-        "enable_thinking": False,
+        "max_tokens": max_tokens,
+        "response_format": {"type": "json_object"},
         "stream": False,
     }
+    if model.startswith("Qwen/Qwen3") or "DeepSeek-V3.2" in model or model.startswith("Pro/zai-org/GLM-5"):
+        payload["enable_thinking"] = False
     request = urllib.request.Request(
         SILICONFLOW_URL,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -707,9 +736,8 @@ def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any]
             "citations": [{"document_id": d.get("document_id"), "source_id": d.get("metadata", {}).get("source_id"), "title": d.get("metadata", {}).get("title")} for d in docs[:2]],
         }
     if mode == "test" and action == "turn":
-        opening = scenario.get("opening") if scenario else "我最近有点困扰，想先了解一下你们的项目。"
         turn_number = sum(1 for item in history if item.get("role") == "user")
-        replies = [opening, "我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？", "如果需要先做适用性确认我可以配合，但我想知道下一步怎么安排。"]
+        replies = ["我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？", "如果需要先做适用性确认我可以配合，但我想知道下一步怎么安排。", "我大概明白了，你能把最适合我现在情况的下一步说具体一点吗？"]
         reply = replies[min(turn_number, len(replies) - 1)]
         return {"reply": reply, "emotion": "hesitant", "should_continue": True}
     return {
@@ -726,6 +754,170 @@ def scenario_by_id(scenario_id: str | None) -> dict[str, Any]:
             if item.get("id") == scenario_id:
                 return item
     return SCENARIOS[0]
+
+
+def clean_dialogue_history(history: list[dict[str, Any]], limit: int = 7) -> list[dict[str, str]]:
+    cleaned = []
+    for item in history:
+        if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+            continue
+        content = clean_text(item.get("content", ""))
+        if content:
+            cleaned.append({"role": item["role"], "content": content})
+    return cleaned[-limit:]
+
+
+TEST_INTERNAL_MARKERS = re.compile(r"考核|评分|知识库|方法路由|隐藏异议|must_test|员工应该|培训教练", re.I)
+
+
+def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str, Any]]) -> str:
+    objections = list((scenario or {}).get("hidden_objections") or [])
+    turn_number = sum(1 for item in history if item.get("role") == "user")
+    objection = objections[min(turn_number, len(objections) - 1)] if objections else "下一步安排"
+    templates = {
+        "怕疼": "我比较怕疼，如果过程中不舒服，你们会怎么处理？",
+        "太贵": "我也有点担心价格，能先说说需要怎么评估和安排吗？",
+        "一次有没有用": "那一次大概能观察什么，怎么判断是不是适合继续？",
+        "时间": "我平时工作很忙，如果时间有限，下一步怎么安排会更实际？",
+        "固定斤数": "我还是很在意能不能达到固定斤数，你们通常怎么和顾客确定目标？",
+        "价格": "我还需要考虑预算，能先告诉我确认方案前要了解哪些信息吗？",
+        "成分/过敏": "我之前有过敏经历，具体成分和适用性会怎么确认？",
+        "怕设备不安全": "我最担心设备安全，过程中如果过热或不舒服能马上停吗？",
+    }
+    return templates.get(objection, f"我现在最在意的是{objection}，你能针对这个问题再说明一下吗？")
+
+
+def normalize_test_turn_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]]) -> dict[str, Any]:
+    result = result if isinstance(result, dict) else {}
+    reply = clean_text(result.get("reply", ""))
+    previous_customer_replies = [clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"]
+    repeated = any(reply == previous or (len(reply) >= 18 and len(previous) >= 18 and reply[:18] == previous[:18]) for previous in previous_customer_replies)
+    invalid = not reply or repeated or bool(TEST_INTERNAL_MARKERS.search(reply))
+    if scenario and reply == clean_text(scenario.get("opening", "")):
+        invalid = True
+    if invalid:
+        reply = test_fallback_reply(scenario, history)
+    emotion = clean_text(result.get("emotion", "neutral"))
+    if emotion not in {"curious", "hesitant", "concerned", "relieved", "neutral"}:
+        emotion = "neutral"
+    return {"reply": reply, "emotion": emotion, "should_continue": result.get("should_continue") is not False}
+
+
+def detect_assessment_failures(history: list[dict[str, Any]]) -> list[str]:
+    employee_text = " ".join(clean_text(item.get("content", "")) for item in history if item.get("role") == "user")
+    customer_text = " ".join(clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant")
+    failures = []
+    if unsafe_claim_hits(employee_text) or re.search(r"(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)", employee_text, re.I):
+        failures.append("CF-02")
+    red_flag = re.search(r"胸痛|呼吸困难|晕厥|突发剧痛|进行性麻木无力|发热红肿|腿麻|头晕", customer_text, re.I)
+    keeps_selling = re.search(r"可以做|安排项目|先体验|继续做|正常现象|没事", employee_text, re.I)
+    safety_stop = re.search(r"暂停|停止|先不|医疗|就医|医院|医生|评估|转介", employee_text, re.I)
+    if red_flag and keeps_selling and not safety_stop:
+        failures.append("CF-01")
+    refused = re.search(r"不想|拒绝|不要触碰|不拍照|回家考虑", customer_text, re.I)
+    pressure = re.search(r"必须|今天就|现在就|不买|不做.{0,6}(?:后悔|更严重)", employee_text, re.I)
+    if refused and pressure:
+        failures.append("CF-03")
+    discomfort = re.search(r"疼|灼热|烫|头晕|不舒服|设备异常", customer_text, re.I)
+    continues = re.search(r"忍一忍|继续做|正常的|没关系|坚持一下", employee_text, re.I)
+    if discomfort and continues and not safety_stop:
+        failures.append("CF-04")
+    return failures
+
+
+def fallback_employee_evidence(dimension_id: str, history: list[dict[str, Any]]) -> str:
+    employee_messages = [clean_text(item.get("content", "")) for item in history if item.get("role") == "user" and clean_text(item.get("content", ""))]
+    patterns = {
+        "D1": r"理解|您好|谢谢|可以吗",
+        "D2": r"了解|多久|目标|作息|饮食|活动|尝试|影响|担心",
+        "D3": r"不能|不承诺|不保证|边界|个体差异|复盘",
+        "D4": r"时间|预算|选择|安排|目标|方案",
+        "D5": r"理解|担心|顾虑|不能保证|选择|您看",
+        "D6": r"安全|健康|暂停|停止|不舒服|医疗|评估",
+        "D7": r"下一步|愿意|安排|复盘|确认|跟进",
+    }
+    pattern = patterns.get(dimension_id, r".")
+    selected = next((message for message in reversed(employee_messages) if re.search(pattern, message, re.I)), None)
+    if not selected:
+        selected = employee_messages[-1] if employee_messages else ""
+    return f"员工原话：“{selected[:180]}”" if selected else "对话中未体现"
+
+
+def evidence_uses_customer_only_text(evidence: str, history: list[dict[str, Any]]) -> bool:
+    employee_text = " ".join(clean_text(item.get("content", "")) for item in history if item.get("role") == "user")
+    customer_messages = [clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"]
+    for message in customer_messages:
+        compact = re.sub(r"\s+", "", message)
+        for index in range(max(0, len(compact) - 7)):
+            fragment = compact[index:index + 8]
+            if fragment and fragment in evidence and fragment not in employee_text:
+                return True
+    return False
+
+
+def normalize_assessment_result(result: dict[str, Any] | None, history: list[dict[str, Any]]) -> dict[str, Any]:
+    result = result if isinstance(result, dict) else {}
+    provided_dimensions = {
+        item.get("id"): item
+        for item in result.get("dimension_scores", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    dimensions = []
+    for spec in RUBRIC.get("dimensions", []):
+        provided = provided_dimensions.get(spec["id"], {})
+        try:
+            score = round(float(provided.get("score", 0)))
+        except (TypeError, ValueError):
+            score = 0
+        score = max(0, min(spec["weight"], score))
+        evidence = clean_text(provided.get("evidence", ""))
+        if not evidence or evidence_uses_customer_only_text(evidence, history):
+            evidence = fallback_employee_evidence(spec["id"], history)
+        dimensions.append({
+            "id": spec["id"],
+            "name": spec["name"],
+            "score": score,
+            "max_score": spec["weight"],
+            "evidence": evidence,
+            "comment": clean_text(provided.get("comment", "")) or "需要在下一轮对话中补充可验证表现。",
+        })
+
+    failure_specs = {item["code"]: item for item in RUBRIC.get("critical_failures", [])}
+    model_failures = {
+        item.get("code"): item
+        for item in result.get("critical_failures", [])
+        if isinstance(item, dict) and item.get("code") in failure_specs
+    }
+    for code in detect_assessment_failures(history):
+        model_failures.setdefault(code, {"code": code, "evidence": "员工原话触发安全与合规规则。"})
+    critical_failures = []
+    for code, item in model_failures.items():
+        spec = failure_specs[code]
+        critical_failures.append({
+            "code": code,
+            "reason": clean_text(item.get("reason", "")) or spec["rule"],
+            "evidence": clean_text(item.get("evidence", "")) or "员工原话触发关键失败项。",
+            "score_cap": spec["score_cap"],
+        })
+
+    total_score = sum(item["score"] for item in dimensions)
+    if critical_failures:
+        total_score = min(total_score, min(item["score_cap"] for item in critical_failures))
+
+    def clean_list(value: Any, fallback: list[str]) -> list[str]:
+        items = [clean_text(item) for item in value] if isinstance(value, list) else []
+        items = [item for item in items if item]
+        return items[:4] or fallback
+
+    return {
+        "total_score": total_score,
+        "dimension_scores": dimensions,
+        "critical_failures": critical_failures,
+        "strengths": clean_list(result.get("strengths"), ["完成了本轮顾客沟通。"]),
+        "improvements": clean_list(result.get("improvements"), ["下一轮请围绕顾客原话补齐需求分析、安全边界和可执行下一步。"]),
+        "next_training_scene": clean_text(result.get("next_training_scene", "")) or SCENARIOS[0].get("id"),
+        "summary": clean_text(result.get("summary", "")) or "评分已按本轮员工实际表达生成。",
+    }
 
 
 def response_payload(mode: str, result: dict[str, Any], docs: list[dict[str, Any]], meta: dict[str, Any]) -> dict[str, Any]:
@@ -777,14 +969,15 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
     history = payload.get("history") or []
     api_key = payload.get("api_key") or ENV_API_KEY
     model = payload.get("model") or DEFAULT_MODEL
-    scenario = scenario_by_id(payload.get("scenario_id")) if mode == "test" else None
+    scenario = scenario_by_id(payload.get("scenario_id")) if mode in {"training", "test"} else None
 
     if action == "start" and mode in {"training", "test"}:
         return {"ok": True, "mode": mode, "scenario": public_scenario(scenario_by_id(payload.get("scenario_id"))), "message": scenario_by_id(payload.get("scenario_id")).get("opening"), "source_refs": []}
     if not message and action != "finish":
         raise ValueError("请输入内容")
 
-    recent_dialogue = " ".join(clean_text(item.get("content", "")) for item in history[-6:])
+    dialogue_history = clean_dialogue_history(history)
+    recent_dialogue = " ".join(item["content"] for item in dialogue_history[-6:])
     query = clean_text(f"{recent_dialogue} {message}")
     route = route_customer_question(query)
     docs = retrieve(query, limit=8, route=route)
@@ -802,26 +995,29 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
     if mode == "training":
-        user_message = f"员工刚刚说：{message}\n\n最近对话：{json.dumps(history[-8:], ensure_ascii=False)}\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs)}"
+        turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
+        training_system = f"{TRAIN_SYSTEM}\n\n当前场景（只供角色一致性使用）：{json.dumps(scenario, ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(TRAIN_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.45)
+        raw, meta = call_model(training_system, [*dialogue_history, {"role": "user", "content": message}], model, api_key, temperature=0.35)
         result = apply_methodology_result(safety_filter(extract_json(raw) or {"customer_reply": raw, "feedback": {"level": "needs_work", "issue": "模型未按结构化格式返回。", "why": "请检查 Prompt 输出约束。", "suggested_reply": "请继续围绕顾客目标进行追问。", "next_goal": "完成需求分析。"}, "citations": citation_refs}, mode, message, route), mode, route)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
     if mode == "test" and action == "turn":
         hidden_context = json.dumps({"persona": scenario.get("persona"), "hidden_objections": scenario.get("hidden_objections"), "must_test": scenario.get("must_test")}, ensure_ascii=False)
-        user_message = f"场景设定（只供你使用，不得泄露）：{hidden_context}\n\n已经发生的对话：{json.dumps(history[-10:], ensure_ascii=False)}\n\n员工刚刚说：{message}"
+        turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
+        test_system = f"{TEST_TURN_SYSTEM}\n\n场景设定（只供你使用，不得泄露）：{hidden_context}\n开场白：{scenario.get('opening')}\n当前是员工第 {turn_number} 轮回复。"
         if MOCK_MODE or not api_key:
-            result = safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, route=route)
+            result = normalize_test_turn_result(mock_response(mode, action, message, scenario, history, docs), scenario, history)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(TEST_TURN_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.75)
-        result = extract_json(raw) or {"reply": raw, "emotion": "neutral", "should_continue": True}
+        raw, meta = call_model(test_system, [*dialogue_history, {"role": "user", "content": message}], model, api_key, temperature=0.55)
+        result = normalize_test_turn_result(extract_json(raw) or {"reply": raw}, scenario, history)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
     if mode == "test" and action == "finish":
-        dialogue = json.dumps(history, ensure_ascii=False)
+        full_dialogue = clean_dialogue_history(history, limit=40)
+        dialogue = json.dumps(full_dialogue, ensure_ascii=False)
         rubric_context = json.dumps(RUBRIC, ensure_ascii=False)
         user_message = f"评分表：\n{rubric_context}\n\n本场景方法路由：\n{route_context_block(route)}\n\n场景：\n{json.dumps(scenario, ensure_ascii=False)}\n\n员工完整对话：\n{dialogue}\n\n相关知识库：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
@@ -834,9 +1030,11 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
                 "next_training_scene": SCENARIOS[1].get("id"),
                 "summary": "本地演示评分：流程已走通，正式评分需要配置 SiliconFlow API Key。",
             }
+            result = normalize_assessment_result(result, full_dialogue)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(ASSESS_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.1)
+        raw, meta = call_model(ASSESS_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.1, max_tokens=3200)
         result = extract_json(raw) or {"total_score": 0, "dimension_scores": [], "critical_failures": [], "strengths": [], "improvements": [raw], "next_training_scene": SCENARIOS[0].get("id"), "summary": "模型未按结构化格式返回，请检查 Prompt。"}
+        result = normalize_assessment_result(result, full_dialogue)
         result = sanitize_assessment_advice(result)
         return response_payload(mode, result, docs, {**meta, "mock": False})
 
@@ -859,20 +1057,22 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:
-        if self.path == "/api/health":
-            self.send_json({"ok": True, "api_configured": bool(ENV_API_KEY), "mock_mode": MOCK_MODE, "model": DEFAULT_MODEL, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "scenarios": len(SCENARIOS)}})
+        request_path = self.path.split("?", 1)[0]
+        if request_path == "/api/health":
+            self.send_json({"ok": True, "api_configured": bool(ENV_API_KEY), "mock_mode": MOCK_MODE, "model": DEFAULT_MODEL, "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "scenarios": len(SCENARIOS)}})
             return
-        if self.path == "/api/bootstrap":
-            self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
+        if request_path == "/api/bootstrap":
+            self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
             return
-        if self.path.startswith("/static/"):
-            relative = self.path.removeprefix("/static/").replace("..", "")
+        root_static_files = {"/app.js", "/styles.css", "/learning_modules.json", "/learning_catalog.json"}
+        if request_path.startswith("/static/") or request_path in root_static_files:
+            relative = request_path.removeprefix("/static/").lstrip("/").replace("..", "")
             target = (STATIC_ROOT / relative).resolve()
             if STATIC_ROOT.resolve() not in target.parents:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             if target.exists() and target.is_file():
-                content_type = {".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".html": "text/html; charset=utf-8"}.get(target.suffix, "application/octet-stream")
+                content_type = {".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".html": "text/html; charset=utf-8", ".json": "application/json; charset=utf-8"}.get(target.suffix, "application/octet-stream")
                 body = target.read_bytes()
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", content_type)
@@ -880,7 +1080,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(body)
                 return
-        if self.path == "/" or self.path == "/index.html":
+        if request_path == "/" or request_path == "/index.html":
             target = STATIC_ROOT / "index.html"
             body = target.read_bytes()
             self.send_response(HTTPStatus.OK)

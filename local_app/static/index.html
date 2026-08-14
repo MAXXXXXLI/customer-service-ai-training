@@ -11,7 +11,7 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand-lockup">
-          <div class="brand-mark">知</div>
+          <div class="brand-mark">秀</div>
           <div><div class="brand-en">XIUYU AI TRAINING CENTER</div><div class="brand-name">秀域 AI</div></div>
         </div>
         <div class="nav-label">核心功能</div>
@@ -108,6 +108,11 @@
       </main>
     </div>
 
+    <div class="model-switcher" aria-label="模型快速选择">
+      <label><span>当前模型</span><select id="quick-model-select" aria-label="选择 AI 模型"></select></label>
+      <button id="open-model-settings" type="button">API 设置</button>
+    </div>
+
     <div class="modal-backdrop hidden" id="course-modal">
       <div class="modal course-modal" role="dialog" aria-modal="true" aria-labelledby="course-modal-title">
         <button class="modal-close" data-close="course-modal" aria-label="关闭">×</button>
@@ -118,9 +123,9 @@
       <div class="modal">
         <button class="modal-close" data-close="settings-modal" aria-label="关闭">×</button>
         <span class="step-tag">MODEL SETTINGS</span><h2>连接 SiliconFlow</h2>
-        <p class="modal-copy">Key 只发送给当前本地服务，不写入知识库文件。公开网站上线时，每位使用者自行输入。</p>
+        <p class="modal-copy">Key 只保存在当前浏览器并直接发送给 SiliconFlow，不写入项目或知识库。每位使用者请填写自己的 Key。</p>
         <label>API Key<input id="api-key" type="password" placeholder="sk-…" autocomplete="off" /></label>
-        <label>模型名称<input id="model-name" type="text" placeholder="Qwen/Qwen3.5-35B-A3B" /></label>
+        <label>模型名称<select id="model-name" aria-label="选择 SiliconFlow 模型"></select></label>
         <div class="modal-actions"><button class="secondary-button" id="demo-mode">演示模式</button><button class="primary-button" id="save-settings">保存设置</button></div>
       </div>
     </div>

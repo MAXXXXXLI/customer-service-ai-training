@@ -1,3 +1,13 @@
+const DEFAULT_MODEL = "Qwen/Qwen3.5-35B-A3B";
+const AVAILABLE_MODELS = [
+  { id: "Qwen/Qwen3.5-35B-A3B", label: "Qwen 3.5 35B · 推荐" },
+  { id: "deepseek-ai/DeepSeek-V3.2", label: "DeepSeek V3.2 · 高质量" },
+  { id: "Qwen/Qwen3.5-27B", label: "Qwen 3.5 27B · 稳定" },
+  { id: "Pro/zai-org/GLM-5.1", label: "GLM 5.1 Pro" },
+  { id: "Pro/moonshotai/Kimi-K2.6", label: "Kimi K2.6 Pro" },
+  { id: "MiniMaxAI/MiniMax-M2.5", label: "MiniMax M2.5" },
+];
+
 const state = {
   mode: "learning",
   modules: [],
@@ -11,7 +21,8 @@ const state = {
   scenario: null,
   history: [],
   apiKey: localStorage.getItem("kbai_api_key") || "",
-  model: localStorage.getItem("kbai_model") || "Qwen/Qwen3.5-35B-A3B",
+  model: localStorage.getItem("kbai_model") || DEFAULT_MODEL,
+  models: [...AVAILABLE_MODELS],
   busy: false,
   ended: false,
   knowledge: {},
@@ -45,6 +56,7 @@ const els = {
   turnCount: $("turn-count"),
   composerHint: $("composer-hint"),
   apiStatus: $("api-status"),
+  quickModelSelect: $("quick-model-select"),
   healthNumber: $("health-number"),
   courseModalContent: $("course-modal-content"),
   toast: $("toast"),
@@ -136,14 +148,16 @@ function extractStaticJson(content) {
   }
 }
 
-async function callStaticModel(system, user, model, apiKey, temperature) {
+async function callStaticModel(system, messages, model, apiKey, temperature, maxTokens = 1800) {
+  const payload = {
+    model, messages: [{ role: "system", content: system }, ...messages],
+    temperature, top_p: 0.7, max_tokens: maxTokens, response_format: { type: "json_object" }, stream: false,
+  };
+  if (model.startsWith("Qwen/Qwen3") || model.includes("DeepSeek-V3.2") || model.startsWith("Pro/zai-org/GLM-5")) payload.enable_thinking = false;
   const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model, messages: [{ role: "system", content: system }, { role: "user", content: user }],
-      temperature, top_p: 0.7, max_tokens: 1600, enable_thinking: false, stream: false,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(`SiliconFlow API ${response.status}: ${data.error?.message || "请求失败"}`);
@@ -192,9 +206,9 @@ function staticMockProgressive(mode, action, scenario, history = [], rubric = nu
   }
   if (mode === "test" && action === "turn") {
     const replies = [
-      scenario?.opening || "我最近有点困扰，想先了解一下你们的项目。",
       "我最担心的是做了没效果，而且价格也不能太高。你会怎么建议？",
       "如果需要先做适用性确认我可以配合，但我想知道下一步怎么安排。",
+      "我大概明白了，你能把最适合我现在情况的下一步说具体一点吗？",
     ];
     return { reply: replies[Math.min(userTurns, replies.length - 1)], emotion: userTurns > 0 ? "concerned" : "hesitant", should_continue: true };
   }
@@ -212,6 +226,103 @@ function staticMockProgressive(mode, action, scenario, history = [], rubric = nu
   return staticMock(mode, action, scenario);
 }
 
+const TEST_INTERNAL_MARKERS = /考核|评分|知识库|方法路由|隐藏异议|must_test|员工应该|培训教练/i;
+
+function staticTestFallback(scenario, history = []) {
+  const objections = scenario?.hidden_objections || [];
+  const userTurns = history.filter((item) => item?.role === "user").length;
+  const objection = objections[Math.min(userTurns, Math.max(objections.length - 1, 0))] || "下一步安排";
+  const templates = {
+    "怕疼": "我比较怕疼，如果过程中不舒服，你们会怎么处理？",
+    "太贵": "我也有点担心价格，能先说说需要怎么评估和安排吗？",
+    "一次有没有用": "那一次大概能观察什么，怎么判断是不是适合继续？",
+    "时间": "我平时工作很忙，如果时间有限，下一步怎么安排会更实际？",
+    "固定斤数": "我还是很在意能不能达到固定斤数，你们通常怎么和顾客确定目标？",
+    "价格": "我还需要考虑预算，能先告诉我确认方案前要了解哪些信息吗？",
+    "成分/过敏": "我之前有过敏经历，具体成分和适用性会怎么确认？",
+    "怕设备不安全": "我最担心设备安全，过程中如果过热或不舒服能马上停吗？",
+  };
+  return templates[objection] || `我现在最在意的是${objection}，你能针对这个问题再说明一下吗？`;
+}
+
+function normalizeStaticTestTurn(result, scenario, history = []) {
+  const normalized = result && typeof result === "object" ? result : {};
+  let reply = String(normalized.reply || "").trim();
+  const previous = history.filter((item) => item?.role === "assistant").map((item) => String(item.content || "").trim());
+  const repeated = previous.some((item) => reply === item || (reply.length >= 18 && item.length >= 18 && reply.slice(0, 18) === item.slice(0, 18)));
+  if (!reply || repeated || TEST_INTERNAL_MARKERS.test(reply) || reply === String(scenario?.opening || "").trim()) reply = staticTestFallback(scenario, history);
+  const emotions = new Set(["curious", "hesitant", "concerned", "relieved", "neutral"]);
+  return { reply, emotion: emotions.has(normalized.emotion) ? normalized.emotion : "neutral", should_continue: normalized.should_continue !== false };
+}
+
+function detectStaticAssessmentFailures(history = []) {
+  const employeeText = history.filter((item) => item?.role === "user").map((item) => item.content || "").join(" ");
+  const failures = [];
+  if (staticCriticalHits(employeeText).length || /(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)/i.test(employeeText)) failures.push("CF-02");
+  return failures;
+}
+
+function staticFallbackEmployeeEvidence(dimensionId, history = []) {
+  const employeeMessages = history.filter((item) => item?.role === "user" && String(item.content || "").trim()).map((item) => String(item.content).trim());
+  const patterns = {
+    D1: /理解|您好|谢谢|可以吗/i,
+    D2: /了解|多久|目标|作息|饮食|活动|尝试|影响|担心/i,
+    D3: /不能|不承诺|不保证|边界|个体差异|复盘/i,
+    D4: /时间|预算|选择|安排|目标|方案/i,
+    D5: /理解|担心|顾虑|不能保证|选择|您看/i,
+    D6: /安全|健康|暂停|停止|不舒服|医疗|评估/i,
+    D7: /下一步|愿意|安排|复盘|确认|跟进/i,
+  };
+  const selected = [...employeeMessages].reverse().find((message) => (patterns[dimensionId] || /./).test(message)) || employeeMessages.at(-1) || "";
+  return selected ? `员工原话：“${selected.slice(0, 180)}”` : "对话中未体现";
+}
+
+function staticEvidenceUsesCustomerOnlyText(evidence, history = []) {
+  const employeeText = history.filter((item) => item?.role === "user").map((item) => item.content || "").join(" ");
+  const customerMessages = history.filter((item) => item?.role === "assistant").map((item) => String(item.content || "").replace(/\s+/g, ""));
+  return customerMessages.some((message) => {
+    for (let index = 0; index <= message.length - 8; index += 1) {
+      const fragment = message.slice(index, index + 8);
+      if (evidence.includes(fragment) && !employeeText.includes(fragment)) return true;
+    }
+    return false;
+  });
+}
+
+function normalizeStaticAssessment(result, history = [], rubric = {}) {
+  const normalized = result && typeof result === "object" ? result : {};
+  const specs = rubric.dimensions || [];
+  const provided = new Map((Array.isArray(normalized.dimension_scores) ? normalized.dimension_scores : []).filter((item) => item?.id).map((item) => [item.id, item]));
+  const dimensionScores = specs.map((spec) => {
+    const item = provided.get(spec.id) || {};
+    const maxScore = Number(spec.weight || spec.max_score || 0);
+    const rawScore = Number(item.score);
+    const score = Number.isFinite(rawScore) ? Math.max(0, Math.min(maxScore, Math.round(rawScore))) : 0;
+    let evidence = String(item.evidence || "").trim();
+    if (!evidence || staticEvidenceUsesCustomerOnlyText(evidence, history)) evidence = staticFallbackEmployeeEvidence(spec.id, history);
+    return { id: spec.id, name: spec.name, score, max_score: maxScore, evidence, comment: String(item.comment || "需要在下一轮对话中补充可验证表现。") };
+  });
+  const failureSpecs = new Map((rubric.critical_failures || []).map((item) => [item.code, item]));
+  const modelFailures = new Map((Array.isArray(normalized.critical_failures) ? normalized.critical_failures : []).filter((item) => failureSpecs.has(item?.code)).map((item) => [item.code, item]));
+  detectStaticAssessmentFailures(history).forEach((code) => { if (!modelFailures.has(code)) modelFailures.set(code, { code, evidence: "员工原话触发安全与合规规则。" }); });
+  const criticalFailures = [...modelFailures].map(([code, item]) => {
+    const spec = failureSpecs.get(code);
+    return { code, reason: item.reason || spec.rule, evidence: item.evidence || "员工原话触发关键失败项。", score_cap: spec.score_cap };
+  });
+  let totalScore = dimensionScores.reduce((sum, item) => sum + item.score, 0);
+  if (criticalFailures.length) totalScore = Math.min(totalScore, ...criticalFailures.map((item) => Number(item.score_cap)));
+  const cleanList = (value, fallback) => Array.isArray(value) && value.filter(Boolean).length ? value.filter(Boolean).slice(0, 4) : fallback;
+  return {
+    total_score: totalScore,
+    dimension_scores: dimensionScores,
+    critical_failures: criticalFailures,
+    strengths: cleanList(normalized.strengths, ["完成了本轮顾客沟通。"]),
+    improvements: cleanList(normalized.improvements, ["下一轮请围绕顾客原话补齐需求分析、安全边界和可执行下一步。"]),
+    next_training_scene: normalized.next_training_scene || "",
+    summary: normalized.summary || "评分已按本轮员工实际表达生成。",
+  };
+}
+
 function normalizeStaticResult(result, mode, action, scenario, history, rubric, message) {
   let normalized = result && typeof result === "object" ? result : {};
   if (mode === "training") {
@@ -220,27 +331,21 @@ function normalizeStaticResult(result, mode, action, scenario, history, rubric, 
     normalized.feedback = { ...fallback.feedback, ...(normalized.feedback || {}) };
     if (staticCriticalHits(message).length) normalized.feedback.level = "critical";
   }
-  if (mode === "test" && action === "turn") {
-    const fallback = staticMockProgressive(mode, action, scenario, history, rubric, message);
-    normalized.reply = normalized.reply || fallback.reply;
-    normalized.emotion = normalized.emotion || fallback.emotion;
-    normalized.should_continue = normalized.should_continue !== false;
-  }
-  if (mode === "test" && action === "finish" && !Array.isArray(normalized.dimension_scores)) {
-    normalized = { ...staticMockProgressive(mode, action, scenario, history, rubric, message), ...normalized };
-  }
-  if (mode === "test" && action === "finish" && !normalized.dimension_scores.length) {
-    normalized = { ...normalized, dimension_scores: staticMockProgressive(mode, action, scenario, history, rubric, message).dimension_scores };
-  }
+  if (mode === "test" && action === "turn") normalized = normalizeStaticTestTurn(normalized, scenario, history);
+  if (mode === "test" && action === "finish") normalized = normalizeStaticAssessment(normalized, history, rubric);
   return normalized;
+}
+
+function cleanStaticHistory(history = [], limit = 7) {
+  return history.filter((item) => ["user", "assistant"].includes(item?.role) && String(item.content || "").trim()).map((item) => ({ role: item.role, content: String(item.content).trim() })).slice(-limit);
 }
 
 async function staticApi(path, body) {
   const data = await loadStaticData();
   if (path === "/api/bootstrap") {
-    return { ok: true, scenarios: data.scenarios, knowledge: { rag_documents: data.documents.length, scenarios: data.scenarios.length }, rubric: { total: data.rubric.total, dimensions: data.rubric.dimensions || [] } };
+    return { ok: true, scenarios: data.scenarios, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length, scenarios: data.scenarios.length }, rubric: { total: data.rubric.total, dimensions: data.rubric.dimensions || [] } };
   }
-  if (path === "/api/health") return { ok: true, api_configured: Boolean(state.apiKey), mock_mode: !state.apiKey, model: state.model, knowledge: { rag_documents: data.documents.length } };
+  if (path === "/api/health") return { ok: true, api_configured: Boolean(state.apiKey), mock_mode: !state.apiKey, model: state.model, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length } };
   if (path !== "/api/chat") throw new Error("静态模式不支持该接口");
 
   const mode = body.mode || "qa";
@@ -254,13 +359,31 @@ async function staticApi(path, body) {
   const context = docs.map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, 1200)}`).join("\n\n");
   if (!apiKey) return { ok: true, mode, result: staticMockProgressive(mode, action, scenario, body.history || [], data.rubric, message), citations: docs.slice(0, 3).map(publicStaticDocument), retrieved: docs.map(publicStaticDocument), meta: { mock: true, model } };
 
-  let system = "你是顾客服务培训平台的 AI。只基于给定知识库回答，不诊断疾病、不承诺疗效、不推荐处方药；遇到胸痛、呼吸困难、晕厥等红旗症状时先建议停止项目并寻求医疗评估。请严格返回 JSON，不要 Markdown。";
-  if (mode === "training") system += " 你扮演顾客，并同时评价员工回复。返回 customer_reply 和 feedback（level、issue、why、suggested_reply、next_goal、method_step、knowledge_focus）。";
-  else if (mode === "test" && action === "turn") system += " 你扮演顾客。返回 reply、emotion、should_continue。不要泄露场景设定。";
-  else if (mode === "test" && action === "finish") system += " 你是考核评分员。根据对话和评分表返回 total_score、dimension_scores、critical_failures、strengths、improvements、summary。";
-  else system += " 返回 answer、uncertainties、recommended_action。";
-  const user = `场景：${JSON.stringify(scenario)}\n历史对话：${JSON.stringify(body.history || [])}\n员工/顾客最新消息：${message}\n评分表：${JSON.stringify(data.rubric)}\n相关知识库：\n${context}`;
-  const modelResult = await callStaticModel(system, user, model, apiKey, mode === "test" ? 0.6 : 0.3);
+  const dialogue = cleanStaticHistory(body.history || []);
+  const turnNumber = dialogue.filter((item) => item.role === "user").length + 1;
+  const safety = "不得诊断疾病、承诺治愈或固定效果、推荐药品剂量或停药；遇到红旗症状时优先停止项目并建议医疗评估。";
+  let system;
+  let messages;
+  let temperature = 0.3;
+  let maxTokens = 1800;
+  if (mode === "training") {
+    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n当前场景：${JSON.stringify(scenario)}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n相关知识库：\n${context}`;
+    messages = [...dialogue, { role: "user", content: message }];
+    temperature = 0.35;
+  } else if (mode === "test" && action === "turn") {
+    system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。${safety}\n隐藏场景（不得泄露）：${JSON.stringify(scenario)}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句，每轮 1—3 句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
+    messages = [...dialogue, { role: "user", content: message }];
+    temperature = 0.55;
+  } else if (mode === "test" && action === "finish") {
+    system = `你是企业培训考核官，只输出考后评分报告，不再扮演顾客。history 中 role=user 才是员工，role=assistant 是顾客，绝不能混淆。严格按评分表输出恰好 7 个维度；id、name、max_score 必须一致；evidence 只能引用员工原话或写“对话中未体现”；total_score 等于各维度 score 之和，再应用关键失败封顶。${safety}\n严格输出 JSON：{"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"...","comment":"..."}],"critical_failures":[],"strengths":[],"improvements":[],"next_training_scene":"...","summary":"..."}。`;
+    messages = [{ role: "user", content: `评分表：${JSON.stringify(data.rubric)}\n场景：${JSON.stringify(scenario)}\n员工完整对话：${JSON.stringify(cleanStaticHistory(body.history || [], 40))}\n相关知识库：\n${context}` }];
+    temperature = 0.1;
+    maxTokens = 3200;
+  } else {
+    system = `你是企业知识库中的顾客接待助手。只基于给定资料直接回答顾客当前问题。${safety}\n先承接问题，只补一个必要信息，再给已核验内容、边界和一个可执行下一步。严格输出 JSON：{"answer":"...","uncertainties":[],"recommended_action":"..."}。\n相关知识库：\n${context}`;
+    messages = [{ role: "user", content: message }];
+  }
+  const modelResult = await callStaticModel(system, messages, model, apiKey, temperature, maxTokens);
   let result = extractStaticJson(modelResult.content) || (mode === "test" && action === "turn" ? { reply: modelResult.content, emotion: "neutral", should_continue: true } : { answer: modelResult.content, uncertainties: [], recommended_action: "" });
   result = normalizeStaticResult(result, mode, action, scenario, body.history || [], data.rubric, message);
   if (mode === "qa") result.route = { intent: "一般需求咨询", primary_module: "新客接待与需求洞察", method_step: "先确认目标和必要安全信息，再解释选择" };
@@ -608,7 +731,7 @@ async function finishSession() {
 function renderAssessment(result) {
   const card = document.createElement("div");
   card.className = "assessment-card";
-  const dimensions = (result.dimension_scores || []).map((item) => `<div class="score-row"><span>${escapeHtml(item.name)}</span><strong>${escapeHtml(item.score)}<i>/${escapeHtml(item.max_score)}</i></strong></div>`).join("");
+  const dimensions = (result.dimension_scores || []).map((item) => `<div class="score-row"><div class="score-row-head"><span>${escapeHtml(item.name)}</span><strong>${escapeHtml(item.score)}<i>/${escapeHtml(item.max_score)}</i></strong></div><small><b>对话证据</b>${escapeHtml(item.evidence || "对话中未体现")}<br><b>评分判断</b>${escapeHtml(item.comment || "")}</small></div>`).join("");
   const critical = (result.critical_failures || []).map((item) => `<div><b>${escapeHtml(item.code)}</b> ${escapeHtml(item.reason)}${item.evidence ? `<br><small>${escapeHtml(item.evidence)}</small>` : ""}</div>`).join("");
   card.innerHTML = `<div class="assessment-header"><div><span>${state.mode === "training" ? "陪练结束报告" : "实战考核报告"}</span><p>${escapeHtml(result.summary || "本轮已完成评分。")}</p></div><strong>${escapeHtml(result.total_score ?? 0)}<i>/100</i></strong></div><div class="score-rows">${dimensions}</div>${critical ? `<div class="critical-block"><b>关键失败项</b><br>${critical}</div>` : ""}<div class="report-columns"><div class="report-block"><label>做得好的地方</label><p>${escapeHtml((result.strengths || []).join("；") || "继续保持完整沟通。")}</p></div><div class="report-block improve"><label>下一轮重点改进</label><p>${escapeHtml((result.improvements || []).join("；") || "继续练习需求分析和异议处理。")}</p></div></div>`;
   els.messages.appendChild(card);
@@ -630,9 +753,33 @@ function closeModal(id) {
   if (!document.querySelector(".modal-backdrop:not(.hidden)")) document.body.classList.remove("modal-open");
 }
 
+function renderModelOptions() {
+  const models = [...state.models];
+  if (!models.some((item) => item.id === state.model)) models.unshift({ id: state.model, label: `${state.model} · 已保存` });
+  const options = models.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`).join("");
+  els.quickModelSelect.innerHTML = options;
+  $("model-name").innerHTML = options;
+  els.quickModelSelect.value = state.model;
+  $("model-name").value = state.model;
+}
+
+function selectModel(model, notify = true) {
+  if (!model) return;
+  state.model = model;
+  localStorage.setItem("kbai_model", state.model);
+  renderModelOptions();
+  if (notify) showToast(`已切换模型：${state.models.find((item) => item.id === model)?.label || model}`);
+}
+
+function openSettings() {
+  $("api-key").value = state.apiKey;
+  renderModelOptions();
+  openModal("settings-modal");
+}
+
 function saveSettings() {
   state.apiKey = $("api-key").value.trim();
-  state.model = $("model-name").value.trim() || "Qwen/Qwen3.5-35B-A3B";
+  state.model = $("model-name").value.trim() || DEFAULT_MODEL;
   localStorage.setItem("kbai_api_key", state.apiKey);
   localStorage.setItem("kbai_model", state.model);
   updateApiStatus({ mock: !state.apiKey });
@@ -671,6 +818,8 @@ async function boot() {
     state.courses = catalogData.courses || [];
     state.catalogIndex = catalogData.module_index || [];
     state.knowledge = bootstrap.knowledge || {};
+    state.models = bootstrap.models?.length ? bootstrap.models : AVAILABLE_MODELS;
+    renderModelOptions();
     const firstModuleId = state.modules[0]?.id || null;
     state.learningModuleId = firstModuleId;
     state.practiceModuleId = firstModuleId;
@@ -717,11 +866,10 @@ els.input.addEventListener("keydown", (event) => {
 });
 els.finish.addEventListener("click", finishSession);
 $("clear-chat").addEventListener("click", resetSession);
-$("open-settings").addEventListener("click", () => {
-  $("api-key").value = state.apiKey;
-  $("model-name").value = state.model;
-  openModal("settings-modal");
-});
+$("open-settings").addEventListener("click", openSettings);
+$("open-model-settings").addEventListener("click", openSettings);
+els.quickModelSelect.addEventListener("change", () => selectModel(els.quickModelSelect.value));
+$("model-name").addEventListener("change", () => selectModel($("model-name").value, false));
 $("save-settings").addEventListener("click", saveSettings);
 $("demo-mode").addEventListener("click", () => {
   state.apiKey = "";

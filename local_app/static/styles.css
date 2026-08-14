@@ -56,6 +56,11 @@ button { cursor: pointer; }
 .kb-health strong { font-size: 9px; }
 .kb-health small { margin-top: 4px; color: var(--faint); font-size: 8px; }
 .settings-button { display: flex; justify-content: space-between; width: 100%; padding: 10px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; background: transparent; font-size: 9px; }
+.model-switcher { position: fixed; right: 20px; bottom: 18px; z-index: 24; display: flex; align-items: end; gap: 8px; padding: 9px; border: 1px solid var(--line-strong); border-radius: 12px; background: rgba(24, 32, 29, 0.96); box-shadow: var(--shadow); backdrop-filter: blur(16px); }
+.model-switcher label { display: grid; gap: 4px; }
+.model-switcher label span { color: var(--faint); font-size: 7px; font-weight: 800; letter-spacing: 0.08em; }
+.model-switcher select { width: min(250px, 42vw); padding: 8px 30px 8px 9px; color: var(--text); border: 1px solid var(--line); border-radius: 8px; outline: 0; background: var(--surface-3); font-size: 9px; }
+.model-switcher button { padding: 9px 10px; color: var(--lime); border: 1px solid rgba(200, 242, 106, 0.24); border-radius: 8px; background: rgba(200, 242, 106, 0.06); font-size: 8px; }
 
 .main-content { width: calc(100% - 244px); margin-left: 244px; padding: 36px 48px 64px; }
 .topbar { display: flex; justify-content: space-between; gap: 28px; max-width: 1120px; margin: 0 auto; }
@@ -211,10 +216,13 @@ button { cursor: pointer; }
 .assessment-header > strong { color: var(--lime); font-size: 40px; line-height: 1; letter-spacing: -0.06em; }
 .assessment-header strong i { color: var(--faint); font-size: 11px; font-style: normal; }
 .score-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 13px; }
-.score-row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0, 0, 0, 0.09); }
+.score-row { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0, 0, 0, 0.09); }
+.score-row-head { display: flex; justify-content: space-between; gap: 10px; }
 .score-row span { color: var(--muted); font-size: 8px; }
 .score-row strong { font-size: 10px; }
 .score-row strong i { color: var(--faint); font-size: 8px; font-style: normal; }
+.score-row small { color: var(--faint); font-size: 7px; line-height: 1.65; }
+.score-row small b { margin-right: 5px; color: var(--sand); font-weight: 800; }
 .report-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
 .report-block { padding: 11px; border-radius: 9px; background: rgba(0, 0, 0, 0.12); }
 .report-block label { color: var(--green); font-size: 8px; font-weight: 800; }
@@ -229,7 +237,7 @@ button { cursor: pointer; }
 .modal h2 { margin: 9px 0 8px; font-size: 24px; }
 .modal-copy { margin: 0 0 20px; color: var(--muted); font-size: 10px; line-height: 1.75; }
 .modal label { display: block; margin-top: 13px; color: var(--muted); font-size: 9px; }
-.modal input { width: 100%; margin-top: 6px; padding: 11px; color: var(--text); border: 1px solid var(--line); border-radius: 9px; outline: 0; background: rgba(0, 0, 0, 0.15); font-size: 10px; }
+.modal input, .modal select { width: 100%; margin-top: 6px; padding: 11px; color: var(--text); border: 1px solid var(--line); border-radius: 9px; outline: 0; background: var(--surface-3); font-size: 10px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .secondary-button { padding: 10px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 9px; background: transparent; font-size: 9px; }
 .course-modal-breadcrumb { padding-right: 40px; color: var(--faint); font-size: 11px; }
@@ -252,7 +260,7 @@ button { cursor: pointer; }
 .course-figures figure { margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #f4eee5; }
 .course-figures img { display: block; width: 100%; max-height: 360px; object-fit: contain; border-radius: 6px; }
 .course-figures figcaption { margin-top: 8px; color: #646862; font-size: 11px; line-height: 1.5; text-align: center; }
-.toast { position: fixed; right: 22px; bottom: 22px; z-index: 30; max-width: 350px; padding: 12px 14px; color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-3); box-shadow: var(--shadow); font-size: 9px; }
+.toast { position: fixed; right: 22px; bottom: 82px; z-index: 30; max-width: 350px; padding: 12px 14px; color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-3); box-shadow: var(--shadow); font-size: 9px; }
 .toast.error { border-color: rgba(238, 150, 149, 0.45); }
 
 @keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
@@ -299,4 +307,8 @@ button { cursor: pointer; }
   .coach-method { grid-template-columns: 1fr; }
   .assessment-card { margin-left: 0; }
   .course-modal { max-height: 86vh; padding: 20px; }
+  .model-switcher { right: 10px; bottom: 10px; left: 10px; }
+  .model-switcher label { flex: 1; }
+  .model-switcher select { width: 100%; }
+  .toast { right: 10px; bottom: 78px; left: 10px; }
 }
