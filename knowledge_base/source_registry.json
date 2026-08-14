@@ -1,7 +1,7 @@
 {
-  "generated_on": "2026-08-13",
-  "source_count": 34,
-  "available_text_sources": 34,
+  "generated_on": "2026-08-14",
+  "source_count": 35,
+  "available_text_sources": 35,
   "sources": [
     {
       "source_id": "SRC-001",
@@ -376,6 +376,17 @@
       "status": "available",
       "raw_file": "raw_sources/SRC-034.md",
       "extraction_note": null
+    },
+    {
+      "source_id": "SRC-035",
+      "title": "常见顾客问题与回答方式（旧版问答表）",
+      "original_path": "用户提供/1786691706191.xls",
+      "format": ".xls",
+      "size_bytes": 535552,
+      "domain": "common_qa",
+      "status": "available",
+      "raw_file": "common_qa_catalog.jsonl",
+      "extraction_note": "已提取并合并为1031个唯一问题；原回答未直接导入，已按现有课程与安全边界重写。"
     }
   ]
 }

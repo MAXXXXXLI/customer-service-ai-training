@@ -107,7 +107,7 @@
       "label": "疼痛、肩颈腰背与点阵波",
       "patterns": ["点阵波|肩颈|颈椎|腰椎|腰背|肩周|关节|疼痛|酸痛|酸胀|僵硬|筋膜|头痛|腿麻|手麻"],
       "module_id": "MOD-02",
-      "course_ids": ["COURSE-KNOW-PAIN-001", "COURSE-PROD-POINT-WAVE-001", "COURSE-OP-POINT-WAVE-001"],
+      "course_ids": ["COURSE-KNOW-PAIN-001", "COURSE-PROD-POINT-WAVE-001", "COURSE-OP-POINT-WAVE-001", "COURSE-FAQ-POINT-WAVE-001"],
       "knowledge_points": ["先问位置、性质、时间、变化、诱因、放射、伴随和影响", "先排除红旗信号", "只介绍局部机械刺激、可能感受、可暂停方式和当次观察", "不诊断病因、不替代医院方案、不承诺治疗结果"],
       "recommended_next": "风险信息不完整时先补一问；无红旗且符合当前门店SOP时，再说明非医疗体验流程。"
     },
@@ -116,37 +116,47 @@
       "label": "超V热动力与组合体验",
       "patterns": ["超V|超v|热动力|热成像|测温|温热|怕烫|烫伤|怕冷|腰冷|空调|组合方案|两台一起"],
       "module_id": "MOD-03",
-      "course_ids": ["COURSE-PROD-SUPER-V-001", "COURSE-OP-SUPER-V-001", "COURSE-PROD-COMBINATION-001"],
+      "course_ids": ["COURSE-PROD-SUPER-V-001", "COURSE-OP-SUPER-V-001", "COURSE-PROD-COMBINATION-001", "COURSE-FAQ-SUPER-V-001"],
       "knowledge_points": ["讲清定位、表面测温、运行轨迹、温热感和人工暂停", "持续以顾客体感和当前SOP为准", "表面温度图不等于器官温度或疾病诊断", "组合只在目标、耐受和安全条件匹配时讨论，不承诺效果翻倍"],
       "recommended_next": "确认皮肤、怕热、感觉异常、急性损伤和当前设备禁忌后，再让顾客选择单项了解或比较组合。"
     },
     {
       "id": "TOPIC-BEAUTY",
       "label": "美容护理与皮肤体验",
-      "patterns": ["美容|皮肤|敏感肌|过敏|泛红|刺痛|破损|痘|水光|补水|暗沉|细纹|松弛|提拉|面部|护肤|成分"],
+      "patterns": ["美容|皮肤|敏感肌|过敏|泛红|刺痛|破损|痘|水光|补水|暗沉|细纹|松弛|提拉|面部|护肤|成分|Fotona|4D|欧洲之星|热玛吉|线雕|玻尿酸|肉毒|胶原凝胶|微水光|冰点脱毛|私密|HGH"],
       "module_id": "MOD-04",
-      "course_ids": ["COURSE-PROD-BEAUTY-001", "COURSE-OP-FACE-LIFT-001"],
+      "course_ids": ["COURSE-PROD-BEAUTY-001", "COURSE-OP-FACE-LIFT-001", "COURSE-FAQ-BEAUTY-001"],
       "knowledge_points": ["先问目标、当前肤况、过敏史和近期医美或刺激性产品", "区分日常护理体验与皮肤疾病诊疗", "卸妆、触碰、拍照、测试和保存记录分别征得同意", "不承诺敏感肌一定适合或一次固定见效"],
       "recommended_next": "先完成肤况与近期项目史确认；急性敏感、破损、感染或恢复期先不操作并建议专业确认。"
     },
     {
       "id": "TOPIC-SLIMMING",
       "label": "体重、饮食与长期管理",
-      "patterns": ["减肥|减重|体重|体脂|内脏脂肪|腰围|瘦|胖|反弹|节食|代餐|饥饿|饮食|夜宵|运动|滚脂|拔罐|围度"],
+      "patterns": ["减肥|减重|体重|体脂|内脏脂肪|腰围|瘦|胖|反弹|节食|代餐|饥饿|饮食|夜宵|运动|滚脂|轰脂|拔罐|围度|184|高纤饮|饱腹巧克力|饱腹产品|美妥"],
       "module_id": "MOD-05",
-      "course_ids": ["COURSE-PROD-SLIMMING-001", "COURSE-KNOW-SLIMMING-001", "COURSE-PROD-ROLL-FAT-001"],
+      "course_ids": ["COURSE-PROD-SLIMMING-001", "COURSE-KNOW-SLIMMING-001", "COURSE-PROD-ROLL-FAT-001", "COURSE-FAQ-SLIMMING-001"],
       "knowledge_points": ["问目标、趋势、饮食、活动、睡眠、压力、既往尝试和健康风险", "用数周趋势、腰围、行为执行和真实感受复盘", "门店体验不能替代营养、活动或医疗管理", "不羞辱、不保证固定斤数、不保证不反弹"],
       "recommended_next": "把目标拆成一到两个能执行的阶段指标，再讨论与生活节奏匹配的支持方式。"
     },
     {
       "id": "TOPIC-DRUG",
       "label": "口服产品、药品与特殊人群",
-      "patterns": ["GLP-1|glp-1|司美|减肥针|处方|药品|减肥药|口服片|细美宝|剂量|停药|换药|副作用|孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|糖尿病|高血压|三高|慢病|植入物"],
+      "patterns": ["GLP-1|glp-1|司美|贝那鲁肽|利拉鲁肽|减肥针|处方|药品|减肥药|口服片|细美宝|美妥|剂量|停药|换药|副作用|孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|糖尿病|高血压|三高|慢病|植入物"],
       "module_id": "MOD-07",
       "support_module_ids": ["MOD-05"],
-      "course_ids": ["COURSE-PROD-MEITUO-001", "COURSE-OB-15", "COURSE-OB-16", "COURSE-COMPLIANCE-MEDICAL-001"],
+      "course_ids": ["COURSE-PROD-MEITUO-001", "COURSE-OB-15", "COURSE-OB-16", "COURSE-COMPLIANCE-MEDICAL-001", "COURSE-FAQ-SLIMMING-001", "COURSE-FAQ-SAFETY-001"],
       "knowledge_points": ["先确认具体产品法定身份、标签、顾客疾病与用药", "门店不诊断、不推荐剂量、不建议开始、停用或更换药物", "儿童、孕期、哺乳期和慢病人群不直接套用普通方案", "由医生、药师或相应资质人员确认适用性"],
       "recommended_next": "确认前暂停具体产品推荐，记录问题并转医生、药师或相应有资质人员。"
+    },
+    {
+      "id": "TOPIC-MATERIAL-GAP",
+      "label": "未覆盖项目与资料核验",
+      "patterns": ["定制内衣|184|高纤饮|饱腹巧克力|轰脂|Fotona|4D|欧洲之星|热玛吉|线雕|玻尿酸|肉毒|胶原凝胶|微水光|冰点脱毛|私密|HGH"],
+      "module_id": "MOD-07",
+      "support_module_ids": [],
+      "course_ids": ["COURSE-FAQ-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"],
+      "knowledge_points": ["先核对具体产品、设备型号、法定身份和当前版本", "缺少说明书、标签、SOP、禁忌或审核话术时不猜答案", "医疗美容、药品和注射问题由有资质人员确认", "给顾客明确的核验回复时间，核验前不操作、不销售"],
+      "recommended_next": "记录具体项目和问题，核对现行资料并在约定时间回复；医疗或药品问题转有资质人员。"
     },
     {
       "id": "TOPIC-CONSENT",

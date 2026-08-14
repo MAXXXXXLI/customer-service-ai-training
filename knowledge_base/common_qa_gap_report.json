@@ -1,0 +1,434 @@
+{
+  "generated_on": "2026-08-14",
+  "source_id": "SRC-035",
+  "source_file": "1786691706191.xls",
+  "source_rows": 1059,
+  "unique_questions": 1031,
+  "duplicates_merged": 28,
+  "conflicting_duplicate_answers": 5,
+  "integration": {
+    "new_learning_courses": 6,
+    "rag_question_documents": 1031,
+    "legacy_answers_imported": 0,
+    "policy": "保留问题和使用频次；回答依据现有课程与安全规则重写。"
+  },
+  "status_counts": {
+    "material_missing": 390,
+    "boundary_only": 536,
+    "covered": 105
+  },
+  "status_meanings": {
+    "covered": "现有课程可支撑安全回答。",
+    "boundary_only": "只有通用原则/安全边界，不能回答旧表中的具体疗效或医疗结论。",
+    "material_missing": "缺少具体项目/产品的现行批准资料，只能先核验。"
+  },
+  "legacy_answer_risk_signals": {
+    "medical_or_treatment_claim": 470,
+    "fixed_number_or_duration_claim": 266,
+    "absolute_or_guaranteed_claim": 213
+  },
+  "group_coverage": [
+    {
+      "group": "秀域/疼痛类",
+      "source_rows": 200,
+      "unique_questions": 200,
+      "default_status": "boundary_only",
+      "status_counts": {
+        "boundary_only": 200
+      },
+      "mapped_course_id": "COURSE-FAQ-POINT-WAVE-001",
+      "mapped_course_title": "点阵波高频问答",
+      "topic": "pain_safety"
+    },
+    {
+      "group": "秀域/促销反对意见",
+      "source_rows": 125,
+      "unique_questions": 125,
+      "default_status": "boundary_only",
+      "status_counts": {
+        "boundary_only": 124,
+        "material_missing": 1
+      },
+      "mapped_course_id": "COURSE-FAQ-OBJECTION-001",
+      "mapped_course_title": "高频异议问答",
+      "topic": "objection"
+    },
+    {
+      "group": "秀域/瘦身/古方减脂",
+      "source_rows": 109,
+      "unique_questions": 109,
+      "default_status": "boundary_only",
+      "status_counts": {
+        "boundary_only": 109
+      },
+      "mapped_course_id": "COURSE-FAQ-SLIMMING-001",
+      "mapped_course_title": "体重管理高频问答",
+      "topic": "slimming"
+    },
+    {
+      "group": "秀域/瘦身/轰脂塑形",
+      "source_rows": 78,
+      "unique_questions": 78,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 78
+      },
+      "mapped_course_id": "COURSE-FAQ-SLIMMING-001",
+      "mapped_course_title": "体重管理高频问答",
+      "topic": "fat_sculpting"
+    },
+    {
+      "group": "秀域/定制内衣",
+      "source_rows": 66,
+      "unique_questions": 66,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 66
+      },
+      "mapped_course_id": "COURSE-FAQ-SAFETY-001",
+      "mapped_course_title": "资料不足怎么回答",
+      "topic": "custom_underwear"
+    },
+    {
+      "group": "秀域/点阵波",
+      "source_rows": 63,
+      "unique_questions": 63,
+      "default_status": "covered",
+      "status_counts": {
+        "covered": 57,
+        "material_missing": 1,
+        "boundary_only": 5
+      },
+      "mapped_course_id": "COURSE-FAQ-POINT-WAVE-001",
+      "mapped_course_title": "点阵波高频问答",
+      "topic": "point_wave"
+    },
+    {
+      "group": "秀域/超V热动力",
+      "source_rows": 54,
+      "unique_questions": 52,
+      "default_status": "covered",
+      "status_counts": {
+        "covered": 51,
+        "boundary_only": 1
+      },
+      "mapped_course_id": "COURSE-FAQ-SUPER-V-001",
+      "mapped_course_title": "超V高频问答",
+      "topic": "super_v"
+    },
+    {
+      "group": "秀域/亚健康",
+      "source_rows": 53,
+      "unique_questions": 50,
+      "default_status": "boundary_only",
+      "status_counts": {
+        "boundary_only": 50
+      },
+      "mapped_course_id": "COURSE-FAQ-SAFETY-001",
+      "mapped_course_title": "资料不足怎么回答",
+      "topic": "medical_boundary"
+    },
+    {
+      "group": "秀域/皮肤管理类",
+      "source_rows": 38,
+      "unique_questions": 38,
+      "default_status": "boundary_only",
+      "status_counts": {
+        "boundary_only": 29,
+        "material_missing": 9
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "beauty"
+    },
+    {
+      "group": "秀域/瘦身/184饱腹产品",
+      "source_rows": 32,
+      "unique_questions": 32,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 32
+      },
+      "mapped_course_id": "COURSE-FAQ-SLIMMING-001",
+      "mapped_course_title": "体重管理高频问答",
+      "topic": "satiety_product"
+    },
+    {
+      "group": "春语/肤质",
+      "source_rows": 26,
+      "unique_questions": 26,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 26
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语",
+      "source_rows": 25,
+      "unique_questions": 25,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 25
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语/松弛",
+      "source_rows": 23,
+      "unique_questions": 23,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 23
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "秀域/寒凉类",
+      "source_rows": 23,
+      "unique_questions": 23,
+      "default_status": "boundary_only",
+      "status_counts": {
+        "boundary_only": 23
+      },
+      "mapped_course_id": "COURSE-FAQ-SUPER-V-001",
+      "mapped_course_title": "超V高频问答",
+      "topic": "super_v_safety"
+    },
+    {
+      "group": "春语/面部凹陷",
+      "source_rows": 22,
+      "unique_questions": 22,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 22
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "秀域/皮肤管理类/胶原微水光",
+      "source_rows": 21,
+      "unique_questions": 21,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 21
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语/私密",
+      "source_rows": 18,
+      "unique_questions": 18,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 18
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语/斑点",
+      "source_rows": 16,
+      "unique_questions": 16,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 16
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语/敏感",
+      "source_rows": 15,
+      "unique_questions": 15,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 15
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语/皱纹",
+      "source_rows": 14,
+      "unique_questions": 14,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 14
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语/欧洲之星",
+      "source_rows": 11,
+      "unique_questions": 11,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 11
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "春语/下垂",
+      "source_rows": 10,
+      "unique_questions": 10,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 10
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    },
+    {
+      "group": "秀域/皮肤管理类/冰点脱毛",
+      "source_rows": 9,
+      "unique_questions": 9,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 9
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "hair_removal"
+    },
+    {
+      "group": "秀域/秀域介绍",
+      "source_rows": 4,
+      "unique_questions": 4,
+      "default_status": "boundary_only",
+      "status_counts": {
+        "boundary_only": 4
+      },
+      "mapped_course_id": "COURSE-FAQ-OBJECTION-001",
+      "mapped_course_title": "高频异议问答",
+      "topic": "company_dynamic"
+    },
+    {
+      "group": "秀域/皮肤管理类/产品类",
+      "source_rows": 2,
+      "unique_questions": 2,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 2
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "skin_product"
+    },
+    {
+      "group": "春语/眼周年轻",
+      "source_rows": 2,
+      "unique_questions": 2,
+      "default_status": "material_missing",
+      "status_counts": {
+        "material_missing": 2
+      },
+      "mapped_course_id": "COURSE-FAQ-BEAUTY-001",
+      "mapped_course_title": "美容高频问答",
+      "topic": "medical_beauty"
+    }
+  ],
+  "missing_materials": [
+    {
+      "topic": "184饱腹产品",
+      "needed": [
+        "现行产品全名与法定类别",
+        "包装标签/配料表/营养成分",
+        "用法用量",
+        "禁忌与特殊人群",
+        "不良反应/投诉处理",
+        "审核宣传话术"
+      ]
+    },
+    {
+      "topic": "美妥/细美宝产品关系",
+      "needed": [
+        "是否为同一产品的正式确认",
+        "现行包装和标签",
+        "冲调/使用说明",
+        "与药品同用及慢病边界"
+      ]
+    },
+    {
+      "topic": "轰脂塑形",
+      "needed": [
+        "与现有滚脂项目是否同一设备/项目",
+        "设备型号与说明书",
+        "适用范围/禁忌",
+        "标准操作SOP",
+        "异常反应和售后",
+        "可使用的效果证据"
+      ]
+    },
+    {
+      "topic": "定制内衣",
+      "needed": [
+        "款式/材质/尺码与测量标准",
+        "洗护说明",
+        "质保与两年承诺依据",
+        "退换/售后政策",
+        "当前价格"
+      ]
+    },
+    {
+      "topic": "春语医疗美容",
+      "needed": [
+        "机构和人员资质",
+        "各项目现行产品/设备注册资料",
+        "适应症与禁忌",
+        "知情同意",
+        "术前术后护理",
+        "不良事件/急救流程",
+        "效果与维持时间证据",
+        "当前价格与活动"
+      ]
+    },
+    {
+      "topic": "冰点脱毛",
+      "needed": [
+        "当前设备型号/说明书",
+        "适用范围与禁忌",
+        "操作参数和疗程依据",
+        "术后护理",
+        "副作用/异常处理",
+        "‘永久’表述审核"
+      ]
+    },
+    {
+      "topic": "疾病与药品问题",
+      "needed": [
+        "经医疗和合规审核的统一边界话术",
+        "红旗症状和转介路径",
+        "GLP-1等药品的医生/药师咨询渠道",
+        "禁止宣传清单"
+      ]
+    },
+    {
+      "topic": "价格、活动与券",
+      "needed": [
+        "按城市/门店/日期可查询的当前系统数据",
+        "有效期/适用范围",
+        "退款和退出规则",
+        "更新责任人"
+      ]
+    }
+  ]
+}

@@ -1,11 +1,12 @@
 {
   "version": "2.0",
   "purpose": "员工可直接阅读的完整课程目录；不展示原始文件名和内部来源编号。",
-  "course_count": 38,
+  "course_count": 44,
   "coverage": {
     "knowledge_cards": 21,
     "objection_cases": 17,
-    "detailed_core_courses": 21
+    "detailed_core_courses": 21,
+    "common_qa_courses": 6
   },
   "module_index": [
     {
@@ -51,8 +52,8 @@
     },
     {
       "module_id": "MOD-02",
-      "course_count": 3,
-      "group_count": 3,
+      "course_count": 4,
+      "group_count": 4,
       "groups": [
         {
           "group_id": "M02-G01",
@@ -80,18 +81,28 @@
           "course_ids": [
             "COURSE-KNOW-PAIN-001"
           ]
+        },
+        {
+          "group_id": "M02-G04",
+          "title": "高频问答",
+          "description": "把表中高频点阵波与疼痛问题改写成安全回答。",
+          "course_count": 1,
+          "course_ids": [
+            "COURSE-FAQ-POINT-WAVE-001"
+          ]
         }
       ],
       "course_ids": [
         "COURSE-PROD-POINT-WAVE-001",
         "COURSE-OP-POINT-WAVE-001",
-        "COURSE-KNOW-PAIN-001"
+        "COURSE-KNOW-PAIN-001",
+        "COURSE-FAQ-POINT-WAVE-001"
       ]
     },
     {
       "module_id": "MOD-03",
-      "course_count": 3,
-      "group_count": 2,
+      "course_count": 4,
+      "group_count": 3,
       "groups": [
         {
           "group_id": "M03-G01",
@@ -111,18 +122,28 @@
           "course_ids": [
             "COURSE-OP-SUPER-V-001"
           ]
+        },
+        {
+          "group_id": "M03-G03",
+          "title": "高频问答",
+          "description": "练习超V温热体验、组合方案和边界问题。",
+          "course_count": 1,
+          "course_ids": [
+            "COURSE-FAQ-SUPER-V-001"
+          ]
         }
       ],
       "course_ids": [
         "COURSE-PROD-SUPER-V-001",
         "COURSE-PROD-COMBINATION-001",
-        "COURSE-OP-SUPER-V-001"
+        "COURSE-OP-SUPER-V-001",
+        "COURSE-FAQ-SUPER-V-001"
       ]
     },
     {
       "module_id": "MOD-04",
-      "course_count": 2,
-      "group_count": 2,
+      "course_count": 3,
+      "group_count": 3,
       "groups": [
         {
           "group_id": "M04-G01",
@@ -141,17 +162,27 @@
           "course_ids": [
             "COURSE-OP-FACE-LIFT-001"
           ]
+        },
+        {
+          "group_id": "M04-G03",
+          "title": "高频问答",
+          "description": "区分日常护理、设备项目和医疗美容。",
+          "course_count": 1,
+          "course_ids": [
+            "COURSE-FAQ-BEAUTY-001"
+          ]
         }
       ],
       "course_ids": [
         "COURSE-PROD-BEAUTY-001",
-        "COURSE-OP-FACE-LIFT-001"
+        "COURSE-OP-FACE-LIFT-001",
+        "COURSE-FAQ-BEAUTY-001"
       ]
     },
     {
       "module_id": "MOD-05",
-      "course_count": 4,
-      "group_count": 3,
+      "course_count": 5,
+      "group_count": 4,
       "groups": [
         {
           "group_id": "M05-G01",
@@ -180,19 +211,29 @@
           "course_ids": [
             "COURSE-PROD-MEITUO-001"
           ]
+        },
+        {
+          "group_id": "M05-G04",
+          "title": "高频问答",
+          "description": "练习减重、反弹、营养和产品问题。",
+          "course_count": 1,
+          "course_ids": [
+            "COURSE-FAQ-SLIMMING-001"
+          ]
         }
       ],
       "course_ids": [
         "COURSE-PROD-SLIMMING-001",
         "COURSE-KNOW-SLIMMING-001",
         "COURSE-PROD-ROLL-FAT-001",
-        "COURSE-PROD-MEITUO-001"
+        "COURSE-PROD-MEITUO-001",
+        "COURSE-FAQ-SLIMMING-001"
       ]
     },
     {
       "module_id": "MOD-06",
-      "course_count": 15,
-      "group_count": 5,
+      "course_count": 16,
+      "group_count": 6,
       "groups": [
         {
           "group_id": "M06-G01",
@@ -248,6 +289,15 @@
           "course_ids": [
             "COURSE-OB-14"
           ]
+        },
+        {
+          "group_id": "M06-G06",
+          "title": "问答表实训",
+          "description": "用五步法处理效果、价格、比较和医疗异议。",
+          "course_count": 1,
+          "course_ids": [
+            "COURSE-FAQ-OBJECTION-001"
+          ]
         }
       ],
       "course_ids": [
@@ -265,13 +315,14 @@
         "COURSE-OB-07",
         "COURSE-OB-08",
         "COURSE-OB-09",
-        "COURSE-OB-14"
+        "COURSE-OB-14",
+        "COURSE-FAQ-OBJECTION-001"
       ]
     },
     {
       "module_id": "MOD-07",
-      "course_count": 7,
-      "group_count": 3,
+      "course_count": 8,
+      "group_count": 4,
       "groups": [
         {
           "group_id": "M07-G01",
@@ -303,6 +354,15 @@
             "COURSE-OB-16",
             "COURSE-OB-17"
           ]
+        },
+        {
+          "group_id": "M07-G04",
+          "title": "资料缺口处理",
+          "description": "遇到未覆盖项目时不猜，按流程核验。",
+          "course_count": 1,
+          "course_ids": [
+            "COURSE-FAQ-SAFETY-001"
+          ]
         }
       ],
       "course_ids": [
@@ -312,7 +372,8 @@
         "COURSE-OB-13",
         "COURSE-OB-15",
         "COURSE-OB-16",
-        "COURSE-OB-17"
+        "COURSE-OB-17",
+        "COURSE-FAQ-SAFETY-001"
       ]
     }
   ],
@@ -1108,6 +1169,75 @@
       "group_order": 3
     },
     {
+      "id": "COURSE-FAQ-POINT-WAVE-001",
+      "module_id": "MOD-02",
+      "group_id": "M02-G04",
+      "group_title": "高频问答",
+      "title": "点阵波高频问答",
+      "summary": "回答项目原理、疼痛感受、做后不适与疾病边界。",
+      "estimated_minutes": 12,
+      "sections": [
+        {
+          "title": "先分四类问题",
+          "content": [
+            "项目是什么：说明局部重复机械刺激、可能感受和暂停方式。",
+            "体验怎么样：以顾客当次体感和同一动作复盘，不保证效果。",
+            "做后不舒服：先暂停、记录、评估和升级，不解释成有效。",
+            "能否治疗疾病：不诊断、不替代医疗，先排查红旗信号。"
+          ]
+        },
+        {
+          "title": "高频回答",
+          "content": [
+            {
+              "label": "什么是点阵波",
+              "content": "以局部重复机械刺激为主的门店体验项目，可能有敲击、振动或酸胀感；从可接受程度开始，可随时暂停。"
+            },
+            {
+              "label": "做的时候太痛",
+              "content": "疼痛不是效果指标。立即降低或暂停，问清是酸胀、锐痛、灼痛还是麻木；锐痛、麻木加重或无法忍受时停止。"
+            },
+            {
+              "label": "做完更痛、头痛或淤青",
+              "content": "不能说是整健反应或越痛越有效。先记录程度和变化，检查红旗信号并按异常流程处理。"
+            },
+            {
+              "label": "能治颈椎病、腰突或肩周炎吗",
+              "content": "门店不能诊断或治疗疾病。先问麻木无力、外伤、发热红肿等风险；需要时优先医疗评估。"
+            },
+            {
+              "label": "和冲击波、按摩有什么区别",
+              "content": "只说明本设备当前说明书和门店流程，不把不同资质、适用范围的设备简单等同，也不编造疗效倍数。"
+            }
+          ]
+        },
+        {
+          "title": "必须停止与转介",
+          "content": [
+            "胸痛、呼吸困难、晕厥或突发剧痛",
+            "进行性麻木无力、行走异常或大小便异常",
+            "发热伴红肿热痛、外伤后明显受限",
+            "顾客明确要求停止或出现灼痛、锐痛、头晕等异常"
+          ]
+        },
+        {
+          "title": "旧表中不能直接使用",
+          "content": [
+            "越痛或淤青越有效",
+            "释放干细胞、修复椎间盘、提高免疫力、消除炎症",
+            "治疗颈椎病、糖尿病足、痛风或前列腺炎",
+            "保证当次缓解、固定次数见效或替代医院"
+          ]
+        }
+      ],
+      "order": 4,
+      "kind": "knowledge",
+      "source_ids": [
+        "SRC-035"
+      ],
+      "authority": "source_questions_plus_approved_safety_rewrite"
+    },
+    {
       "id": "COURSE-PROD-SUPER-V-001",
       "module_id": "MOD-03",
       "order": 1,
@@ -1343,6 +1473,65 @@
       "group_order": 2
     },
     {
+      "id": "COURSE-FAQ-SUPER-V-001",
+      "module_id": "MOD-03",
+      "group_id": "M03-G03",
+      "group_title": "高频问答",
+      "title": "超V高频问答",
+      "summary": "讲清温热体验、表面测温、组合项目与安全边界。",
+      "estimated_minutes": 10,
+      "sections": [
+        {
+          "title": "高频回答",
+          "content": [
+            {
+              "label": "超V是什么",
+              "content": "以较大区域温热和按摩样体验为主，过程中按轨迹运行并持续确认热感与舒适度。"
+            },
+            {
+              "label": "超V就是热而已吗",
+              "content": "可以说明覆盖、轨迹、表面测温和人工暂停流程；不能把温热感解释成器官温度、排寒、消炎或免疫效果。"
+            },
+            {
+              "label": "没感觉很热怎么办",
+              "content": "热感有个体差异，不能为了追求感觉盲目上调；按当前设备SOP和安全范围处理。"
+            },
+            {
+              "label": "能改善痛经、感冒或前列腺问题吗",
+              "content": "这些属于医疗问题，门店项目不能替代诊疗。先确认症状和风险，需要时建议医疗评估。"
+            },
+            {
+              "label": "为什么要和点阵波一起做",
+              "content": "两种体验方式不同，不是每个人都需要组合；只能在目标清楚、SOP允许且顾客同意时讨论，不能说效果翻倍。"
+            }
+          ]
+        },
+        {
+          "title": "表面测温怎么解释",
+          "content": [
+            "记录的是可见皮肤表面温度分布。",
+            "读数受室温、暴露、汗液和附近热源影响。",
+            "不能根据颜色诊断寒湿、炎症、器官或免疫状态。"
+          ]
+        },
+        {
+          "title": "立即暂停",
+          "content": [
+            "过热、灼痛、明显疼痛、头晕、恶心或呼吸不适",
+            "皮肤迅速加重的红肿、风团或破损",
+            "设备碰撞、越界、异常噪声或机械臂失控",
+            "顾客要求停止"
+          ]
+        }
+      ],
+      "order": 4,
+      "kind": "knowledge",
+      "source_ids": [
+        "SRC-035"
+      ],
+      "authority": "source_questions_plus_approved_safety_rewrite"
+    },
+    {
       "id": "COURSE-PROD-BEAUTY-001",
       "module_id": "MOD-04",
       "order": 1,
@@ -1557,6 +1746,53 @@
       "group_id": "M04-G02",
       "group_title": "操作与体验安全",
       "group_order": 2
+    },
+    {
+      "id": "COURSE-FAQ-BEAUTY-001",
+      "module_id": "MOD-04",
+      "group_id": "M04-G03",
+      "group_title": "高频问答",
+      "title": "美容高频问答",
+      "summary": "区分日常护理、设备项目和医疗美容问题。",
+      "estimated_minutes": 12,
+      "sections": [
+        {
+          "title": "回答前先确认",
+          "content": [
+            "顾客最在意干燥、暗沉、细纹、松弛、出油、敏感还是其他问题",
+            "是否有泛红刺痛、破损、渗出、明显炎症或晒伤",
+            "近期是否做过刷酸、激光、注射、线雕或使用强刺激产品",
+            "是否有成分过敏和既往不良反应"
+          ]
+        },
+        {
+          "title": "可以回答的范围",
+          "content": [
+            "现有非医疗护理的清洁、仪器体验、补水、面膜和当次记录流程",
+            "不同人肤况和感受存在差异，不承诺固定提升或维持时间",
+            "出现疼痛、持续红肿、过敏或其他异常时先停止并升级处理"
+          ]
+        },
+        {
+          "title": "必须补资料后才能回答",
+          "content": [
+            "热玛吉、Fotona 4D、线雕、玻尿酸、肉毒素、胶原凝胶和HGH",
+            "胶原微水光、水光针、私密激光/注射和祛斑医疗项目",
+            "冰点脱毛的当前设备型号、参数、禁忌、疗程、永久性与术后护理",
+            "玻色因等产品的当前成分、标签、适用人群和过敏信息"
+          ]
+        },
+        {
+          "title": "统一话术",
+          "content": "这个具体项目涉及设备或医疗资质，我先不凭旧资料判断。请允许我核对当前说明书、禁忌、操作资质和审核话术；如果您现在有明显红肿、疼痛或正在治疗，先由有资质的专业人员评估。"
+        }
+      ],
+      "order": 3,
+      "kind": "knowledge",
+      "source_ids": [
+        "SRC-035"
+      ],
+      "authority": "source_questions_plus_approved_safety_rewrite"
     },
     {
       "id": "COURSE-PROD-SLIMMING-001",
@@ -1903,6 +2139,66 @@
       "group_id": "M05-G03",
       "group_title": "产品与药品安全",
       "group_order": 3
+    },
+    {
+      "id": "COURSE-FAQ-SLIMMING-001",
+      "module_id": "MOD-05",
+      "group_id": "M05-G04",
+      "group_title": "高频问答",
+      "title": "体重管理高频问答",
+      "summary": "回答减重、反弹、营养、产品与塑形项目问题。",
+      "estimated_minutes": 12,
+      "sections": [
+        {
+          "title": "高频回答",
+          "content": [
+            {
+              "label": "效果怎么样、能瘦多少",
+              "content": "先了解目标、既往经历和可执行条件；用体重、围度、体感和行为变化阶段复盘，不承诺固定斤数或速度。"
+            },
+            {
+              "label": "担心反弹",
+              "content": "不能保证永不反弹。重点讨论能长期保持的饮食、活动、睡眠和巩固复盘。"
+            },
+            {
+              "label": "蛋白质重要吗",
+              "content": "均衡营养和足够蛋白质有助于维持正常身体功能；具体摄入量需结合个人情况，慢病人群应咨询专业人员。"
+            },
+            {
+              "label": "美妥/细美宝怎么吃",
+              "content": "先核对顾客手里的产品名称、包装、法定类别和当前标签；未核验前不回答剂量、搭配药物或特殊人群用法。"
+            },
+            {
+              "label": "GLP-1类药物安全吗",
+              "content": "药品适应症、禁忌、剂量和相互作用必须由医生或药师判断，门店员工不建议开始、停用或更换药物。"
+            }
+          ]
+        },
+        {
+          "title": "当前资料缺口",
+          "content": [
+            "184高纤饮/饱腹巧克力的现行产品标签、成分、营养、用法、禁忌和不良反应",
+            "‘美妥’与现有‘细美宝’是否为同一产品及现行包装和使用说明",
+            "‘轰脂塑形’与现有‘滚脂项目’是否为同一设备/项目，以及现行SOP、禁忌和异常处理"
+          ]
+        },
+        {
+          "title": "禁止表达",
+          "content": [
+            "固定一个月减多少斤",
+            "保证不反弹或产品绝对安全",
+            "把肥胖解释为缺少GLP-1",
+            "建议药物剂量、注射频次、停药或换药",
+            "把异常反应解释成脂肪正在代谢"
+          ]
+        }
+      ],
+      "order": 5,
+      "kind": "knowledge",
+      "source_ids": [
+        "SRC-035"
+      ],
+      "authority": "source_questions_plus_approved_safety_rewrite"
     },
     {
       "id": "COURSE-FLOW-OBJECTION-001",
@@ -2887,6 +3183,53 @@
       "group_order": 5
     },
     {
+      "id": "COURSE-FAQ-OBJECTION-001",
+      "module_id": "MOD-06",
+      "group_id": "M06-G06",
+      "group_title": "问答表实训",
+      "title": "高频异议问答",
+      "summary": "把旧问答表改写成可核验、可选择、不施压的回应。",
+      "estimated_minutes": 10,
+      "sections": [
+        {
+          "title": "统一五步",
+          "content": [
+            "承接：准确复述顾客担心。",
+            "澄清：一次只问一个关键问题。",
+            "回应：只用当前已核验资料。",
+            "选择：提供真实可行的下一步，也允许暂不决定。",
+            "确认：询问是否解决顾虑和希望怎么安排。"
+          ]
+        },
+        {
+          "title": "效果与比较",
+          "content": [
+            "先定义顾客说的‘有效’是体重、围度、疼痛、舒适度还是其他指标。",
+            "不贬低医院、医生或竞品，不编造设备来源、价格倍数和疗效倍数。",
+            "不把没有变化解释成身体在调整，不用固定次数保证后续有效。"
+          ]
+        },
+        {
+          "title": "价格与活动",
+          "content": [
+            "确认城市、门店、日期和项目范围。",
+            "只使用当前系统或最新公告，旧表价格、券和活动不直接回答。",
+            "说明完整费用、有效期、退出/退款规则和是否还有后续费用。"
+          ]
+        },
+        {
+          "title": "药品与医疗异议",
+          "content": "涉及GLP-1、注射、慢病、孕期、儿童或不良反应时，停止销售推进，不给剂量或适用性结论，转医生、药师或有资质人员。"
+        }
+      ],
+      "order": 16,
+      "kind": "knowledge",
+      "source_ids": [
+        "SRC-035"
+      ],
+      "authority": "source_questions_plus_approved_safety_rewrite"
+    },
+    {
       "id": "COURSE-SERVICE-SAFETY-001",
       "module_id": "MOD-07",
       "order": 1,
@@ -3385,6 +3728,48 @@
       "group_id": "M07-G03",
       "group_title": "高风险顾客问答",
       "group_order": 3
+    },
+    {
+      "id": "COURSE-FAQ-SAFETY-001",
+      "module_id": "MOD-07",
+      "group_id": "M07-G04",
+      "group_title": "资料缺口处理",
+      "title": "资料不足怎么回答",
+      "summary": "面对知识库没有覆盖的项目，做到不猜、会核验、能回复。",
+      "estimated_minutes": 8,
+      "sections": [
+        {
+          "title": "五步处理",
+          "content": [
+            "承认当前不能确定，不用旧话术凑答案。",
+            "记录具体产品、设备型号、顾客情况和原问题。",
+            "核对当前说明书、标签、SOP、禁忌、异常处理和合规话术。",
+            "动态价格和活动再核对城市、门店、日期与生效版本。",
+            "给顾客明确回复时间和渠道；核验前不操作、不销售。"
+          ]
+        },
+        {
+          "title": "目前缺少的项目资料",
+          "content": [
+            "定制内衣完整产品资料、尺码/材质、质保、洗护和售后政策",
+            "184饱腹产品的现行标签和安全资料",
+            "轰脂塑形现行设备资料及其与滚脂项目的关系",
+            "春语医疗美容项目的资质、说明书、知情同意、禁忌、术后护理和异常处理",
+            "冰点脱毛当前设备SOP与安全资料",
+            "疾病、药品和疗效说法的医学/合规审核版本"
+          ]
+        },
+        {
+          "title": "可直接说的话",
+          "content": "这个问题我目前没有足够的现行资料，不能凭旧答案猜。我先记录您的具体产品/项目和关注点，核对当前说明书与负责人员后，在约定时间准确回复您。"
+        }
+      ],
+      "order": 8,
+      "kind": "knowledge",
+      "source_ids": [
+        "SRC-035"
+      ],
+      "authority": "source_questions_plus_approved_safety_rewrite"
     }
   ]
 }
