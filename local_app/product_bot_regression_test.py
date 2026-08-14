@@ -200,6 +200,56 @@ def run() -> None:
         check("all_scenarios_have_unique_continuous_replies", not continuity_failures, continuity_failures)
         check("all_training_turns_have_complete_feedback", not feedback_failures, feedback_failures)
 
+        # A vague affirmative is not an answer to the customer's current question.
+        # This was the regression shown in the reported screenshot: "有的，有的"
+        # incorrectly advanced straight to the next hidden objection.
+        scenario = server.SCENARIOS[0]
+        opening_history = [{"role": "assistant", "content": scenario["opening"]}]
+        vague_messages = ["有的，有的", "有的", "可以", "今天下雨"]
+        vague_replies = {
+            message: server.test_fallback_reply(scenario, opening_history, message)
+            for message in vague_messages
+        }
+        check(
+            "customer_does_not_advance_after_vague_affirmation",
+            all("具体" in reply and "办法" in reply and "怕疼" not in reply for reply in vague_replies.values()),
+            vague_replies,
+        )
+        all_scenario_vague_failures = []
+        for candidate in server.SCENARIOS:
+            candidate_history = [{"role": "assistant", "content": candidate["opening"]}]
+            for message in vague_messages:
+                candidate_reply = server.test_fallback_reply(candidate, candidate_history, message)
+                if "具体" not in candidate_reply or ("办法" not in candidate_reply and "说说" not in candidate_reply):
+                    all_scenario_vague_failures.append({"scenario": candidate["id"], "message": message, "reply": candidate_reply})
+        check("all_scenarios_hold_on_vague_employee_answers", not all_scenario_vague_failures, all_scenario_vague_failures)
+        model_jump = server.normalized_customer_reply(
+            "我比较怕疼，过程中会不会很难受？",
+            scenario,
+            opening_history,
+            "有的，有的",
+        )
+        check(
+            "real_model_hidden_objection_jump_is_blocked",
+            "具体" in model_jump and "办法" in model_jump and "怕疼" not in model_jump,
+            model_jump,
+        )
+        held_history = [
+            *opening_history,
+            {"role": "user", "content": "有的，有的"},
+            {"role": "assistant", "content": vague_replies["有的，有的"]},
+        ]
+        after_detail = server.test_fallback_reply(
+            scenario,
+            held_history,
+            "我们会先了解你的肩颈情况，再介绍适合的体验方式和注意事项。",
+        )
+        check(
+            "clarification_turn_does_not_skip_first_hidden_objection",
+            after_detail == "我比较怕疼，过程中会不会很难受？",
+            after_detail,
+        )
+
         unsafe_training = server.normalize_training_result(
             {"customer_reply": "那听起来挺厉害的。", "feedback": {}},
             server.SCENARIOS[0],

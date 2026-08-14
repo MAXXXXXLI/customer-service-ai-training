@@ -625,7 +625,7 @@ LIMITED_CUSTOMER_POLICY = """
 4. 每轮只表达一个事实、感受或顾虑，通常 15—60 个汉字；最多问一个符合普通顾客认知的问题，不能连续盘问或列检查清单。
 5. 始终记住自己是来咨询的顾客。员工答错时可以不满意、疑惑或要求重新说明，但不能变成咨询师、教练、医生或产品专家。
 6. 不主动使用“适用性确认、专业评估、医疗评估、红旗、禁忌、SOP、成分核对、设备型号、阶段指标、复盘”等专业词。若员工使用这些词，只按普通顾客能理解的方式回应。
-7. 员工只给出简单否定或答非所问时，继续围绕自己的原始困扰表达不解，不要突然跳到价格、成分或另一个新话题。
+7. 员工只给出简单否定、空泛肯定（例如“有的”“可以”“好的”）或答非所问时，这不算已经回答顾客。先围绕顾客上一问追问具体方法、项目或安排，不要突然跳到价格、成分或另一个新话题。只有员工已经给出与当前问题相关的实际说明后，才进入下一条顾虑。
 """
 
 
@@ -858,6 +858,56 @@ CUSTOMER_ROLE_DRIFT_MARKERS = re.compile(
 )
 
 
+CUSTOMER_VAGUE_EMPLOYEE_REPLY = re.compile(
+    r"^(?:有|有的|有办法|有相关项目|可以|可以的|能做|好的|好|是的|对|对的|没问题|了解|知道)"
+    r"(?:[，。！!、,\s]*(?:有|的|办法|可以|好的|好|是的|对|对的|没问题|了解|知道))*[。！!，,、\s]*$",
+    re.I,
+)
+CUSTOMER_HOLD_REPLY_MARKERS = re.compile(r"没听明白|具体是什么办法|再具体说说|再说清楚|先介绍一下", re.I)
+
+
+def customer_clarification_reply(scenario: dict[str, Any] | None, history: list[dict[str, Any]]) -> str:
+    scenario = scenario or {}
+    persona = scenario.get("persona") if isinstance(scenario.get("persona"), dict) else {}
+    goal = clean_text(persona.get("goal")) or "我现在这个困扰"
+    last_customer = next(
+        (clean_text(item.get("content", "")) for item in reversed(history) if item.get("role") == "assistant"),
+        "",
+    )
+    if re.search(r"有没有|有适合|什么办法|什么方法|怎么|如何|方案|项目", last_customer):
+        return "我还没听明白，具体是什么办法，适合我这种情况吗？"
+    return f"我还没听明白，能再具体说说吗？我主要还是想解决{goal}。"
+
+
+def employee_message_needs_customer_clarification(history: list[dict[str, Any]], employee_message: str) -> bool:
+    employee_message = clean_text(employee_message)
+    if not employee_message:
+        return True
+    if re.search(r"我错了|说错了|不好意思|抱歉|不能做|做不了|没什么不同|没区别|都一样|不适合|多久|多长时间|什么时候开始|哪里|哪个部位|什么位置", employee_message):
+        return False
+    if CUSTOMER_VAGUE_EMPLOYEE_REPLY.fullmatch(employee_message):
+        return True
+    if len(employee_message) <= 8 and not re.search(r"[？?]", employee_message):
+        return True
+    last_customer = next(
+        (clean_text(item.get("content", "")) for item in reversed(history) if item.get("role") == "assistant"),
+        "",
+    )
+    asks_for_method = bool(re.search(r"有没有|有适合|什么办法|什么方法|怎么|如何|方案|项目", last_customer))
+    if asks_for_method and not re.search(r"方法|办法|方案|项目|体验|流程|步骤|安排|介绍|说明|根据|了解|评估|确认|适合", employee_message):
+        return True
+    return False
+
+
+def hidden_objection_index(history: list[dict[str, Any]]) -> int:
+    user_turns = sum(1 for item in history if item.get("role") == "user")
+    held_turns = sum(
+        1 for item in history
+        if item.get("role") == "assistant" and CUSTOMER_HOLD_REPLY_MARKERS.search(clean_text(item.get("content", "")))
+    )
+    return max(0, user_turns - held_turns)
+
+
 def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
     scenario = scenario or {}
     persona = scenario.get("persona") if isinstance(scenario.get("persona"), dict) else {}
@@ -871,8 +921,10 @@ def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str,
         return "有一阵子了，最近感觉比以前明显一些。"
     if re.search(r"哪里|哪个部位|什么位置", employee_message):
         return f"主要就是{goal}，其他地方我暂时没太留意。"
+    if employee_message_needs_customer_clarification(history, employee_message):
+        return customer_clarification_reply(scenario, history)
     objections = list((scenario or {}).get("hidden_objections") or [])
-    turn_number = sum(1 for item in history if item.get("role") == "user")
+    turn_number = hidden_objection_index(history)
     if turn_number >= len(objections):
         generic_replies = [
             f"这些专业的我不太懂，我主要就是想解决{goal}。",
@@ -923,6 +975,8 @@ def customer_reply_is_invalid(reply: str) -> bool:
 
 def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
     reply = clean_text(reply)
+    if employee_message_needs_customer_clarification(history, employee_message):
+        return customer_clarification_reply(scenario, history)
     previous_customer_replies = [clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"]
     repeated = any(reply == previous or (len(reply) >= 18 and len(previous) >= 18 and reply[:18] == previous[:18]) for previous in previous_customer_replies)
     if scenario and reply == clean_text(scenario.get("opening", "")):

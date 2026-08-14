@@ -435,7 +435,7 @@ function normalizeStaticTrainingFeedback(result, scenario, history, rubric, mess
 
 const TEST_INTERNAL_MARKERS = /考核|评分|知识库|方法路由|隐藏异议|must_test|员工应该|培训教练/i;
 const CUSTOMER_ROLE_DRIFT_MARKERS = /适用性确认|专业评估|医疗评估|红旗|禁忌|SOP|成分核对|设备型号|阶段指标|复盘|治疗史|特殊护肤品|强刺激产品|作用原理|工作原理|操作流程|测温|设备参数|产品机制|(?:建议|请)您|我建议(?:你|您)|你(?:应该|需要).{0,12}(?:询问|确认|了解|评估|说明)|您.{0,18}(?:有没有|是否|做过|用过|最近一次|病史|过敏史)/i;
-const LIMITED_CUSTOMER_POLICY = `顾客认知边界（最高优先级）：顾客只知道自己的困扰、感受、生活情况和真实顾虑；最多听过一个模糊项目名，不知道原理、成分、设备、适用标准、禁忌或操作流程。只回答员工最新问题，每轮只说一个事实、感受或顾虑，通常15—60个汉字，最多问一个普通顾客会问的问题。不得替员工做需求分析、风险筛查或建议，不得反问员工的病史、医美史、过敏史、用药和护肤品。员工答错时可以不满意或要求重讲，但始终保持来咨询的普通顾客身份。不得使用适用性确认、专业评估、医疗评估、红旗、禁忌、SOP、成分核对、设备型号、阶段指标、复盘等专业词。员工只给出简单否定或答非所问时，继续围绕原始困扰表达不解，不得突然跳到价格、成分或另一个新话题。`;
+const LIMITED_CUSTOMER_POLICY = `顾客认知边界（最高优先级）：顾客只知道自己的困扰、感受、生活情况和真实顾虑；最多听过一个模糊项目名，不知道原理、成分、设备、适用标准、禁忌或操作流程。只回答员工最新问题，每轮只说一个事实、感受或顾虑，通常15—60个汉字，最多问一个普通顾客会问的问题。不得替员工做需求分析、风险筛查或建议，不得反问员工的病史、医美史、过敏史、用药和护肤品。员工答错时可以不满意或要求重讲，但始终保持来咨询的普通顾客身份。不得使用适用性确认、专业评估、医疗评估、红旗、禁忌、SOP、成分核对、设备型号、阶段指标、复盘等专业词。员工只给出简单否定、空泛肯定（例如“有的”“可以”“好的”）或答非所问时，这不算已经回答顾客；先围绕原始困扰追问具体方法、项目或安排，只有员工给出相关实际说明后才进入下一条顾虑。`;
 
 function staticCustomerScenario(scenario = {}) {
   const persona = scenario.persona || {};
@@ -443,6 +443,32 @@ function staticCustomerScenario(scenario = {}) {
     persona: Object.fromEntries(["age", "gender", "occupation", "style", "goal", "risk", "knowledge_level"].filter((key) => persona[key] != null && persona[key] !== "").map((key) => [key, persona[key]])),
     hidden_objections: scenario.hidden_objections || [],
   };
+}
+
+const CUSTOMER_VAGUE_EMPLOYEE_REPLY = /^(?:有|有的|有办法|有相关项目|可以|可以的|能做|好的|好|是的|对|对的|没问题|了解|知道)(?:[，。！!、,\s]*(?:有|的|办法|可以|好的|好|是的|对|对的|没问题|了解|知道))*[。！!，,、\s]*$/i;
+const CUSTOMER_HOLD_REPLY_MARKERS = /没听明白|具体是什么办法|再具体说说|再说清楚|先介绍一下/i;
+
+function staticCustomerClarificationReply(scenario, history = []) {
+  const goal = String(scenario?.persona?.goal || "我现在这个困扰").trim();
+  const lastCustomer = [...history].reverse().find((item) => item?.role === "assistant")?.content || "";
+  if (/有没有|有适合|什么办法|什么方法|怎么|如何|方案|项目/.test(String(lastCustomer))) return "我还没听明白，具体是什么办法，适合我这种情况吗？";
+  return `我还没听明白，能再具体说说吗？我主要还是想解决${goal}。`;
+}
+
+function staticEmployeeMessageNeedsCustomerClarification(history = [], employeeMessage = "") {
+  const employee = String(employeeMessage || "").trim();
+  if (!employee || CUSTOMER_VAGUE_EMPLOYEE_REPLY.test(employee)) return true;
+  if (/我错了|说错了|不好意思|抱歉|不能做|做不了|没什么不同|没区别|都一样|不适合|多久|多长时间|什么时候开始|哪里|哪个部位|什么位置/.test(employee)) return false;
+  if (employee.length <= 8 && !/[？?]/.test(employee)) return true;
+  const lastCustomer = [...history].reverse().find((item) => item?.role === "assistant")?.content || "";
+  const asksForMethod = /有没有|有适合|什么办法|什么方法|怎么|如何|方案|项目/.test(String(lastCustomer));
+  return asksForMethod && !/方法|办法|方案|项目|体验|流程|步骤|安排|介绍|说明|根据|了解|评估|确认|适合/.test(employee);
+}
+
+function staticHiddenObjectionIndex(history = []) {
+  const userTurns = history.filter((item) => item?.role === "user").length;
+  const heldTurns = history.filter((item) => item?.role === "assistant" && CUSTOMER_HOLD_REPLY_MARKERS.test(String(item.content || ""))).length;
+  return Math.max(0, userTurns - heldTurns);
 }
 
 function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
@@ -453,8 +479,9 @@ function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
   if (/不能做|做不了|没什么不同|没区别|都一样|不适合/.test(employee)) return `那我有点没听明白，我主要是${goal}，想知道还有没有别的办法。`;
   if (/多久|多长时间|什么时候开始/.test(employee)) return "有一阵子了，最近感觉比以前明显一些。";
   if (/哪里|哪个部位|什么位置/.test(employee)) return `主要就是${goal}，其他地方我暂时没太留意。`;
+  if (staticEmployeeMessageNeedsCustomerClarification(history, employee)) return staticCustomerClarificationReply(scenario, history);
   const objections = scenario?.hidden_objections || [];
-  const userTurns = history.filter((item) => item?.role === "user").length;
+  const userTurns = staticHiddenObjectionIndex(history);
   if (userTurns >= objections.length) {
     const genericReplies = [`这些专业的我不太懂，我主要就是想解决${goal}。`, "我现在没有别的问题了，就是还没完全放心。", "那我先听到这里，想清楚以后再决定。", "我还得再想想，现在不想马上决定。", "我听明白一点了，不过心里还是有些犹豫。", "我主要担心的还是自己的情况到底能不能改善。"];
     return genericReplies[(userTurns - objections.length) % genericReplies.length];
@@ -498,6 +525,7 @@ function invalidStaticCustomerReply(reply) {
 
 function normalizeStaticCustomerReply(reply, scenario, history = [], employeeMessage = "") {
   let normalized = String(reply || "").trim();
+  if (staticEmployeeMessageNeedsCustomerClarification(history, employeeMessage)) return staticCustomerClarificationReply(scenario, history);
   const previous = history.filter((item) => item?.role === "assistant").map((item) => String(item.content || "").trim());
   const repeated = previous.some((item) => normalized === item || (normalized.length >= 18 && item.length >= 18 && normalized.slice(0, 18) === item.slice(0, 18)));
   if (repeated || invalidStaticCustomerReply(normalized) || normalized === String(scenario?.opening || "").trim()) normalized = staticCustomerFallback(scenario, history, employeeMessage);
