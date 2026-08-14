@@ -25,6 +25,7 @@ const state = {
   models: [...AVAILABLE_MODELS],
   busy: false,
   ended: false,
+  revising: false,
   knowledge: {},
 };
 
@@ -925,6 +926,8 @@ function resetSession() {
   if (state.mode === "learning") return;
   state.history = [];
   state.ended = false;
+  setRevisionState(false);
+  els.input.value = "";
   els.input.disabled = false;
   els.send.disabled = false;
   els.finish.disabled = true;
@@ -955,7 +958,52 @@ function renderCoach(coach) {
   const level = coach.level || "needs_work";
   const label = level === "good" ? "这一轮做得好" : level === "critical" ? "需要立即纠正" : "这一轮可以更好";
   const methodology = coach.method_step || coach.knowledge_focus ? `<div class="coach-method"><div><span>本轮方法节点</span><strong>${escapeHtml(coach.method_step || "按接待流程继续")}</strong></div><div><span>调用知识重点</span><strong>${escapeHtml(coach.knowledge_focus || "围绕顾客当前问题回答")}</strong></div></div>` : "";
-  return `<div class="coach-card ${level}"><div class="coach-title">${label}</div>${methodology}<p><b>问题：</b>${escapeHtml(coach.issue || "")}</p><p><b>判断：</b>${escapeHtml(coach.why || "")}</p><div class="coach-suggestion"><span>推荐下一句</span>${escapeHtml(coach.suggested_reply || "")}</div><div class="coach-next">下一步：${escapeHtml(coach.next_goal || "继续完成需求分析")}</div></div>`;
+  return `<div class="coach-card ${level}"><div class="coach-title">${label}</div>${methodology}<p><b>问题：</b>${escapeHtml(coach.issue || "")}</p><p><b>判断：</b>${escapeHtml(coach.why || "")}</p><div class="coach-suggestion"><span>推荐下一句</span>${escapeHtml(coach.suggested_reply || "")}</div><div class="coach-next">下一步：${escapeHtml(coach.next_goal || "继续完成需求分析")}</div><div class="coach-actions"><button type="button" class="revise-turn-button" aria-label="修改本轮员工回复">↺ 修改本轮回复</button></div></div>`;
+}
+
+function setRevisionState(active, turnNumber = 0) {
+  state.revising = Boolean(active);
+  document.querySelector(".composer-wrap")?.classList.toggle("is-revising", state.revising);
+  if (state.revising) {
+    els.composerHint.textContent = `正在修改第 ${turnNumber || 1} 轮 · 发送后重新评价`;
+    els.input.placeholder = "修改你的回复，发送后 AI 将重新评价…";
+  } else if (modeCopy[state.mode]) {
+    els.composerHint.textContent = modeCopy[state.mode].hint;
+    els.input.placeholder = state.mode === "qa" ? "以顾客身份输入你的问题…" : "输入你会对顾客说的话…";
+  }
+}
+
+function updateTrainingEditActions() {
+  const buttons = [...els.messages.querySelectorAll(".revise-turn-button")];
+  buttons.forEach((button, index) => {
+    const available = state.mode === "training" && !state.busy && !state.ended && !state.revising && index === buttons.length - 1;
+    button.hidden = !available;
+    button.disabled = !available;
+  });
+}
+
+function reviseLastTrainingTurn() {
+  if (state.mode !== "training" || state.busy || state.ended || state.revising) return;
+  const assistantTurn = state.history.at(-1);
+  const employeeTurn = state.history.at(-2);
+  if (assistantTurn?.role !== "assistant" || employeeTurn?.role !== "user") return;
+  const rows = [...els.messages.querySelectorAll(".message-row:not(.typing-row)")];
+  const assistantRow = rows.at(-1);
+  const employeeRow = rows.at(-2);
+  if (!assistantRow?.querySelector(".coach-card") || !employeeRow?.classList.contains("user")) return;
+
+  state.history.splice(-2, 2);
+  assistantRow.remove();
+  employeeRow.remove();
+  const turnNumber = state.history.filter((item) => item.role === "user").length + 1;
+  setRevisionState(true, turnNumber);
+  els.turnCount.textContent = `${turnNumber - 1} 轮对话`;
+  els.finish.disabled = true;
+  els.input.value = employeeTurn.content;
+  els.input.focus();
+  els.input.setSelectionRange(els.input.value.length, els.input.value.length);
+  updateTrainingEditActions();
+  showToast(`已撤回第 ${turnNumber} 轮，修改后发送即可重新评价。`);
 }
 
 function addTyping() {
@@ -976,12 +1024,16 @@ function requestHistory() {
 async function sendMessage() {
   const message = els.input.value.trim();
   if (!message || state.busy || state.ended) return;
+  const wasRevising = state.revising;
+  const revisedTurnNumber = state.history.filter((item) => item.role === "user").length + 1;
   state.busy = true;
   els.send.disabled = true;
   els.input.value = "";
   const priorHistory = requestHistory();
-  addMessage("user", message, state.mode === "qa" ? "你（顾客）" : "员工");
+  const userRow = addMessage("user", message, state.mode === "qa" ? "你（顾客）" : "员工");
   state.history.push({ role: "user", content: message });
+  if (wasRevising) els.composerHint.textContent = `正在重新评价第 ${revisedTurnNumber} 轮…`;
+  updateTrainingEditActions();
   const typing = addTyping();
   try {
     const data = await api("/api/chat", {
@@ -999,6 +1051,7 @@ async function sendMessage() {
       const result = data.result;
       addMessage("assistant", result.customer_reply || "顾客暂时没有继续说。", "AI 顾客", result.feedback);
       state.history.push({ role: "assistant", content: result.customer_reply || "" });
+      setRevisionState(false);
     } else if (state.mode === "test") {
       const result = data.result;
       addMessage("assistant", result.reply || "顾客暂时没有继续说。", "AI 顾客");
@@ -1012,10 +1065,15 @@ async function sendMessage() {
     if (state.mode !== "qa") els.finish.disabled = turns < 1;
   } catch (error) {
     typing.remove();
+    userRow.remove();
+    if (state.history.at(-1)?.role === "user" && state.history.at(-1)?.content === message) state.history.pop();
+    els.input.value = message;
+    if (wasRevising) setRevisionState(true, revisedTurnNumber);
     showToast(error.message, true);
   } finally {
     state.busy = false;
     if (!state.ended) els.send.disabled = false;
+    updateTrainingEditActions();
     els.input.focus();
   }
 }
@@ -1055,6 +1113,7 @@ async function finishSession() {
   const userTurns = state.history.filter((item) => item.role === "user").length;
   if (state.mode === "qa" || state.busy || state.ended || userTurns < 1) return;
   state.busy = true;
+  updateTrainingEditActions();
   els.finish.disabled = true;
   els.finish.textContent = "正在生成报告…";
   const typing = addTyping();
@@ -1081,6 +1140,7 @@ async function finishSession() {
     showToast(error.message, true);
   } finally {
     state.busy = false;
+    updateTrainingEditActions();
   }
 }
 
@@ -1223,6 +1283,9 @@ els.input.addEventListener("keydown", (event) => {
   }
 });
 els.finish.addEventListener("click", finishSession);
+els.messages.addEventListener("click", (event) => {
+  if (event.target.closest(".revise-turn-button")) reviseLastTrainingTurn();
+});
 $("clear-chat").addEventListener("click", resetSession);
 $("open-settings").addEventListener("click", openSettings);
 $("model-name").addEventListener("change", () => selectModel($("model-name").value, false));

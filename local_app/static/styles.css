@@ -174,6 +174,13 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .coach-suggestion { margin-top: 9px; padding: 9px 10px; color: var(--text); border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.78); font-size: 9px; line-height: 1.65; }
 .coach-suggestion span { display: block; margin-bottom: 3px; color: var(--sand); font-size: 8px; font-weight: 800; }
 .coach-next { margin-top: 8px; color: var(--faint); font-size: 8px; }
+.coach-actions { display: flex; justify-content: flex-end; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+.revise-turn-button { padding: 7px 10px; color: var(--blue); border: 1px solid rgba(37, 90, 223, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.78); font-size: 8px; font-weight: 800; }
+.revise-turn-button:hover { color: #fff; border-color: var(--lime); background: var(--lime); }
+.revise-turn-button:disabled { cursor: not-allowed; opacity: 0.45; }
+.composer-wrap.is-revising { background: linear-gradient(180deg, rgba(251, 212, 148, 0.08), rgba(251, 212, 148, 0.2)); }
+.composer-wrap.is-revising .composer { border-color: rgba(226, 153, 42, 0.52); box-shadow: 0 0 0 3px rgba(251, 212, 148, 0.18); }
+.composer-wrap.is-revising #composer-hint { color: #b36b00; font-weight: 800; }
 .typing { display: flex; gap: 4px; padding: 14px; }
 .typing i { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); animation: blink 1s infinite; }
 .typing i:nth-child(2) { animation-delay: 0.15s; }

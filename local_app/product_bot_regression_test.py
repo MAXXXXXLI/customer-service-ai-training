@@ -237,6 +237,7 @@ def run() -> None:
 
         app_js = (ROOT / "local_app" / "static" / "app.js").read_text(encoding="utf-8")
         workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+        styles = (ROOT / "local_app" / "static" / "styles.css").read_text(encoding="utf-8")
         check(
             "static_site_loads_methodology_and_contextual_qa",
             "customer_service_methodology.json" in app_js
@@ -250,6 +251,16 @@ def run() -> None:
         check(
             "static_retrieval_excludes_raw_sources",
             'metadata.doc_type === "source"' in app_js,
+        )
+        check(
+            "training_last_turn_can_be_revised_and_reevaluated",
+            all(marker in app_js for marker in [
+                "reviseLastTrainingTurn",
+                'state.history.splice(-2, 2)',
+                "修改本轮回复",
+                "发送后重新评价",
+            ])
+            and ".revise-turn-button" in styles,
         )
     finally:
         server.MOCK_MODE = original_mock
