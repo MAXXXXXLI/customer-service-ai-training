@@ -1,0 +1,32 @@
+{
+  "generated_on": "2026-08-18",
+  "markdown_files": [
+    "秀域企业核心知识库_员工学习与系统检索版_2026年8月.md",
+    "秀域全量QA考试题库_标准答案版_2026年8月.md"
+  ],
+  "package": "秀域知识库_兼容原项目格式_2026年8月.zip",
+  "counts": {
+    "runtime_modules": 7,
+    "employee_learning_modules": 11,
+    "learning_chapters": 71,
+    "learning_courses": 73,
+    "knowledge_topics": 527,
+    "knowledge_cards": 529,
+    "common_qa": 1032,
+    "original_qa_records_represented": 1059,
+    "rag_documents": 1572,
+    "scenarios": 12,
+    "objections": 1
+  },
+  "validation_status": "passed",
+  "version": "2026-08-video-enhanced",
+  "runtime_modules": 7,
+  "learning_courses": 73,
+  "knowledge_cards": 570,
+  "common_qa": 1032,
+  "rag_documents": 1613,
+  "video_courses": 76,
+  "video_integrated_groups": 41,
+  "video_review_queue_items": 43,
+  "standalone_markdown": "秀域企业核心知识库_视频课程增强版_2026年8月.md"
+}

@@ -1,0 +1,1519 @@
+{
+  "version": "2026-08",
+  "course_count": 76,
+  "directory_order": "001-076",
+  "courses": [
+    {
+      "order": "001",
+      "title": "肥胖的类型及错误减肥的危害",
+      "original_title": "1、肥胖的类型及错误减肥的危害",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "基础知识课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "001_1、肥胖的类型及错误减肥的危害-转写结果.txt",
+      "output_file": "001_肥胖的类型及错误减肥的危害｜精炼版.md",
+      "source_chars": 11114,
+      "refined_chars": 1074,
+      "compression_ratio": 0.0966,
+      "kb_course_ids": [
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-M05-002",
+        "COURSE-M05-004"
+      ]
+    },
+    {
+      "order": "002",
+      "title": "点阵波在实际中的应用一",
+      "original_title": "2、点阵波在实际中的应用一",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "项目应用课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "002_2、点阵波在实际中的应用一-转写结果.txt",
+      "output_file": "002_点阵波在实际中的应用一｜精炼版.md",
+      "source_chars": 8210,
+      "refined_chars": 1028,
+      "compression_ratio": 0.1252,
+      "kb_course_ids": [
+        "COURSE-PROD-POINT-WAVE-001",
+        "COURSE-M02-002",
+        "COURSE-OP-POINT-WAVE-001"
+      ]
+    },
+    {
+      "order": "003",
+      "title": "秀域古方减肥",
+      "original_title": "2、秀域古方减肥",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "项目方案课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "003_2、秀域古方减肥-转写结果.txt",
+      "output_file": "003_秀域古方减肥｜精炼版.md",
+      "source_chars": 7743,
+      "refined_chars": 992,
+      "compression_ratio": 0.1281,
+      "kb_course_ids": [
+        "COURSE-M05-005",
+        "COURSE-M05-003",
+        "COURSE-M05-004",
+        "COURSE-OPS-DYNAMIC-001"
+      ]
+    },
+    {
+      "order": "004",
+      "title": "糖尿病足、痛风、强直性脊柱炎、带状疱疹、乳腺炎与前列腺炎",
+      "original_title": "2、糖尿病足、痛风、强直性脊柱炎、带状性疱疹、乳腺炎、前列腺炎",
+      "module_id": "MOD-07",
+      "module": "安全、同意与合规服务",
+      "course_type": "安全边界课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "004_2、糖尿病足、痛风、强直性脊柱炎、带状性疱疹、乳腺炎、前列腺炎-转写结果.txt",
+      "output_file": "004_糖尿病足、痛风、强直性脊柱炎、带状疱疹、乳腺炎与前列腺炎｜精炼版.md",
+      "source_chars": 4198,
+      "refined_chars": 1060,
+      "compression_ratio": 0.2525,
+      "kb_course_ids": [
+        "COURSE-M02-012",
+        "COURSE-M02-013",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
+    },
+    {
+      "order": "005",
+      "title": "颈椎、膝关节与肩周问题的服务方案",
+      "original_title": "2颈椎、膝盖肩和周炎的治疗方案",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "项目应用课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "005_2颈椎、膝盖肩和周炎的治疗方案-转写结果.txt",
+      "output_file": "005_颈椎、膝关节与肩周问题的服务方案｜精炼版.md",
+      "source_chars": 2969,
+      "refined_chars": 993,
+      "compression_ratio": 0.3345,
+      "kb_course_ids": [
+        "COURSE-M02-008",
+        "COURSE-M02-010",
+        "COURSE-M02-011"
+      ]
+    },
+    {
+      "order": "006",
+      "title": "减重中体重不降反升的原因与处理",
+      "original_title": "3.减肥常见的体重不降反升原因及处理",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "问题处理课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "006_3.减肥常见的体重不降反升原因及处理-转写结果.txt",
+      "output_file": "006_减重中体重不降反升的原因与处理｜精炼版.md",
+      "source_chars": 8068,
+      "refined_chars": 976,
+      "compression_ratio": 0.121,
+      "kb_course_ids": [
+        "COURSE-M05-004",
+        "COURSE-M05-002",
+        "COURSE-M05-003"
+      ]
+    },
+    {
+      "order": "007",
+      "title": "前列腺炎、痛风、糖尿病足与颈椎疼痛的服务边界（二）",
+      "original_title": "3、前列腺炎、痛风、糖尿病足、颈椎疼痛的治疗方案 (2)",
+      "module_id": "MOD-07",
+      "module": "安全、同意与合规服务",
+      "course_type": "安全边界课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "007_3、前列腺炎、痛风、糖尿病足、颈椎疼痛的治疗方案 (2)-转写结果.txt",
+      "output_file": "007_前列腺炎、痛风、糖尿病足与颈椎疼痛的服务边界（二）｜精炼版.md",
+      "source_chars": 1994,
+      "refined_chars": 880,
+      "compression_ratio": 0.4413,
+      "kb_course_ids": [
+        "COURSE-M02-012",
+        "COURSE-M02-013",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
+    },
+    {
+      "order": "008",
+      "title": "‘我有方案’与对标方法",
+      "original_title": "3、我有药及找对标",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "沟通方法课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "008_3、我有药及找对标-转写结果.txt",
+      "output_file": "008_‘我有方案’与对标方法｜精炼版.md",
+      "source_chars": 5916,
+      "refined_chars": 817,
+      "compression_ratio": 0.1381,
+      "kb_course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-M06-003",
+        "COURSE-M02-004"
+      ]
+    },
+    {
+      "order": "009",
+      "title": "智能提拉仪操作示范",
+      "original_title": "3、智能提拉仪操作示范",
+      "module_id": "MOD-04",
+      "module": "美容护理与体验服务",
+      "course_type": "设备操作课",
+      "review_status": "设备复核",
+      "duplicate_of": null,
+      "source_file": "009_3、智能提拉仪操作示范-转写结果.txt",
+      "output_file": "009_智能提拉仪操作示范｜精炼版.md",
+      "source_chars": 3657,
+      "refined_chars": 941,
+      "compression_ratio": 0.2573,
+      "kb_course_ids": [
+        "COURSE-M04-004",
+        "COURSE-PROD-BEAUTY-001"
+      ]
+    },
+    {
+      "order": "010",
+      "title": "湿疹、风湿、下肢麻凉、感冒咳嗽等问题的服务边界",
+      "original_title": "3、湿疹、风湿、下肢麻凉、感冒咳嗽、子宫肌瘤、静脉曲张、足底筋膜炎",
+      "module_id": "MOD-07",
+      "module": "安全、同意与合规服务",
+      "course_type": "安全边界课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "010_3、湿疹、风湿、下肢麻凉、感冒咳嗽、子宫肌瘤、静脉曲张、足底筋膜炎-转写结果.txt",
+      "output_file": "010_湿疹、风湿、下肢麻凉、感冒咳嗽等问题的服务边界｜精炼版.md",
+      "source_chars": 3761,
+      "refined_chars": 897,
+      "compression_ratio": 0.2385,
+      "kb_course_ids": [
+        "COURSE-M02-012",
+        "COURSE-M02-013",
+        "COURSE-M03-007",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
+    },
+    {
+      "order": "011",
+      "title": "点阵波、免疫与无菌性炎症的课程口径",
+      "original_title": "3、点阵波-提高免疫力，改善无菌性炎症",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "原理辨析课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "011_3、点阵波-提高免疫力，改善无菌性炎症-转写结果.txt",
+      "output_file": "011_点阵波、免疫与无菌性炎症的课程口径｜精炼版.md",
+      "source_chars": 6328,
+      "refined_chars": 902,
+      "compression_ratio": 0.1425,
+      "kb_course_ids": [
+        "COURSE-PROD-POINT-WAVE-001",
+        "COURSE-KNOW-PAIN-001",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
+    },
+    {
+      "order": "012",
+      "title": "点阵波专业知识及与西医项目的比较",
+      "original_title": "3、点阵波专业知识及对标西医",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "比较沟通课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "012_3、点阵波专业知识及对标西医-转写结果.txt",
+      "output_file": "012_点阵波专业知识及与西医项目的比较｜精炼版.md",
+      "source_chars": 7219,
+      "refined_chars": 838,
+      "compression_ratio": 0.1161,
+      "kb_course_ids": [
+        "COURSE-M02-004",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
+    },
+    {
+      "order": "013",
+      "title": "点阵波在实际中的应用二",
+      "original_title": "3、点阵波在实际中的应用二",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "项目应用课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "013_3、点阵波在实际中的应用二-转写结果.txt",
+      "output_file": "013_点阵波在实际中的应用二｜精炼版.md",
+      "source_chars": 4901,
+      "refined_chars": 916,
+      "compression_ratio": 0.1869,
+      "kb_course_ids": [
+        "COURSE-M02-002",
+        "COURSE-OP-POINT-WAVE-001",
+        "COURSE-KNOW-PAIN-001"
+      ]
+    },
+    {
+      "order": "014",
+      "title": "点阵波在实际中的应用二（复讲）",
+      "original_title": "3、点阵波在实际中的应用二__2",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "复讲补充课",
+      "review_status": "专业复核",
+      "duplicate_of": "013",
+      "source_file": "014_3、点阵波在实际中的应用二__2-转写结果.txt",
+      "output_file": "014_点阵波在实际中的应用二（复讲）｜精炼版.md",
+      "source_chars": 4892,
+      "refined_chars": 646,
+      "compression_ratio": 0.1321,
+      "kb_course_ids": [
+        "COURSE-M02-002",
+        "COURSE-OP-POINT-WAVE-001"
+      ]
+    },
+    {
+      "order": "015",
+      "title": "点阵波与超V联合体验的售前接待流程",
+      "original_title": "3、点阵波超V联合治疗的售前接待流程",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "接待流程课",
+      "review_status": "设备复核",
+      "duplicate_of": null,
+      "source_file": "015_3、点阵波超V联合治疗的售前接待流程-转写结果.txt",
+      "output_file": "015_点阵波与超V联合体验的售前接待流程｜精炼版.md",
+      "source_chars": 5745,
+      "refined_chars": 955,
+      "compression_ratio": 0.1662,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-PROD-COMBINATION-001",
+        "COURSE-M03-003"
+      ]
+    },
+    {
+      "order": "016",
+      "title": "熟人关：建立第一层信任",
+      "original_title": "3、熟人关",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "服务沟通课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "016_3、熟人关-转写结果.txt",
+      "output_file": "016_熟人关：建立第一层信任｜精炼版.md",
+      "source_chars": 6932,
+      "refined_chars": 700,
+      "compression_ratio": 0.101,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ]
+    },
+    {
+      "order": "017",
+      "title": "熟人关（二）：持续关系与有效触达",
+      "original_title": "3、熟人关（二）",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "关系维护课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "017_3、熟人关（二）-转写结果.txt",
+      "output_file": "017_熟人关（二）：持续关系与有效触达｜精炼版.md",
+      "source_chars": 2935,
+      "refined_chars": 729,
+      "compression_ratio": 0.2484,
+      "kb_course_ids": [
+        "COURSE-FLOW-FOLLOWUP-001",
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ]
+    },
+    {
+      "order": "018",
+      "title": "秀域的减重方法组合",
+      "original_title": "3、秀域的减肥方法“们”",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "方案选择课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "018_3、秀域的减肥方法“们”-转写结果.txt",
+      "output_file": "018_秀域的减重方法组合｜精炼版.md",
+      "source_chars": 5045,
+      "refined_chars": 858,
+      "compression_ratio": 0.1701,
+      "kb_course_ids": [
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-M05-005",
+        "COURSE-PROD-GLP1-001",
+        "COURSE-PROD-BODY-MGMT-001",
+        "COURSE-M05-017",
+        "COURSE-M05-019"
+      ]
+    },
+    {
+      "order": "019",
+      "title": "细美宝方案（一）",
+      "original_title": "3、细美宝方案（一）",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "医疗项目沟通课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "019_3、细美宝方案（一）-转写结果.txt",
+      "output_file": "019_细美宝方案（一）｜精炼版.md",
+      "source_chars": 6184,
+      "refined_chars": 854,
+      "compression_ratio": 0.1381,
+      "kb_course_ids": [
+        "COURSE-PROD-GLP1-001",
+        "COURSE-M05-010",
+        "COURSE-M05-013",
+        "COURSE-M05-014"
+      ]
+    },
+    {
+      "order": "020",
+      "title": "轰脂、冰雕与抽脂的区别",
+      "original_title": "3、轰脂和冰雕的原理及与抽脂的差别",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "项目比较课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "020_3、轰脂和冰雕的原理及与抽脂的差别-转写结果.txt",
+      "output_file": "020_轰脂、冰雕与抽脂的区别｜精炼版.md",
+      "source_chars": 5826,
+      "refined_chars": 862,
+      "compression_ratio": 0.148,
+      "kb_course_ids": [
+        "COURSE-M05-017",
+        "COURSE-M05-018",
+        "COURSE-M05-019"
+      ]
+    },
+    {
+      "order": "021",
+      "title": "减重常见问题解答（一）",
+      "original_title": "4、减肥常见问题解答（一）",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "常见问题课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "021_4、减肥常见问题解答（一）-转写结果.txt",
+      "output_file": "021_减重常见问题解答（一）｜精炼版.md",
+      "source_chars": 6412,
+      "refined_chars": 857,
+      "compression_ratio": 0.1337,
+      "kb_course_ids": [
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-M05-002",
+        "COURSE-M05-003",
+        "COURSE-M05-004"
+      ]
+    },
+    {
+      "order": "022",
+      "title": "大夫关：建立专业可信度",
+      "original_title": "4、大夫关",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "专业沟通课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "022_4、大夫关-转写结果.txt",
+      "output_file": "022_大夫关：建立专业可信度｜精炼版.md",
+      "source_chars": 7793,
+      "refined_chars": 710,
+      "compression_ratio": 0.0911,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
+    },
+    {
+      "order": "023",
+      "title": "‘我还有效’：用证据和验证建立信任",
+      "original_title": "4、我还特有效",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "效果沟通课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "023_4、我还特有效-转写结果.txt",
+      "output_file": "023_‘我还有效’：用证据和验证建立信任｜精炼版.md",
+      "source_chars": 6277,
+      "refined_chars": 836,
+      "compression_ratio": 0.1332,
+      "kb_course_ids": [
+        "COURSE-M06-003",
+        "COURSE-FLOW-FOLLOWUP-001"
+      ]
+    },
+    {
+      "order": "024",
+      "title": "点阵波在实际中的应用三",
+      "original_title": "4、点阵波在实际中的应用三",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "复杂案例课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "024_4、点阵波在实际中的应用三-转写结果.txt",
+      "output_file": "024_点阵波在实际中的应用三｜精炼版.md",
+      "source_chars": 7350,
+      "refined_chars": 870,
+      "compression_ratio": 0.1184,
+      "kb_course_ids": [
+        "COURSE-M02-006",
+        "COURSE-M02-012",
+        "COURSE-M02-013",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "025",
+      "title": "点阵波在实际中的应用三（复讲）",
+      "original_title": "4、点阵波在实际中的应用三__2",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "复讲补充课",
+      "review_status": "高风险复核",
+      "duplicate_of": "024",
+      "source_file": "025_4、点阵波在实际中的应用三__2-转写结果.txt",
+      "output_file": "025_点阵波在实际中的应用三（复讲）｜精炼版.md",
+      "source_chars": 7349,
+      "refined_chars": 621,
+      "compression_ratio": 0.0845,
+      "kb_course_ids": [
+        "COURSE-M02-006",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "026",
+      "title": "熟人关：聊天技巧",
+      "original_title": "4、熟人关（聊天技巧）",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "沟通实训课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "026_4、熟人关（聊天技巧）-转写结果.txt",
+      "output_file": "026_熟人关：聊天技巧｜精炼版.md",
+      "source_chars": 3158,
+      "refined_chars": 773,
+      "compression_ratio": 0.2448,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ]
+    },
+    {
+      "order": "027",
+      "title": "纳米喷射仪操作示范",
+      "original_title": "4、纳秒喷射机操作示范",
+      "module_id": "MOD-04",
+      "module": "美容护理与体验服务",
+      "course_type": "设备操作课",
+      "review_status": "设备复核",
+      "duplicate_of": null,
+      "source_file": "027_4、纳秒喷射机操作示范-转写结果.txt",
+      "output_file": "027_纳米喷射仪操作示范｜精炼版.md",
+      "source_chars": 2309,
+      "refined_chars": 948,
+      "compression_ratio": 0.4106,
+      "kb_course_ids": [
+        "COURSE-M04-003",
+        "COURSE-PROD-BEAUTY-001"
+      ]
+    },
+    {
+      "order": "028",
+      "title": "细美宝方案（二）",
+      "original_title": "4、细美宝方案（二）",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "医疗项目沟通课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "028_4、细美宝方案（二）-转写结果.txt",
+      "output_file": "028_细美宝方案（二）｜精炼版.md",
+      "source_chars": 7189,
+      "refined_chars": 864,
+      "compression_ratio": 0.1202,
+      "kb_course_ids": [
+        "COURSE-PROD-GLP1-001",
+        "COURSE-M05-010",
+        "COURSE-M05-011",
+        "COURSE-M05-013"
+      ]
+    },
+    {
+      "order": "029",
+      "title": "美妥对减重顾客的重要性",
+      "original_title": "4、美妥对减肥顾客的重要性",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "营养支持课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "029_4、美妥对减肥顾客的重要性-转写结果.txt",
+      "output_file": "029_美妥对减重顾客的重要性｜精炼版.md",
+      "source_chars": 1583,
+      "refined_chars": 883,
+      "compression_ratio": 0.5578,
+      "kb_course_ids": [
+        "COURSE-PROD-MEITUO-001",
+        "COURSE-M05-007",
+        "COURSE-M05-002"
+      ]
+    },
+    {
+      "order": "030",
+      "title": "超V在腹部、乳腺、呼吸道等问题中的应用边界",
+      "original_title": "4、超V应用腹部&乳腺、呼吸道治疗方案、过敏湿疹、强直性脊柱炎",
+      "module_id": "MOD-07",
+      "module": "安全、同意与合规服务",
+      "course_type": "安全边界课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "030_4、超V应用腹部&乳腺、呼吸道治疗方案、过敏湿疹、强直性脊柱炎-转写结果.txt",
+      "output_file": "030_超V在腹部、乳腺、呼吸道等问题中的应用边界｜精炼版.md",
+      "source_chars": 1630,
+      "refined_chars": 897,
+      "compression_ratio": 0.5503,
+      "kb_course_ids": [
+        "COURSE-OP-SUPER-V-001",
+        "COURSE-M03-005",
+        "COURSE-M03-007",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
+    },
+    {
+      "order": "031",
+      "title": "减重常见问题解答（二）",
+      "original_title": "5、减肥常见问题解答（二）",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "常见问题课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "031_5、减肥常见问题解答（二）-转写结果.txt",
+      "output_file": "031_减重常见问题解答（二）｜精炼版.md",
+      "source_chars": 7903,
+      "refined_chars": 805,
+      "compression_ratio": 0.1019,
+      "kb_course_ids": [
+        "COURSE-M05-008",
+        "COURSE-PROD-GLP1-001",
+        "COURSE-M05-012",
+        "COURSE-M05-014"
+      ]
+    },
+    {
+      "order": "032",
+      "title": "大夫关：专业解释与边界",
+      "original_title": "5、大夫关",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "专业沟通课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "032_5、大夫关-转写结果.txt",
+      "output_file": "032_大夫关：专业解释与边界｜精炼版.md",
+      "source_chars": 7252,
+      "refined_chars": 682,
+      "compression_ratio": 0.094,
+      "kb_course_ids": [
+        "COURSE-FLOW-CUSTOMER-ANSWER-001",
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ]
+    },
+    {
+      "order": "033",
+      "title": "常见反对意见与沟通技巧",
+      "original_title": "5、常见反对意见及沟通销售技巧",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "异议处理课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "033_5、常见反对意见及沟通销售技巧-转写结果.txt",
+      "output_file": "033_常见反对意见与沟通技巧｜精炼版.md",
+      "source_chars": 5392,
+      "refined_chars": 732,
+      "compression_ratio": 0.1358,
+      "kb_course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-M06-001",
+        "COURSE-M06-003"
+      ]
+    },
+    {
+      "order": "034",
+      "title": "秀域减重方式总结",
+      "original_title": "5、总结秀域的减肥方式",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "综合复习课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "034_5、总结秀域的减肥方式-转写结果.txt",
+      "output_file": "034_秀域减重方式总结｜精炼版.md",
+      "source_chars": 5455,
+      "refined_chars": 788,
+      "compression_ratio": 0.1445,
+      "kb_course_ids": [
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-M05-005",
+        "COURSE-PROD-MEITUO-001",
+        "COURSE-PROD-GLP1-001",
+        "COURSE-PROD-BODY-MGMT-001",
+        "COURSE-M05-017"
+      ]
+    },
+    {
+      "order": "035",
+      "title": "面膜与手膜操作",
+      "original_title": "5、敷面膜、手膜",
+      "module_id": "MOD-04",
+      "module": "美容护理与体验服务",
+      "course_type": "基础操作课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "035_5、敷面膜、手膜-转写结果.txt",
+      "output_file": "035_面膜与手膜操作｜精炼版.md",
+      "source_chars": 1198,
+      "refined_chars": 728,
+      "compression_ratio": 0.6077,
+      "kb_course_ids": [
+        "COURSE-PROD-BEAUTY-001",
+        "COURSE-M04-002"
+      ]
+    },
+    {
+      "order": "036",
+      "title": "点阵波常见问题解答（一）",
+      "original_title": "5、点阵波常见问题解答一",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "常见问题课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "036_5、点阵波常见问题解答一-转写结果.txt",
+      "output_file": "036_点阵波常见问题解答（一）｜精炼版.md",
+      "source_chars": 4324,
+      "refined_chars": 807,
+      "compression_ratio": 0.1866,
+      "kb_course_ids": [
+        "COURSE-OP-POINT-WAVE-001",
+        "COURSE-M02-006",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "037",
+      "title": "点阵波常见问题解答（一）（复讲）",
+      "original_title": "5、点阵波常见问题解答一__2",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "复讲补充课",
+      "review_status": "专业复核",
+      "duplicate_of": "036",
+      "source_file": "037_5、点阵波常见问题解答一__2-转写结果.txt",
+      "output_file": "037_点阵波常见问题解答（一）（复讲）｜精炼版.md",
+      "source_chars": 4327,
+      "refined_chars": 598,
+      "compression_ratio": 0.1382,
+      "kb_course_ids": [
+        "COURSE-OP-POINT-WAVE-001",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "038",
+      "title": "销售关：对标方法",
+      "original_title": "5、销售关—对标方法",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "价值沟通课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "038_5、销售关—对标方法-转写结果.txt",
+      "output_file": "038_销售关：对标方法｜精炼版.md",
+      "source_chars": 7473,
+      "refined_chars": 668,
+      "compression_ratio": 0.0894,
+      "kb_course_ids": [
+        "COURSE-M06-003",
+        "COURSE-FLOW-OBJECTION-001"
+      ]
+    },
+    {
+      "order": "039",
+      "title": "为什么要复购",
+      "original_title": "6、为什么要复购",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "后续服务课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "039_6、为什么要复购-转写结果.txt",
+      "output_file": "039_为什么要复购｜精炼版.md",
+      "source_chars": 6692,
+      "refined_chars": 737,
+      "compression_ratio": 0.1101,
+      "kb_course_ids": [
+        "COURSE-FLOW-FOLLOWUP-001",
+        "COURSE-FLOW-OBJECTION-001"
+      ]
+    },
+    {
+      "order": "040",
+      "title": "点阵波常见问题解答（二）",
+      "original_title": "6、点阵波常见问题解答二",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "常见问题课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "040_6、点阵波常见问题解答二-转写结果.txt",
+      "output_file": "040_点阵波常见问题解答（二）｜精炼版.md",
+      "source_chars": 3758,
+      "refined_chars": 813,
+      "compression_ratio": 0.2163,
+      "kb_course_ids": [
+        "COURSE-OP-POINT-WAVE-001",
+        "COURSE-M02-002",
+        "COURSE-M06-001"
+      ]
+    },
+    {
+      "order": "041",
+      "title": "点阵波常见问题解答（二）（复讲）",
+      "original_title": "6、点阵波常见问题解答二__2",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "复讲补充课",
+      "review_status": "专业复核",
+      "duplicate_of": "040",
+      "source_file": "041_6、点阵波常见问题解答二__2-转写结果.txt",
+      "output_file": "041_点阵波常见问题解答（二）（复讲）｜精炼版.md",
+      "source_chars": 3763,
+      "refined_chars": 601,
+      "compression_ratio": 0.1597,
+      "kb_course_ids": [
+        "COURSE-OP-POINT-WAVE-001",
+        "COURSE-OPS-DYNAMIC-001"
+      ]
+    },
+    {
+      "order": "042",
+      "title": "细美宝分享功能与常见问题",
+      "original_title": "6、细美宝分享功能上线及常见问题解答",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "动态规则课",
+      "review_status": "动态核验",
+      "duplicate_of": null,
+      "source_file": "042_6、细美宝分享功能上线及常见问题解答-转写结果.txt",
+      "output_file": "042_细美宝分享功能与常见问题｜精炼版.md",
+      "source_chars": 7705,
+      "refined_chars": 828,
+      "compression_ratio": 0.1075,
+      "kb_course_ids": [
+        "COURSE-OPS-DYNAMIC-001",
+        "COURSE-PROD-GLP1-001"
+      ]
+    },
+    {
+      "order": "043",
+      "title": "销售关：从需求到决定",
+      "original_title": "6、销售关",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "顾问式销售课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "043_6、销售关-转写结果.txt",
+      "output_file": "043_销售关：从需求到决定｜精炼版.md",
+      "source_chars": 7528,
+      "refined_chars": 738,
+      "compression_ratio": 0.098,
+      "kb_course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-FLOW-FOLLOWUP-001",
+        "COURSE-M06-001"
+      ]
+    },
+    {
+      "order": "044",
+      "title": "销售关：选择法、增压法与减压法",
+      "original_title": "6、销售关-选择发、增压法、减压发",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "方案呈现课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "044_6、销售关-选择发、增压法、减压发-转写结果.txt",
+      "output_file": "044_销售关：选择法、增压法与减压法｜精炼版.md",
+      "source_chars": 9065,
+      "refined_chars": 750,
+      "compression_ratio": 0.0827,
+      "kb_course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-M06-001"
+      ]
+    },
+    {
+      "order": "045",
+      "title": "便宜不等于顾客会购买",
+      "original_title": "7、不要以为便宜顾客就会买",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "价值沟通课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "045_7、不要以为便宜顾客就会买-转写结果.txt",
+      "output_file": "045_便宜不等于顾客会购买｜精炼版.md",
+      "source_chars": 4218,
+      "refined_chars": 693,
+      "compression_ratio": 0.1643,
+      "kb_course_ids": [
+        "COURSE-M06-001",
+        "COURSE-FLOW-OBJECTION-001"
+      ]
+    },
+    {
+      "order": "046",
+      "title": "减重售前与三个月转卡（上）",
+      "original_title": "售前以及三个月之后的转卡——减肥（上）",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "服务流程课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "046_售前以及三个月之后的转卡——减肥（上）-转写结果.txt",
+      "output_file": "046_减重售前与三个月转卡（上）｜精炼版.md",
+      "source_chars": 4411,
+      "refined_chars": 759,
+      "compression_ratio": 0.1721,
+      "kb_course_ids": [
+        "COURSE-M05-003",
+        "COURSE-M05-004",
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-OPS-DYNAMIC-001"
+      ]
+    },
+    {
+      "order": "047",
+      "title": "减重售前与三个月转卡（下）",
+      "original_title": "售前以及三个月之后的转卡——减肥（下）",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "后续转化课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "047_售前以及三个月之后的转卡——减肥（下）-转写结果.txt",
+      "output_file": "047_减重售前与三个月转卡（下）｜精炼版.md",
+      "source_chars": 5198,
+      "refined_chars": 698,
+      "compression_ratio": 0.1343,
+      "kb_course_ids": [
+        "COURSE-FLOW-FOLLOWUP-001",
+        "COURSE-M05-004",
+        "COURSE-M06-001"
+      ]
+    },
+    {
+      "order": "048",
+      "title": "腿部磁质子售前与三个月转卡",
+      "original_title": "售前以及三个月之后的转卡——腿部磁质子",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "项目转卡课",
+      "review_status": "设备复核",
+      "duplicate_of": null,
+      "source_file": "048_售前以及三个月之后的转卡——腿部磁质子-转写结果.txt",
+      "output_file": "048_腿部磁质子售前与三个月转卡｜精炼版.md",
+      "source_chars": 4556,
+      "refined_chars": 788,
+      "compression_ratio": 0.173,
+      "kb_course_ids": [
+        "COURSE-M03-007",
+        "COURSE-FLOW-FOLLOWUP-001",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "049",
+      "title": "点阵波为什么用于疼痛体验（一）",
+      "original_title": "点阵波为什么能治疗疼痛（1）",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "原理辨析课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "049_点阵波为什么能治疗疼痛（1）-转写结果.txt",
+      "output_file": "049_点阵波为什么用于疼痛体验（一）｜精炼版.md",
+      "source_chars": 6156,
+      "refined_chars": 818,
+      "compression_ratio": 0.1329,
+      "kb_course_ids": [
+        "COURSE-KNOW-PAIN-001",
+        "COURSE-PROD-POINT-WAVE-001",
+        "COURSE-M02-012"
+      ]
+    },
+    {
+      "order": "050",
+      "title": "点阵波为什么用于疼痛体验（二）",
+      "original_title": "点阵波为什么能治疗疼痛（2）",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "原理应用课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "050_点阵波为什么能治疗疼痛（2）-转写结果.txt",
+      "output_file": "050_点阵波为什么用于疼痛体验（二）｜精炼版.md",
+      "source_chars": 5658,
+      "refined_chars": 808,
+      "compression_ratio": 0.1428,
+      "kb_course_ids": [
+        "COURSE-KNOW-PAIN-001",
+        "COURSE-PROD-COMBINATION-001",
+        "COURSE-M02-012"
+      ]
+    },
+    {
+      "order": "051",
+      "title": "‘你有问题、我有方案、结果可验证’的沟通逻辑",
+      "original_title": "1、先记住几句顺口溜，你有病、我有药、我还特有效",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "沟通框架课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "051_1、先记住几句顺口溜，你有病、我有药、我还特有效-转写结果.txt",
+      "output_file": "051_‘你有问题、我有方案、结果可验证’的沟通逻辑｜精炼版.md",
+      "source_chars": 3912,
+      "refined_chars": 789,
+      "compression_ratio": 0.2017,
+      "kb_course_ids": [
+        "COURSE-FLOW-CUSTOMER-ANSWER-001",
+        "COURSE-FLOW-OBJECTION-001"
+      ]
+    },
+    {
+      "order": "052",
+      "title": "减重过程中每天的工作重点与沟通",
+      "original_title": "1、减肥过程中每天工作重点及沟通内容",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "执行管理课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "052_1、减肥过程中每天工作重点及沟通内容-转写结果.txt",
+      "output_file": "052_减重过程中每天的工作重点与沟通｜精炼版.md",
+      "source_chars": 5727,
+      "refined_chars": 680,
+      "compression_ratio": 0.1187,
+      "kb_course_ids": [
+        "COURSE-M05-003",
+        "COURSE-M05-004",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "053",
+      "title": "启动关",
+      "original_title": "1、启动关",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "服务心态课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "053_1、启动关-转写结果.txt",
+      "output_file": "053_启动关｜精炼版.md",
+      "source_chars": 2281,
+      "refined_chars": 633,
+      "compression_ratio": 0.2775,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ]
+    },
+    {
+      "order": "054",
+      "title": "售前接待操作示范",
+      "original_title": "1、售前接待操作示范",
+      "module_id": "MOD-04",
+      "module": "美容护理与体验服务",
+      "course_type": "体验流程课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "054_1、售前接待操作示范-转写结果.txt",
+      "output_file": "054_售前接待操作示范｜精炼版.md",
+      "source_chars": 2099,
+      "refined_chars": 646,
+      "compression_ratio": 0.3078,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-PROD-BEAUTY-001",
+        "COURSE-M04-003",
+        "COURSE-M04-004"
+      ]
+    },
+    {
+      "order": "055",
+      "title": "五大关专业复习",
+      "original_title": "1、复习五大关专业",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "综合复习课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "055_1、复习五大关专业-转写结果.txt",
+      "output_file": "055_五大关专业复习｜精炼版.md",
+      "source_chars": 2128,
+      "refined_chars": 701,
+      "compression_ratio": 0.3294,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-FLOW-FOLLOWUP-001"
+      ]
+    },
+    {
+      "order": "056",
+      "title": "点阵波进入秀域的课程背景",
+      "original_title": "1、点阵波怎么引进秀域的",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "项目背景课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "056_1、点阵波怎么引进秀域的-转写结果.txt",
+      "output_file": "056_点阵波进入秀域的课程背景｜精炼版.md",
+      "source_chars": 2863,
+      "refined_chars": 851,
+      "compression_ratio": 0.2972,
+      "kb_course_ids": [
+        "COURSE-PROD-POINT-WAVE-001",
+        "COURSE-M02-006"
+      ]
+    },
+    {
+      "order": "057",
+      "title": "点阵波进入秀域的课程背景（复讲）",
+      "original_title": "1、点阵波怎么引进秀域的__2",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "复讲补充课",
+      "review_status": "专业复核",
+      "duplicate_of": "056",
+      "source_file": "057_1、点阵波怎么引进秀域的__2-转写结果.txt",
+      "output_file": "057_点阵波进入秀域的课程背景（复讲）｜精炼版.md",
+      "source_chars": 2855,
+      "refined_chars": 595,
+      "compression_ratio": 0.2084,
+      "kb_course_ids": [
+        "COURSE-PROD-POINT-WAVE-001",
+        "COURSE-M02-006"
+      ]
+    },
+    {
+      "order": "058",
+      "title": "点阵波与超V联合体验的售前流程（第二版）",
+      "original_title": "1、点阵波超V联合治疗的售前接待流程",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "接待流程课",
+      "review_status": "设备复核",
+      "duplicate_of": null,
+      "source_file": "058_1、点阵波超V联合治疗的售前接待流程-转写结果.txt",
+      "output_file": "058_点阵波与超V联合体验的售前流程（第二版）｜精炼版.md",
+      "source_chars": 5405,
+      "refined_chars": 788,
+      "compression_ratio": 0.1458,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-PROD-COMBINATION-001",
+        "COURSE-M03-003"
+      ]
+    },
+    {
+      "order": "059",
+      "title": "秀域为什么要进行军训式训练",
+      "original_title": "1、秀域为什么要军训",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "企业文化课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "059_1、秀域为什么要军训-转写结果.txt",
+      "output_file": "059_秀域为什么要进行军训式训练｜精炼版.md",
+      "source_chars": 4946,
+      "refined_chars": 689,
+      "compression_ratio": 0.1393,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "060",
+      "title": "秀域各项减重项目介绍",
+      "original_title": "1、秀域各项减肥项目介绍",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "项目地图课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "060_1、秀域各项减肥项目介绍-转写结果.txt",
+      "output_file": "060_秀域各项减重项目介绍｜精炼版.md",
+      "source_chars": 4770,
+      "refined_chars": 774,
+      "compression_ratio": 0.1623,
+      "kb_course_ids": [
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-PROD-MEITUO-001",
+        "COURSE-PROD-GLP1-001",
+        "COURSE-PROD-BODY-MGMT-001",
+        "COURSE-M05-017",
+        "COURSE-M05-019"
+      ]
+    },
+    {
+      "order": "061",
+      "title": "肩周炎、腰椎间盘突出与退行性关节问题",
+      "original_title": "1、肩周炎、腰椎间盘突出、退化性关节炎",
+      "module_id": "MOD-07",
+      "module": "安全、同意与合规服务",
+      "course_type": "安全边界课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "061_1、肩周炎、腰椎间盘突出、退化性关节炎-转写结果.txt",
+      "output_file": "061_肩周炎、腰椎间盘突出与退行性关节问题｜精炼版.md",
+      "source_chars": 3746,
+      "refined_chars": 839,
+      "compression_ratio": 0.224,
+      "kb_course_ids": [
+        "COURSE-M02-008",
+        "COURSE-M02-009",
+        "COURSE-M02-010",
+        "COURSE-M02-011",
+        "COURSE-M02-012"
+      ]
+    },
+    {
+      "order": "062",
+      "title": "贝那鲁肽与司美格鲁肽的区别",
+      "original_title": "1、贝那鲁肽和司美格鲁肽的区别",
+      "module_id": "MOD-07",
+      "module": "安全、同意与合规服务",
+      "course_type": "医疗项目边界课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "062_1、贝那鲁肽和司美格鲁肽的区别 -转写结果.txt",
+      "output_file": "062_贝那鲁肽与司美格鲁肽的区别｜精炼版.md",
+      "source_chars": 6485,
+      "refined_chars": 852,
+      "compression_ratio": 0.1314,
+      "kb_course_ids": [
+        "COURSE-PROD-GLP1-001",
+        "COURSE-M05-010",
+        "COURSE-M05-013",
+        "COURSE-M05-014"
+      ]
+    },
+    {
+      "order": "063",
+      "title": "顾客质疑点阵波贵：价值对标",
+      "original_title": "1、顾客质疑点阵波贵？——学会对标",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "价格异议课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "063_1、顾客质疑点阵波贵？——学会对标-转写结果.txt",
+      "output_file": "063_顾客质疑点阵波贵：价值对标｜精炼版.md",
+      "source_chars": 6652,
+      "refined_chars": 702,
+      "compression_ratio": 0.1055,
+      "kb_course_ids": [
+        "COURSE-M06-001",
+        "COURSE-M02-004",
+        "COURSE-OPS-DYNAMIC-001"
+      ]
+    },
+    {
+      "order": "064",
+      "title": "点阵波与超V联合应用及腰椎问题的服务方案",
+      "original_title": "1点阵波超V联合运用及腰椎间盘治疗方案",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "组合应用课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "064_1点阵波超V联合运用及腰椎间盘治疗方案-转写结果.txt",
+      "output_file": "064_点阵波与超V联合应用及腰椎问题的服务方案｜精炼版.md",
+      "source_chars": 3899,
+      "refined_chars": 843,
+      "compression_ratio": 0.2162,
+      "kb_course_ids": [
+        "COURSE-PROD-COMBINATION-001",
+        "COURSE-M03-003",
+        "COURSE-M02-009",
+        "COURSE-M02-012"
+      ]
+    },
+    {
+      "order": "065",
+      "title": "减重售前接待沟通流程示范",
+      "original_title": "2、减肥售前接待沟通流程示范",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "接待流程课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "065_2、减肥售前接待沟通流程示范-转写结果.txt",
+      "output_file": "065_减重售前接待沟通流程示范｜精炼版.md",
+      "source_chars": 4493,
+      "refined_chars": 749,
+      "compression_ratio": 0.1667,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-M05-003"
+      ]
+    },
+    {
+      "order": "066",
+      "title": "体重不降反升、健康减重指标与反弹",
+      "original_title": "2、减肥过程中体重不降反升的原因、健康减肥的指标、反弹的原因",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "效果管理课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "066_2、减肥过程中体重不降反升的原因、健康减肥的指标、反弹的原因-转写结果.txt",
+      "output_file": "066_体重不降反升、健康减重指标与反弹｜精炼版.md",
+      "source_chars": 8527,
+      "refined_chars": 830,
+      "compression_ratio": 0.0973,
+      "kb_course_ids": [
+        "COURSE-M05-004",
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-M05-002",
+        "COURSE-M05-003"
+      ]
+    },
+    {
+      "order": "067",
+      "title": "减重过程中的注意事项与禁忌",
+      "original_title": "2、减肥过程中注意事项及禁忌症",
+      "module_id": "MOD-07",
+      "module": "安全、同意与合规服务",
+      "course_type": "安全管理课",
+      "review_status": "高风险复核",
+      "duplicate_of": null,
+      "source_file": "067_2、减肥过程中注意事项及禁忌症 -转写结果.txt",
+      "output_file": "067_减重过程中的注意事项与禁忌｜精炼版.md",
+      "source_chars": 3037,
+      "refined_chars": 845,
+      "compression_ratio": 0.2782,
+      "kb_course_ids": [
+        "COURSE-M05-008",
+        "COURSE-M05-014",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "068",
+      "title": "如何论证‘顾客问题与企业方案匹配’",
+      "original_title": "2、如何论证你有病我有药",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "专业呈现课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "068_2、如何论证你有病我有药 -转写结果.txt",
+      "output_file": "068_如何论证‘顾客问题与企业方案匹配’｜精炼版.md",
+      "source_chars": 3428,
+      "refined_chars": 752,
+      "compression_ratio": 0.2194,
+      "kb_course_ids": [
+        "COURSE-FLOW-CUSTOMER-ANSWER-001",
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-FLOW-OBJECTION-001"
+      ]
+    },
+    {
+      "order": "069",
+      "title": "服务关",
+      "original_title": "2、服务关",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "服务标准课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "069_2、服务关-转写结果.txt",
+      "output_file": "069_服务关｜精炼版.md",
+      "source_chars": 873,
+      "refined_chars": 649,
+      "compression_ratio": 0.7434,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "070",
+      "title": "清洁、镜前皮肤分析与拍照",
+      "original_title": "2、清洁 照镜子皮肤分析及拍照",
+      "module_id": "MOD-04",
+      "module": "美容护理与体验服务",
+      "course_type": "基础操作课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "070_2、清洁 照镜子皮肤分析及拍照-转写结果.txt",
+      "output_file": "070_清洁、镜前皮肤分析与拍照｜精炼版.md",
+      "source_chars": 1713,
+      "refined_chars": 706,
+      "compression_ratio": 0.4121,
+      "kb_course_ids": [
+        "COURSE-PROD-BEAUTY-001",
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-SERVICE-SAFETY-001"
+      ]
+    },
+    {
+      "order": "071",
+      "title": "点阵波专业知识及与按摩的比较",
+      "original_title": "2、点阵波专业知识及对标按摩",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "比较沟通课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "071_2、点阵波专业知识及对标按摩-转写结果.txt",
+      "output_file": "071_点阵波专业知识及与按摩的比较｜精炼版.md",
+      "source_chars": 6918,
+      "refined_chars": 813,
+      "compression_ratio": 0.1175,
+      "kb_course_ids": [
+        "COURSE-M02-004",
+        "COURSE-PROD-POINT-WAVE-001"
+      ]
+    },
+    {
+      "order": "072",
+      "title": "点阵波加油卡与转卡设计",
+      "original_title": "2、点阵波加油卡转卡设计",
+      "module_id": "MOD-06",
+      "module": "异议沟通与下一步",
+      "course_type": "动态政策课",
+      "review_status": "动态核验",
+      "duplicate_of": null,
+      "source_file": "072_2、点阵波加油卡转卡设计-转写结果.txt",
+      "output_file": "072_点阵波加油卡与转卡设计｜精炼版.md",
+      "source_chars": 4060,
+      "refined_chars": 784,
+      "compression_ratio": 0.1931,
+      "kb_course_ids": [
+        "COURSE-OPS-DYNAMIC-001",
+        "COURSE-M06-001",
+        "COURSE-FLOW-FOLLOWUP-001"
+      ]
+    },
+    {
+      "order": "073",
+      "title": "点阵波在实际中的应用一（复讲）",
+      "original_title": "2、点阵波在实际中的应用一__2",
+      "module_id": "MOD-02",
+      "module": "点阵波与疼痛沟通",
+      "course_type": "复讲补充课",
+      "review_status": "专业复核",
+      "duplicate_of": "002",
+      "source_file": "073_2、点阵波在实际中的应用一__2-转写结果.txt",
+      "output_file": "073_点阵波在实际中的应用一（复讲）｜精炼版.md",
+      "source_chars": 8216,
+      "refined_chars": 598,
+      "compression_ratio": 0.0728,
+      "kb_course_ids": [
+        "COURSE-PROD-POINT-WAVE-001",
+        "COURSE-OP-POINT-WAVE-001"
+      ]
+    },
+    {
+      "order": "074",
+      "title": "点阵波与超V联合体验的售前流程（第三版）",
+      "original_title": "2、点阵波超V联合治疗的售前接待流程",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "接待流程课",
+      "review_status": "设备复核",
+      "duplicate_of": null,
+      "source_file": "074_2、点阵波超V联合治疗的售前接待流程-转写结果.txt",
+      "output_file": "074_点阵波与超V联合体验的售前流程（第三版）｜精炼版.md",
+      "source_chars": 5333,
+      "refined_chars": 775,
+      "compression_ratio": 0.1453,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001",
+        "COURSE-PROD-COMBINATION-001",
+        "COURSE-M03-003"
+      ]
+    },
+    {
+      "order": "075",
+      "title": "熟人关（一）：称呼、肢体语言与真诚赞美",
+      "original_title": "2、熟人关（一）",
+      "module_id": "MOD-01",
+      "module": "新客接待与需求洞察",
+      "course_type": "沟通实训课",
+      "review_status": "常规",
+      "duplicate_of": null,
+      "source_file": "075_2、熟人关（一）-转写结果.txt",
+      "output_file": "075_熟人关（一）：称呼、肢体语言与真诚赞美｜精炼版.md",
+      "source_chars": 7053,
+      "refined_chars": 714,
+      "compression_ratio": 0.1012,
+      "kb_course_ids": [
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ]
+    },
+    {
+      "order": "076",
+      "title": "秀乎184饱腹食品",
+      "original_title": "2、秀乎184饱腹食品",
+      "module_id": "MOD-05",
+      "module": "科学体重管理",
+      "course_type": "产品使用课",
+      "review_status": "专业复核",
+      "duplicate_of": null,
+      "source_file": "076_2、秀乎184饱腹食品-转写结果.txt",
+      "output_file": "076_秀乎184饱腹食品｜精炼版.md",
+      "source_chars": 6265,
+      "refined_chars": 908,
+      "compression_ratio": 0.1449,
+      "kb_course_ids": [
+        "COURSE-PROD-BODY-MGMT-001",
+        "COURSE-M05-016",
+        "COURSE-M05-002"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "generated_on": "2026-08-18",
+  "status": "passed",
+  "integration_version": "2026-08-video-enhanced",
+  "checks": {
+    "seven_runtime_modules": true,
+    "learning_catalogs_synchronized": true,
+    "all_course_ids_unique": true,
+    "all_card_ids_unique": true,
+    "all_rag_ids_unique": true,
+    "all_qa_ids_unique": true,
+    "all_review_items_excluded_from_customer_rag": true,
+    "no_raw_source_document_in_customer_rag": true,
+    "all_questions_have_safe_answers": true,
+    "legacy_imported_answers_not_used": true,
+    "no_unreviewed_guarantees": true,
+    "static_catalogs_synchronized": true
+  },
+  "counts": {
+    "runtime_modules": 7,
+    "learning_courses": 73,
+    "course_sections": 567,
+    "knowledge_cards": 570,
+    "common_qa": 1032,
+    "rag_documents": 1613,
+    "video_courses": 76,
+    "video_integrated_groups": 41,
+    "video_review_queue_items": 43
+  },
+  "qa_status_counts": {
+    "covered": 105,
+    "boundary_only": 536,
+    "material_missing": 391
+  },
+  "safety_note": "新视频知识库的问题与课程结构已接入；顾客问答沿用项目现有安全审核回答，压缩包中的原始导入答案未直接进入顾客 RAG。"
+}

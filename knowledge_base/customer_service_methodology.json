@@ -1,394 +1,485 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "title": "顾客问题定位与标准回答方法",
-  "purpose": "把企业知识库转化为统一的顾客接待决策顺序：先判断安全，再识别顾客问题，定位主知识模块，调用对应课程，给出有依据、有边界、可执行的回答和下一步。",
-  "authority": "synthesis_of_approved_courses",
+  "purpose": "先判断安全，再定位七个运行模块，调用对应课程和具体QA答案。",
+  "authority": "enterprise_qa_primary",
   "core_principles": [
-    "先顾客、后项目：先听清目标、事实、影响和既往尝试，不在信息不足时直接推荐项目。",
-    "先安全、后业务：红旗症状、明显不适、药品、特殊人群和禁忌信息优先于项目介绍与成交。",
-    "一问一答有主轴：先回答顾客当前最关心的一件事，再补一个必要问题，不一次堆砌所有知识。",
-    "一个主模块、必要辅助模块：项目问题以对应项目模块为主；异议调用异议模块；所有回答受安全合规模块约束。",
-    "只说已核验内容：价格、活动、次数、门店政策、设备参数和产品标签无法确认时明确待核验。",
-    "给选择、不替顾客决定：最多提供一到两个真实可行的下一步，并尊重暂不进行或离开的选择。"
+    "先顾客、后项目：先听清目标和限制，不在信息不足时直接套方案。",
+    "先安全、后业务：明显不适、特殊人群、药品和医疗美容问题优先处理。",
+    "回答必须落到具体知识主题和具体答案，不只给回答思路。",
+    "价格、活动、门店政策和有效期必须按当前系统核验。",
+    "冲突时使用企业最新确认的QA口径。"
   ],
   "service_flow": [
     {
       "step": 1,
-      "name": "迎宾",
-      "goal": "主动问候、确认称呼和接待身份，让顾客感到被尊重。",
+      "name": "迎宾与承接",
+      "goal": "确认称呼和当前问题。",
       "module_id": "MOD-01",
-      "course_ids": ["COURSE-FLOW-NEW-CUSTOMER-001", "COURSE-FLOW-FIVE-GATES-001"]
+      "course_ids": [
+        "COURSE-FLOW-CUSTOMER-ANSWER-001",
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ]
     },
     {
       "step": 2,
-      "name": "建立信任",
-      "goal": "从来店原因开始，用开放式问题让顾客先表达，不急着讲项目。",
-      "module_id": "MOD-01",
-      "course_ids": ["COURSE-FLOW-NEW-CUSTOMER-001", "COURSE-FLOW-FIVE-GATES-001"]
+      "name": "安全确认",
+      "goal": "识别明显不适、特殊情况和需要核验的信息。",
+      "module_id": "MOD-07",
+      "course_ids": [
+        "COURSE-SERVICE-SAFETY-001",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ]
     },
     {
       "step": 3,
-      "name": "了解目标",
-      "goal": "问清目标、时间、变化、影响、既往尝试和决策条件，形成顾客问题定义。",
-      "module_id": "MOD-01",
-      "course_ids": ["COURSE-FLOW-NEW-CUSTOMER-001"]
-    },
-    {
-      "step": 4,
-      "name": "安全确认",
-      "goal": "确认明显不适、红旗症状、皮肤状态、病史、用药、孕期及其他需专业评估的信息。",
-      "module_id": "MOD-07",
-      "course_ids": ["COURSE-SERVICE-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"]
-    },
-    {
-      "step": 5,
-      "name": "基础观察",
-      "goal": "征得同意后记录体感、动作、外观或设备数据，只描述现象，不做疾病诊断。",
-      "module_id": "MOD-01",
-      "course_ids": ["COURSE-OP-BODY-EXAM-001", "COURSE-SERVICE-SAFETY-001"]
-    },
-    {
-      "step": 6,
-      "name": "解释选择",
-      "goal": "复述顾客目标，调用对应项目课程讲清为什么考虑、怎么体验、可能感受、限制和不确定性。",
+      "name": "定位知识",
+      "goal": "确定一个主模块和具体章节。",
       "module_id": "DYNAMIC",
       "course_ids": []
     },
     {
-      "step": 7,
-      "name": "体验与验证",
-      "goal": "说明卫生、流程和暂停方式，持续确认舒适度，用同一指标比较当次体验，不推导长期效果。",
-      "module_id": "MOD-07",
-      "course_ids": ["COURSE-SERVICE-SAFETY-001"]
+      "step": 4,
+      "name": "具体回答",
+      "goal": "优先调用common_qa_catalog中的具体答案，再补课程知识。",
+      "module_id": "DYNAMIC",
+      "course_ids": []
     },
     {
-      "step": 8,
-      "name": "下一步与跟进",
-      "goal": "总结反馈和待核验事项，提供继续、调整或暂不进行的选择，并约定回访。",
+      "step": 5,
+      "name": "确认下一步",
+      "goal": "说明核验、体验、暂停、复诊或回访安排。",
       "module_id": "MOD-06",
-      "course_ids": ["COURSE-FLOW-OBJECTION-001", "COURSE-FLOW-FOLLOWUP-001"]
+      "course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-FLOW-FOLLOWUP-001"
+      ]
     }
   ],
   "answer_execution_order": [
     {
       "order": 0,
       "name": "安全闸门",
-      "instruction": "先检查红旗症状、服务后异常、药品、特殊人群、禁忌和同意问题。命中时由安全模块接管；需要停止时不再推进项目或成交。"
+      "instruction": "先检查明显不适、服务后反应、药品、特殊人群、禁忌、同意和动态信息。"
     },
     {
       "order": 1,
-      "name": "承接当前问题",
-      "instruction": "用一句话复述顾客现在最关心的目标或顾虑，让回答先对题。"
+      "name": "承接问题",
+      "instruction": "复述顾客当前最关心的问题。"
     },
     {
       "order": 2,
-      "name": "定位主模块",
-      "instruction": "根据项目主题确定一个主模块；效果、价格、比较或决策顾虑增加异议模块；动态政策和所有安全边界调用安全合规模块。"
+      "name": "定位模块与章节",
+      "instruction": "按关键词和知识主题定位一个主模块。"
     },
     {
       "order": 3,
-      "name": "只补一个必要问题",
-      "instruction": "从对应课程的问题清单中选择当前最必要的一问；信息已经足够时直接回答，不重复盘问。"
+      "name": "调用具体答案",
+      "instruction": "优先使用common_qa_catalog中的approved_answer；没有完全相同问法时使用对应课程和知识卡。"
     },
     {
       "order": 4,
-      "name": "依据式回应",
-      "instruction": "只使用已定位课程中的流程、可讲范围、可能感受和边界回答；不补充知识库没有的机理、数字、价格或适用结论。"
+      "name": "执行提醒",
+      "instruction": "执行usage_note中的动态核验、专业审核或安全提醒。"
     },
     {
       "order": 5,
-      "name": "给选择并确认",
-      "instruction": "给出一个明确下一步，确有两个可行方案时再给两个选择；最后确认是否解决顾虑，并尊重顾客暂不决定。"
+      "name": "给出下一步",
+      "instruction": "给一个明确且可执行的下一步。"
     }
   ],
   "topic_routes": [
     {
       "id": "TOPIC-PAIN",
-      "label": "疼痛、肩颈腰背与点阵波",
-      "patterns": ["点阵波|肩颈|颈椎|腰椎|腰背|肩周|关节|疼痛|酸痛|酸胀|僵硬|筋膜|头痛|腿麻|手麻"],
+      "label": "点阵波、疼痛与身体问题",
+      "patterns": [
+        "点阵波|疼痛|肩颈|腰椎|腰背|关节|筋膜|结节|麻木|骨刺|静脉曲张"
+      ],
       "module_id": "MOD-02",
-      "course_ids": ["COURSE-KNOW-PAIN-001", "COURSE-PROD-POINT-WAVE-001", "COURSE-OP-POINT-WAVE-001", "COURSE-FAQ-POINT-WAVE-001"],
-      "knowledge_points": ["先问位置、性质、时间、变化、诱因、放射、伴随和影响", "先排除红旗信号", "只介绍局部机械刺激、可能感受、可暂停方式和当次观察", "不诊断病因、不替代医院方案、不承诺治疗结果"],
-      "recommended_next": "风险信息不完整时先补一问；无红旗且符合当前门店SOP时，再说明非医疗体验流程。"
+      "course_ids": [
+        "COURSE-PROD-POINT-WAVE-001",
+        "COURSE-OP-POINT-WAVE-001",
+        "COURSE-KNOW-PAIN-001"
+      ],
+      "knowledge_points": [
+        "点阵波知识",
+        "疼痛与常见身体问题",
+        "服务后反应"
+      ],
+      "recommended_next": "先确认当前问题和风险信息，再调用对应具体QA。"
     },
     {
       "id": "TOPIC-SUPER-V",
-      "label": "超V热动力与组合体验",
-      "patterns": ["超V|超v|热动力|热成像|测温|温热|怕烫|烫伤|怕冷|腰冷|空调|组合方案|两台一起"],
+      "label": "超V、寒凉与亚健康",
+      "patterns": [
+        "超V|热动力|寒凉|湿气|宫寒|痛经|乳腺|卵巢|前列腺|便秘|亚健康"
+      ],
       "module_id": "MOD-03",
-      "course_ids": ["COURSE-PROD-SUPER-V-001", "COURSE-OP-SUPER-V-001", "COURSE-PROD-COMBINATION-001", "COURSE-FAQ-SUPER-V-001"],
-      "knowledge_points": ["讲清定位、表面测温、运行轨迹、温热感和人工暂停", "持续以顾客体感和当前SOP为准", "表面温度图不等于器官温度或疾病诊断", "组合只在目标、耐受和安全条件匹配时讨论，不承诺效果翻倍"],
-      "recommended_next": "确认皮肤、怕热、感觉异常、急性损伤和当前设备禁忌后，再让顾客选择单项了解或比较组合。"
+      "course_ids": [
+        "COURSE-PROD-SUPER-V-001",
+        "COURSE-OP-SUPER-V-001",
+        "COURSE-PROD-COMBINATION-001"
+      ],
+      "knowledge_points": [
+        "超V原理",
+        "体验安全",
+        "组合方案"
+      ],
+      "recommended_next": "确认体验部位、感受和当前限制。"
     },
     {
       "id": "TOPIC-BEAUTY",
-      "label": "美容护理与皮肤体验",
-      "patterns": ["美容|皮肤|敏感肌|过敏|泛红|刺痛|破损|痘|水光|补水|暗沉|细纹|松弛|提拉|面部|护肤|成分|Fotona|4D|欧洲之星|热玛吉|线雕|玻尿酸|肉毒|胶原凝胶|微水光|冰点脱毛|私密|HGH"],
+      "label": "皮肤管理、春语面部与私密",
+      "patterns": [
+        "皮肤|敏感|痘|水光|脱毛|毛囊|春语|医美|热玛吉|皮秒|肉毒|玻尿酸|私密"
+      ],
       "module_id": "MOD-04",
-      "course_ids": ["COURSE-PROD-BEAUTY-001", "COURSE-OP-FACE-LIFT-001", "COURSE-FAQ-BEAUTY-001"],
-      "knowledge_points": ["先问目标、当前肤况、过敏史和近期医美或刺激性产品", "区分日常护理体验与皮肤疾病诊疗", "卸妆、触碰、拍照、测试和保存记录分别征得同意", "不承诺敏感肌一定适合或一次固定见效"],
-      "recommended_next": "先完成肤况与近期项目史确认；急性敏感、破损、感染或恢复期先不操作并建议专业确认。"
+      "course_ids": [
+        "COURSE-PROD-BEAUTY-001",
+        "COURSE-SPRING-FACE-001",
+        "COURSE-SPRING-PRIVATE-001"
+      ],
+      "knowledge_points": [
+        "皮肤管理",
+        "面部年轻化",
+        "私密项目"
+      ],
+      "recommended_next": "核对当前肤况、项目和使用提醒。"
     },
     {
       "id": "TOPIC-SLIMMING",
-      "label": "体重、饮食与长期管理",
-      "patterns": ["减肥|减重|体重|体脂|内脏脂肪|腰围|瘦|胖|反弹|节食|代餐|饥饿|饮食|夜宵|运动|滚脂|轰脂|拔罐|围度|184|高纤饮|饱腹巧克力|饱腹产品|美妥"],
+      "label": "减重、美妥、GLP-1、184与塑形",
+      "patterns": [
+        "减肥|减重|体重|体脂|美妥|GLP-1|贝那鲁肽|184|轰脂|内衣|反弹|饮食"
+      ],
       "module_id": "MOD-05",
-      "course_ids": ["COURSE-PROD-SLIMMING-001", "COURSE-KNOW-SLIMMING-001", "COURSE-PROD-ROLL-FAT-001", "COURSE-FAQ-SLIMMING-001"],
-      "knowledge_points": ["问目标、趋势、饮食、活动、睡眠、压力、既往尝试和健康风险", "用数周趋势、腰围、行为执行和真实感受复盘", "门店体验不能替代营养、活动或医疗管理", "不羞辱、不保证固定斤数、不保证不反弹"],
-      "recommended_next": "把目标拆成一到两个能执行的阶段指标，再讨论与生活节奏匹配的支持方式。"
+      "course_ids": [
+        "COURSE-KNOW-SLIMMING-001",
+        "COURSE-PROD-MEITUO-001",
+        "COURSE-PROD-GLP1-001",
+        "COURSE-PROD-BODY-MGMT-001"
+      ],
+      "knowledge_points": [
+        "科学减重",
+        "产品使用",
+        "效果与维持"
+      ],
+      "recommended_next": "定位具体产品或体重管理问题后调用具体QA。"
     },
     {
-      "id": "TOPIC-DRUG",
-      "label": "口服产品、药品与特殊人群",
-      "patterns": ["GLP-1|glp-1|司美|贝那鲁肽|利拉鲁肽|减肥针|处方|药品|减肥药|口服片|细美宝|美妥|剂量|停药|换药|副作用|孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|糖尿病|高血压|三高|慢病|植入物"],
-      "module_id": "MOD-07",
-      "support_module_ids": ["MOD-05"],
-      "course_ids": ["COURSE-PROD-MEITUO-001", "COURSE-OB-15", "COURSE-OB-16", "COURSE-COMPLIANCE-MEDICAL-001", "COURSE-FAQ-SLIMMING-001", "COURSE-FAQ-SAFETY-001"],
-      "knowledge_points": ["先确认具体产品法定身份、标签、顾客疾病与用药", "门店不诊断、不推荐剂量、不建议开始、停用或更换药物", "儿童、孕期、哺乳期和慢病人群不直接套用普通方案", "由医生、药师或相应资质人员确认适用性"],
-      "recommended_next": "确认前暂停具体产品推荐，记录问题并转医生、药师或相应有资质人员。"
+      "id": "TOPIC-OBJECTION",
+      "label": "价格、效果、比较与回访",
+      "patterns": [
+        "太贵|价格|活动|优惠|有效吗|多久|比较|考虑|没时间|回访|下一步"
+      ],
+      "module_id": "MOD-06",
+      "course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-FLOW-FOLLOWUP-001"
+      ],
+      "knowledge_points": [
+        "异议处理",
+        "价值沟通",
+        "回访"
+      ],
+      "recommended_next": "先核对具体项目，再使用对应答案。"
     },
     {
-      "id": "TOPIC-MATERIAL-GAP",
-      "label": "未覆盖项目与资料核验",
-      "patterns": ["定制内衣|184|高纤饮|饱腹巧克力|轰脂|Fotona|4D|欧洲之星|热玛吉|线雕|玻尿酸|肉毒|胶原凝胶|微水光|冰点脱毛|私密|HGH"],
+      "id": "TOPIC-SAFETY",
+      "label": "安全、同意、异常与动态信息",
+      "patterns": [
+        "不舒服|头晕|红肿|过敏|副作用|禁忌|怀孕|儿童|药|剂量|活动|价格|隐私|拍照"
+      ],
       "module_id": "MOD-07",
-      "support_module_ids": [],
-      "course_ids": ["COURSE-FAQ-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"],
-      "knowledge_points": ["先核对具体产品、设备型号、法定身份和当前版本", "缺少说明书、标签、SOP、禁忌或审核话术时不猜答案", "医疗美容、药品和注射问题由有资质人员确认", "给顾客明确的核验回复时间，核验前不操作、不销售"],
-      "recommended_next": "记录具体项目和问题，核对现行资料并在约定时间回复；医疗或药品问题转有资质人员。"
-    },
-    {
-      "id": "TOPIC-CONSENT",
-      "label": "隐私、触碰、拍照与知情同意",
-      "patterns": ["隐私|拍照|照片|不想拍|不许拍|触碰|不想碰|暴露|同意|拒绝|记录|删除照片|朋友圈"],
-      "module_id": "MOD-07",
-      "support_module_ids": ["MOD-01"],
-      "course_ids": ["COURSE-SERVICE-SAFETY-001", "COURSE-OP-BODY-EXAM-001", "COURSE-COMPLIANCE-MEDICAL-001"],
-      "knowledge_points": ["触碰、暴露、拍照、保存和营销使用分别征得同意", "说明用途、范围、访问和删除方式", "顾客拒绝不影响正常解释或其他可行服务", "不能在顾客拒绝后继续施压"],
-      "recommended_next": "先确认并尊重顾客边界，改用顾客接受的非侵入式观察或仅口头沟通。"
+      "course_ids": [
+        "COURSE-SERVICE-SAFETY-001",
+        "COURSE-COMPLIANCE-MEDICAL-001",
+        "COURSE-OPS-DYNAMIC-001"
+      ],
+      "knowledge_points": [
+        "立即暂停",
+        "安全确认",
+        "动态核验"
+      ],
+      "recommended_next": "先执行安全或核验流程。"
     },
     {
       "id": "TOPIC-GENERAL",
-      "label": "新客需求与项目选择",
-      "patterns": ["适合什么|推荐什么|有什么项目|想了解|怎么选|第一次来|不知道做什么|帮我看看|怎么改善"],
+      "label": "企业介绍与一般咨询",
+      "patterns": [
+        "秀域|介绍|有什么项目|怎么选|第一次来|不了解"
+      ],
       "module_id": "MOD-01",
-      "course_ids": ["COURSE-FLOW-NEW-CUSTOMER-001", "COURSE-FLOW-FIVE-GATES-001", "COURSE-OP-BODY-EXAM-001"],
-      "knowledge_points": ["先问顾客最想改善的一件事", "问时间、影响、既往尝试、限制和安全信息", "形成需求总结后最多说明一到两个选择", "不在信息不足时直接套项目"],
-      "recommended_next": "先完成目标和安全信息确认，再进入对应项目模块。"
+      "course_ids": [
+        "COURSE-FLOW-CUSTOMER-ANSWER-001",
+        "COURSE-FLOW-NEW-CUSTOMER-001"
+      ],
+      "knowledge_points": [
+        "需求确认",
+        "公司与服务基础"
+      ],
+      "recommended_next": "先确认顾客最想了解的内容。"
     }
   ],
   "intent_routes": [
     {
       "id": "INTENT-RED-FLAG",
-      "priority": 100,
+      "priority": 110,
       "label": "红旗症状与紧急安全分流",
-      "patterns": ["胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|进行性麻木|麻木加重|无力加重|大小便异常|会阴麻木|发热.*红肿|红肿.*发热|外伤后.*受限|单侧腿.*肿|不能负重"],
+      "patterns": [
+        "胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|进行性麻木|麻木加重|无力加重|大小便异常|会阴麻木|发热.*红肿|红肿.*发热|外伤后.*受限|单侧腿.*肿|不能负重"
+      ],
       "primary_module_id": "MOD-07",
-      "course_ids": ["COURSE-COMPLIANCE-MEDICAL-001", "COURSE-SERVICE-SAFETY-001", "COURSE-KNOW-PAIN-001"],
-      "focus": "停止营销和操作，询问关键症状并建议及时医疗评估。",
-      "recommended_next": "今天先不安排项目；确认症状开始时间和变化，症状明显、持续或加重时及时医疗评估。",
+      "support_module_ids": [],
+      "course_ids": [
+        "COURSE-SERVICE-SAFETY-001",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ],
+      "focus": "先停止营销和操作，完成风险确认并建议医疗评估。",
+      "recommended_next": "立即停止销售推进和相关操作；症状明显、持续或加重时尽快联系急救或前往医疗机构。",
       "stop_sales": true
     },
     {
       "id": "INTENT-AFTERCARE",
-      "priority": 95,
+      "priority": 100,
       "label": "服务后不适与异常处理",
-      "patterns": ["做完.*更痛|体验后.*更痛|做后.*更痛|做完.*头晕|体验后.*头晕|做完.*灼热|做完.*红肿|做完.*发热|做完.*麻木|体验后.*不舒服|昨天做完|不适.*加重|是不是排毒|说明有效吗"],
+      "patterns": [
+        "做完.*更痛|体验后.*更痛|做后.*更痛|做完.*头晕|体验后.*头晕|做完.*灼热|做完.*红肿|做完.*发热|做完.*麻木|体验后.*不舒服|昨天做完|不适.*加重|是不是排毒|说明有效吗"
+      ],
       "primary_module_id": "MOD-07",
-      "support_module_ids": ["MOD-06"],
-      "course_ids": ["COURSE-SERVICE-SAFETY-001", "COURSE-FLOW-FOLLOWUP-001", "COURSE-OB-17"],
-      "focus": "先暂停、问开始时间和程度、排查红旗、通知负责人、记录并回访；异常未解决前不销售。",
-      "recommended_next": "暂停后续安排，记录症状并通知负责人；排查红旗，必要时建议及时医疗评估。",
+      "support_module_ids": [
+        "MOD-06"
+      ],
+      "course_ids": [
+        "COURSE-SERVICE-SAFETY-001"
+      ],
+      "focus": "先暂停、询问、升级和记录。",
+      "recommended_next": "立即暂停相关服务和销售推进，问清变化并按流程升级、记录或建议医疗评估。",
       "stop_sales": true
+    },
+    {
+      "id": "INTENT-DRUG",
+      "priority": 95,
+      "label": "口服产品、药品与特殊人群",
+      "patterns": [
+        "GLP-1|glp-1|司美|贝那鲁肽|利拉鲁肽|减肥针|处方|药品|减肥药|口服片|细美宝|美妥|剂量|停药|换药|副作用|孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|糖尿病|高血压|三高|慢病|植入物"
+      ],
+      "primary_module_id": "MOD-07",
+      "support_module_ids": [
+        "MOD-05"
+      ],
+      "course_ids": [
+        "COURSE-PROD-MEITUO-001",
+        "COURSE-PROD-GLP1-001",
+        "COURSE-COMPLIANCE-MEDICAL-001"
+      ],
+      "focus": "先暂停具体产品或剂量建议，由有资质人员确认适用性。",
+      "recommended_next": "记录具体产品、疾病和用药信息，转医生、药师或相应有资质人员确认；门店不建议剂量、开始、停用或换药。",
+      "stop_sales": false
+    },
+    {
+      "id": "INTENT-RESULT",
+      "priority": 90,
+      "label": "效果、次数、速度与结果承诺",
+      "patterns": [
+        "保证|一定有效|肯定有效|有没有效|见效|一次能|一次是不是|多久有效|多久见效|几次有效|固定.*斤|一个月.*斤|不反弹|根治|治好|效果翻倍|百分百"
+      ],
+      "primary_module_id": "MOD-06",
+      "support_module_ids": [
+        "MOD-05",
+        "MOD-07"
+      ],
+      "course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-KNOW-SLIMMING-001"
+      ],
+      "focus": "不承诺固定结果，先澄清目标和可观察指标。",
+      "recommended_next": "把目标拆成可执行阶段并约定复盘，不承诺固定疗效、次数或减重数字。",
+      "stop_sales": false
+    },
+    {
+      "id": "INTENT-SUITABILITY",
+      "priority": 85,
+      "label": "适用性、安全与体验感受",
+      "patterns": [
+        "能不能做|能做吗|可以做吗|适不适合|安全吗|会不会痛|怕疼|会不会烫|怕烫|有风险吗|禁忌|副作用|敏感肌|泛红"
+      ],
+      "primary_module_id": "MOD-07",
+      "support_module_ids": [
+        "MOD-04"
+      ],
+      "course_ids": [
+        "COURSE-SERVICE-SAFETY-001",
+        "COURSE-PROD-BEAUTY-001"
+      ],
+      "focus": "先确认当前状态和风险，再解释体验边界。",
+      "recommended_next": "先核对当前肤况、近期项目和安全限制，再决定是否继续了解体验。",
+      "stop_sales": false
     },
     {
       "id": "INTENT-PRICE",
       "priority": 80,
       "label": "价格、优惠与门店政策",
-      "patterns": ["多少钱|价格|贵不贵|太贵|优惠|活动|折扣|券|退款|有效期|几次|次数|套餐|权益"],
+      "patterns": [
+        "多少钱|价格|贵不贵|太贵|优惠|活动|折扣|券|退款|有效期|几次|次数|套餐|权益"
+      ],
       "primary_module_id": "MOD-07",
-      "support_module_ids": ["MOD-06"],
-      "course_ids": ["COURSE-OPS-DYNAMIC-001", "COURSE-FLOW-OBJECTION-001", "COURSE-OB-07"],
-      "focus": "确认城市、门店、日期和项目，查当前系统；价值异议再澄清总预算、单次成本或结果不确定。",
-      "recommended_next": "确认城市、门店、具体项目和日期，再按当前系统的有效版本回复价格与活动。",
-      "stop_sales": false
-    },
-    {
-      "id": "INTENT-RESULT",
-      "priority": 85,
-      "label": "效果、次数、速度与结果承诺",
-      "patterns": ["保证|一定有效|肯定有效|有没有效|见效|一次能|一次是不是|多久有效|多久见效|几次有效|固定.*斤|一个月.*斤|不反弹|根治|治好|效果翻倍|百分百"],
-      "primary_module_id": "MOD-06",
-      "support_module_ids": ["MOD-07"],
-      "course_ids": ["COURSE-FLOW-OBJECTION-001", "COURSE-OB-04", "COURSE-OB-05", "COURSE-OB-06", "COURSE-OB-10", "COURSE-OB-11", "COURSE-COMPLIANCE-MEDICAL-001"],
-      "focus": "先澄清顾客用什么指标定义效果，再说明个体差异、当次体验与长期结果的区别，并约定阶段复盘。",
-      "recommended_next": "先确定顾客最在意的一个可观察指标和必要安全信息，再约定阶段复盘。",
-      "stop_sales": false
-    },
-    {
-      "id": "INTENT-SUITABILITY",
-      "priority": 70,
-      "label": "适用性、安全与体验感受",
-      "patterns": ["能不能做|能做吗|可以做吗|适不适合|安全吗|会不会痛|怕疼|会不会烫|怕烫|有风险吗|禁忌|副作用"],
-      "primary_module_id": "MOD-07",
-      "course_ids": ["COURSE-SERVICE-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"],
-      "focus": "不直接回答绝对可以或安全；先确认当前状态、既往情况和具体项目禁忌，再说明监测和暂停机制。",
-      "recommended_next": "先确认当前状态、既往情况和具体项目禁忌；无法确认时不操作。",
+      "support_module_ids": [
+        "MOD-03",
+        "MOD-06"
+      ],
+      "course_ids": [
+        "COURSE-OPS-DYNAMIC-001",
+        "COURSE-FLOW-OBJECTION-001"
+      ],
+      "focus": "核对当前版本并回答。",
+      "recommended_next": "确认城市、门店、项目和日期。",
       "stop_sales": false
     },
     {
       "id": "INTENT-COMPARISON",
-      "priority": 65,
+      "priority": 75,
       "label": "医院、竞品与设备比较",
-      "patterns": ["医院|外面|别家|其他店|一样吗|有什么不同|区别|更便宜|更贵|替代手术|比医生|哪个好"],
+      "patterns": [
+        "医院|外面|别家|其他店|一样吗|有什么不同|区别|更便宜|更贵|替代手术|比医生|哪个好"
+      ],
       "primary_module_id": "MOD-06",
-      "support_module_ids": ["MOD-07"],
-      "course_ids": ["COURSE-FLOW-OBJECTION-001", "COURSE-OB-14", "COURSE-COMPLIANCE-MEDICAL-001"],
-      "focus": "只比较可核验的流程与服务差异，不贬低、不编造设备来源、价格倍数或疗效证据。",
-      "recommended_next": "列出顾客真正想比较的流程、服务、时间或价格，并只核对当前可验证的差异。",
+      "support_module_ids": [
+        "MOD-07"
+      ],
+      "course_ids": [
+        "COURSE-FLOW-OBJECTION-001"
+      ],
+      "focus": "公平说明定位和边界，不贬低医疗或其他品牌。",
+      "recommended_next": "按具体目标和可核验信息比较，不把门店体验说成医疗替代。",
       "stop_sales": false
     },
     {
       "id": "INTENT-DECISION",
-      "priority": 60,
+      "priority": 70,
       "label": "时间、执行与决策顾虑",
-      "patterns": ["没时间|太远|先试一次|先做一次|回去考虑|再想想|研究一下|和家人商量|和老公商量|不想说|别问了|不想沟通"],
+      "patterns": [
+        "没时间|太远|先试一次|先做一次|回去考虑|再想想|研究一下|和家人商量|和老公商量|不想说|别问了|不想沟通"
+      ],
       "primary_module_id": "MOD-06",
-      "course_ids": ["COURSE-FLOW-OBJECTION-001", "COURSE-OB-01", "COURSE-OB-08", "COURSE-OB-09", "COURSE-OB-10", "COURSE-OB-12"],
-      "focus": "承接真实约束，问清时间、价值还是决策问题，提供资料、可执行选择或明确退出选项。",
-      "recommended_next": "先确认真实顾虑，再提供资料、一个可执行选择或明确的暂不决定选项。",
+      "support_module_ids": [
+        "MOD-07"
+      ],
+      "course_ids": [
+        "COURSE-FLOW-OBJECTION-001",
+        "COURSE-FLOW-FOLLOWUP-001"
+      ],
+      "focus": "承接顾虑并给出可执行选择，尊重暂不决定。",
+      "recommended_next": "给顾客继续了解、调整安排或暂不决定的选择，不施压成交。",
       "stop_sales": false
     },
     {
       "id": "INTENT-INFORMATION",
       "priority": 10,
-      "label": "项目原理、流程与一般咨询",
-      "patterns": ["是什么|怎么做|什么原理|过程|流程|感受|介绍一下|怎么回事|为什么"],
+      "label": "一般咨询",
+      "patterns": [
+        "是什么|为什么|怎么做|效果|多久|区别"
+      ],
       "primary_module_id": "DYNAMIC",
+      "support_module_ids": [],
       "course_ids": [],
-      "focus": "用顾客听得懂的语言说明项目定位、流程、可能感受、可暂停方式和边界。",
-      "recommended_next": "只补一个决定答案的必要信息，再按对应项目课程说明流程、感受和边界。",
+      "focus": "调用具体QA和课程。",
+      "recommended_next": "定位知识主题后回答。",
       "stop_sales": false
     }
   ],
   "default_route": {
     "intent_id": "INTENT-INFORMATION",
-    "intent_label": "一般需求咨询",
+    "intent_label": "一般咨询",
     "primary_module_id": "MOD-01",
-    "support_module_ids": ["MOD-07"],
-    "course_ids": ["COURSE-FLOW-NEW-CUSTOMER-001", "COURSE-FLOW-FIVE-GATES-001", "COURSE-SERVICE-SAFETY-001"],
-    "focus": "先确认顾客最想改善的目标和必要安全信息，再进入对应项目知识。",
+    "support_module_ids": [
+      "MOD-07"
+    ],
+    "course_ids": [
+      "COURSE-FLOW-CUSTOMER-ANSWER-001"
+    ],
+    "focus": "先确认问题，再定位知识主题。",
     "stop_sales": false
   },
   "answer_template": {
-    "normal": "我理解您主要想了解【当前问题】。为了回答得更准确，我先确认【一个必要问题】。目前能确认的是【课程中已核验的事实或流程】；【需要说明的边界或个体差异】。下一步可以【一个可执行动作或一到两个真实选择】，您更希望怎么安排？",
-    "information_complete": "您主要问的是【当前问题】。目前能确认的是【已核验事实或流程】；【必要边界】。建议下一步【可执行动作】，这是否回答了您的疑问？",
-    "safety_override": "您提到的【风险信息】需要先确认安全。今天先暂停项目或产品推荐；我需要了解【关键风险问题】，并建议【负责人或有资质人员/医疗机构】进一步评估。确认前不操作、不销售具体方案。",
-    "dynamic_information": "【价格/活动/次数】会随城市、门店和日期变化。我先确认【城市、门店、项目和日期】，再按当前系统里的有效版本准确回复，不先使用历史资料口头保证。"
+    "normal": "我理解您主要想了解【当前问题】。目前能确认的是【具体答案】；【必要提醒】。下一步建议【可执行动作】。",
+    "information_complete": "您问的是【当前问题】。标准答案是【具体答案】；【必要提醒】。",
+    "safety_override": "您提到的情况需要先确认安全。今天先暂停相关操作，我先了解【关键情况】，并按流程通知负责人或建议专业评估。",
+    "dynamic_information": "这项信息会随门店和日期变化，我先核对当前系统中的有效版本，再准确回复。"
   },
-  "example_routes": [
-    {
-      "customer_question": "我肩颈很紧，偶尔头晕，你们能治颈椎病吗？",
-      "route": "安全闸门 → 点阵波与疼痛沟通 → 新客需求洞察",
-      "courses": ["疼痛问题：如何判断、解释和转介", "所有员工必须掌握的医疗与营销红线", "新顾客接待的完整八步"],
-      "correct_answer": "我先了解一下：头晕是从什么时候开始的，最近有没有突然加重，或伴随胸闷、晕厥、手脚麻木无力？门店不能诊断或治疗颈椎病；如果症状明显或存在这些风险信号，建议先做医疗评估。确认适合门店服务后，我再说明我们能提供的非医疗舒适体验。",
-      "recommended_next": "先完成红旗问询；有风险立即停止推荐并转介。"
-    },
-    {
-      "customer_question": "超V会不会把我烫伤？",
-      "route": "超V热动力与组合方案 → 安全、同意与合规服务",
-      "courses": ["超V热动力：项目介绍与体验流程", "服务过程中的安全与顾客体验标准"],
-      "correct_answer": "您担心温度很正常。我不能承诺绝对不会发生风险；开始前需要先了解皮肤、怕热和既往情况，操作会从可接受的感受开始，并结合设备读数持续询问。任何过热、疼痛、头晕或不舒服都要立即暂停。",
-      "recommended_next": "先完成适用性确认，再说明定位、测温和暂停流程。"
-    },
-    {
-      "customer_question": "敏感肌能做水光吗？",
-      "route": "美容护理与体验服务 → 安全、同意与合规服务",
-      "courses": ["美容护理项目：需求分析与表达边界", "服务过程中的安全与顾客体验标准"],
-      "correct_answer": "不能只凭‘敏感肌’判断能不能做。我先确认现在有没有持续泛红、刺痛、破损或过敏发作，近期是否做过医美、刷酸或使用强刺激产品。存在这些情况时先不操作；状态稳定时也要核对具体成分、项目禁忌和当前SOP，再决定是否适合。",
-      "recommended_next": "先核对当前肤况、过敏史、近期项目史和具体成分。"
-    },
-    {
-      "customer_question": "你们能保证我一个月瘦十斤而且不反弹吗？",
-      "route": "科学体重管理 → 异议沟通与下一步 → 安全、同意与合规服务",
-      "courses": ["体重管理：从目标分析到长期方案", "异议处理的五步回应法", "所有员工必须掌握的医疗与营销红线"],
-      "correct_answer": "我理解您希望尽快看到稳定变化，但不能承诺固定斤数或永不反弹。需要先了解您的体重趋势、饮食、睡眠、活动、既往减重经历和健康情况，再把目标拆成可观察、能执行的阶段指标，按统一条件持续复盘。",
-      "recommended_next": "完成体重管理七问，确定一到两个阶段指标和下一周可执行动作。"
-    },
-    {
-      "customer_question": "这个项目多少钱？",
-      "route": "安全、同意与合规服务中的动态信息 → 异议沟通与下一步",
-      "courses": ["价格、优惠与门店政策怎么回答", "异议处理的五步回应法"],
-      "correct_answer": "价格和活动会随城市、门店、项目和日期变化。请告诉我您咨询的城市、门店和具体项目，我按今天系统里的有效版本准确回复；如果您也在比较预算，我可以把项目内容和可选安排一起讲清楚。",
-      "recommended_next": "核对城市、门店、项目、日期和当前系统版本。"
-    },
-    {
-      "customer_question": "昨天做完今天更痛，是不是说明有效？",
-      "route": "安全、同意与合规服务 → 体验后回访与跟进",
-      "courses": ["服务过程中的安全与顾客体验标准", "体验结束后的回访与跟进", "顾客说“做完更痛/发热/头晕”时怎么回应"],
-      "correct_answer": "更痛不能直接解释为有效。先暂停下一次项目，请告诉我不适从什么时候开始、程度是0到10中的几分、是否在加重，以及有没有麻木无力、发热红肿、胸闷或头晕。我会立即记录并通知负责人按流程处理；出现红旗信号时建议及时医疗评估。",
-      "recommended_next": "停止销售推进，完成异常记录、负责人升级和约定回访。"
-    }
-  ],
+  "example_routes": [],
   "knowledge_card": {
     "id": "FLOW-CUSTOMER-ANSWER-001",
     "type": "service_methodology",
     "domain": "reception",
     "title": "顾客问题定位与标准回答方法",
-    "authority": "synthesis_of_approved_courses",
-    "source_ids": ["SRC-006", "SRC-008", "SRC-009", "SRC-010", "SRC-011", "SRC-012", "SRC-014", "SRC-016", "SRC-018", "SRC-019", "SRC-020", "SRC-022", "SRC-023", "SRC-028", "SRC-029", "SRC-030", "SRC-031", "SRC-033", "SRC-034"],
-    "framework": ["安全闸门", "承接当前问题", "定位主模块", "只补一个必要问题", "依据式回应", "给选择并确认"],
-    "routing_principles": ["项目问题进入对应项目模块", "效果、价格、比较和决策顾虑增加异议模块", "红旗、异常、药品、特殊人群、同意和动态信息由安全合规模块优先处理"],
-    "training_focus": ["问题定位准确", "依据调用准确", "回答顺序完整", "推荐下一步可执行", "不越过安全边界"],
-    "testing_focus": ["是否先安全后业务", "是否回答当前问题而非背项目", "是否调用正确模块", "是否给出正确且尊重顾客的下一步"]
+    "authority": "enterprise_qa_primary",
+    "source_ids": [],
+    "framework": [
+      "安全闸门",
+      "承接问题",
+      "定位模块与章节",
+      "调用具体答案",
+      "执行提醒",
+      "给出下一步"
+    ],
+    "routing_principles": [
+      "具体QA优先",
+      "课程知识补充",
+      "安全与动态信息优先处理"
+    ],
+    "training_focus": [
+      "定位准确",
+      "答案具体",
+      "边界清楚"
+    ],
+    "testing_focus": [
+      "是否能直接回答",
+      "是否引用正确知识",
+      "是否执行使用提醒"
+    ]
   },
   "course": {
-    "summary": "用一套固定顺序回答顾客：先过安全闸门，再定位知识模块，调用对应课程，最后给出正确话术和可执行下一步。",
-    "estimated_minutes": 18,
+    "id": "COURSE-FLOW-CUSTOMER-ANSWER-001",
+    "module_id": "MOD-01",
+    "order": 1,
+    "kind": "knowledge",
+    "title": "顾客问题定位与标准回答顺序",
+    "summary": "按安全闸门、承接问题、必要一问、依据回答和明确下一步的顺序组织顾客沟通。",
+    "estimated_minutes": 15,
+    "source_ids": [],
+    "authority": "enterprise_qa_primary",
     "sections": [
       {
-        "title": "为什么不能想到什么说什么",
-        "content": ["顾客的问题通常同时包含项目主题、真实顾虑和安全条件。只抓一个关键词，容易答非所问或越过边界。", "标准做法不是背更多话术，而是先确定当前处于接待八步中的哪一步，再判断安全优先级和主知识模块。", "每次只解决一个主要问题、补一个必要问题、给一个明确下一步，让顾客听得懂也做得到。"]
-      },
-      {
-        "title": "一整套接待主流程",
-        "content": ["1. 迎宾：主动问候、确认称呼和身份。", "2. 建立信任：从来店原因开始，让顾客先表达。", "3. 了解目标：问目标、时间、影响、既往尝试和限制。", "4. 安全确认：问明显不适、红旗症状、病史、用药和特殊情况。", "5. 基础观察：先同意、只描述现象、不做诊断。", "6. 解释选择：复述目标后再讲一到两个匹配选择。", "7. 体验与验证：报流程、讲卫生、持续确认，用同一指标复盘当次体验。", "8. 下一步与跟进：总结、给选择、尊重决定并约定回访。"]
-      },
-      {
-        "title": "每次回答的固定执行顺序",
-        "content": ["0. 安全闸门：命中红旗、服务后异常、药品或特殊人群时，先暂停项目推荐。", "1. 承接：复述顾客当前最关心的问题。", "2. 定位：确定一个主模块，必要时增加异议和安全模块。", "3. 澄清：只补当前最必要的一个问题。", "4. 回应：只使用对应课程里的流程、可讲事实和边界。", "5. 下一步：给一个动作；确有两个可行选项时再给两个选择，并确认顾客意愿。"]
-      },
-      {
-        "title": "顾客问题到知识模块的定位表",
+        "title": "回答顾客的简单顺序",
         "content": [
-          {"label": "还不知道做什么、需要推荐", "content": "主模块：新客接待与需求洞察；先完成目标、安全和限制条件，不直接套项目。"},
-          {"label": "肩颈、腰背、疼痛、点阵波", "content": "主模块：点阵波与疼痛沟通；辅助：新客接待、安全合规。"},
-          {"label": "温热、怕烫、怕冷、超V、组合", "content": "主模块：超V热动力与组合方案；辅助：安全合规。"},
-          {"label": "皮肤、敏感、补水、提拉、美容", "content": "主模块：美容护理与体验服务；辅助：安全合规和知情同意。"},
-          {"label": "减重、饮食、反弹、滚脂、体重", "content": "主模块：科学体重管理；效果或执行顾虑再调用异议沟通。"},
-          {"label": "贵、没时间、一次是否有效、比较、考虑", "content": "主模块：异议沟通与下一步；同时调用顾客正在咨询的项目模块。"},
-          {"label": "红旗症状、做后不适、药品、孕期、儿童、慢病、隐私、价格政策", "content": "主模块：安全、同意与合规服务；必要时停止销售、转介或核验当前系统。"}
+          "先看安全：出现红旗、不适、药品、特殊人群或隐私问题时，先处理安全。",
+          "承接问题：用一句话说明已经听懂顾客最关心的目标或顾虑。",
+          "只问一个必要问题：信息不足时补当前最重要的一问，避免连续盘问。",
+          "按知识回答：只讲已确认的流程、可能感受、边界和当前政策。",
+          "给一个下一步：提供一个明确动作；确实有两个可行选择时再给两个，并尊重暂不决定。",
+          "一句话模板：我理解您最在意的是……。为了回答得准确，我先确认……。目前能确定的是……，不能承诺的是……。建议下一步先……，您觉得可以吗？"
         ]
       },
       {
-        "title": "标准话术结构",
-        "content": ["承接：‘我理解您主要担心的是【顾虑】。’", "必要一问：‘为了回答得更准确，我先确认【一个必要信息】。’", "依据回答：‘目前能确认的是【课程中已核验的流程或事实】。’", "边界：‘不能承诺/还需核验的是【不确定内容】。’", "下一步：‘建议先【一个可执行动作】；您希望继续了解，还是先带资料考虑？’"]
-      },
-      {
-        "title": "完整案例：从问题到正确推荐",
+        "title": "知识地图",
         "content": [
-          {"label": "顾客", "content": "我每天加班，能保证一个月瘦十斤吗？"},
-          {"label": "定位", "content": "科学体重管理 + 效果异议 + 安全合规。"},
-          {"label": "需要调用", "content": "体重管理七问、长期趋势与阶段复盘、异议五步回应、禁止固定斤数承诺。"},
-          {"label": "正确回答", "content": "我理解您希望尽快看到变化，但不能承诺一个月固定瘦十斤。为了判断什么目标更现实，我先了解一下您的加班时间、饮食睡眠和过去减重经历，再把目标拆成能执行的阶段指标，按统一条件复盘。"},
-          {"label": "正确推荐", "content": "先完成目标、生活节奏、既往尝试和健康风险确认，再确定下一周一到两个可执行动作，而不是先推固定项目或次数。"}
+          "企业与服务基础  —  掌握品牌介绍、接待方法、安全底线与动态信息核验方式，为所有顾客沟通建立统一基础。",
+          "点阵波：原理、体验与服务  —  讲清点阵波的项目定位、体验过程、常见反应、使用限制，以及与其他工具和组合方案的区别。",
+          "疼痛与常见身体问题  —  理解顾客常见疼痛与身体问题的企业培训口径，能解释项目边界，并在高风险情况出现时优先分流。",
+          "超V热动力、寒凉与亚健康  —  掌握超V热动力的基础逻辑、体验安全、组合使用及寒凉和亚健康相关沟通。",
+          "科学减重与美妥  —  建立体重与体脂管理的完整框架，覆盖饮食、执行、平台期、古方减脂和美妥相关问题。",
+          "贝那鲁肽（GLP-1）减重项目  —  系统学习贝那鲁肽项目的定位、使用安排、组合方案、常见反应、效果管理和特殊情况。",
+          "184饱腹、轰脂塑形与定制内衣  —  掌握三类体型管理产品与服务的定位、使用方法、常见反应、比较逻辑和售后沟通。",
+          "秀域皮肤管理与毛囊养护  —  覆盖皮肤屏障、日常护肤、胶原微水光、磁波内雕、脱毛和毛囊养护等常见问题。",
+          "春语面部年轻化与医美  —  按肤质、敏感、斑点、松弛、皱纹、凹陷和眼周等需求，理解春语项目的完整沟通体系。",
+          "春语私密健康  —  掌握私密项目的适用情况、激光与注射方案、妇科炎症边界、恢复期与居家使用。",
+          "异议、价格与后续服务  —  用统一顺序处理价格、效果、比较、犹豫和回访问题，避免争辩和过度承诺。"
         ]
-      },
-      {
-        "title": "回答前后的员工自检",
-        "content": ["我是否回答了顾客当前的问题，而不是背了一段项目介绍？", "我是否先检查了安全、同意、药品、特殊人群和动态信息？", "我能说出本轮的主模块和调用课程吗？", "我的事实是否来自课程，是否擅自增加了机理、数字、价格或效果？", "我是否只补了必要问题，没有连续盘问？", "下一步是否具体、可执行，并且给顾客保留选择和退出权？"]
       }
-    ]
+    ],
+    "group_id": "M01-G00",
+    "group_title": "通用接待与回答方法",
+    "group_order": 0
   }
 }

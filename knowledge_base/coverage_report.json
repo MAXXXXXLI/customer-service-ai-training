@@ -1,0 +1,15 @@
+{
+  "generated_on": "2026-08-18",
+  "status": "passed",
+  "qa_coverage": {
+    "common_qa": 1032,
+    "mapped": 1032,
+    "unmapped": 0
+  },
+  "video_coverage": {
+    "source_courses": 76,
+    "consolidated_groups": 41,
+    "integrated_groups": 41,
+    "review_items": 43
+  }
+}

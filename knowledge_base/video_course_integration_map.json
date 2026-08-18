@@ -1,0 +1,691 @@
+{
+  "version": "2026-08",
+  "source_course_count": 76,
+  "groups": [
+    {
+      "group_id": "VID-G001",
+      "title": "肥胖、体重与健康减重基础",
+      "source_course_orders": [
+        "001"
+      ],
+      "target_course_id": "COURSE-KNOW-SLIMMING-001",
+      "target_course_title": "肥胖、体重与身材管理基础",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 9,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-001",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-001",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G002",
+      "title": "点阵波实际应用的评估与复测",
+      "source_course_orders": [
+        "002"
+      ],
+      "target_course_id": "COURSE-M02-002",
+      "target_course_title": "适用方向、部位与课程安排",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 10,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-002",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-002",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G003",
+      "title": "古方减重的方案执行与阶段管理",
+      "source_course_orders": [
+        "003"
+      ],
+      "target_course_id": "COURSE-M05-005",
+      "target_course_title": "古方减脂与拔罐",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 11,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-003",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-003",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G004",
+      "title": "痛风、糖尿病足、前列腺等疾病类顾客的服务边界",
+      "source_course_orders": [
+        "004",
+        "007"
+      ],
+      "target_course_id": "COURSE-M02-013",
+      "target_course_title": "痛风、糖尿病足、类风湿与皮肤问题",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 14,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-004",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-004",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G005",
+      "title": "颈肩、腰背与关节问题的风险筛查和复测",
+      "source_course_orders": [
+        "005",
+        "061"
+      ],
+      "target_course_id": "COURSE-M02-012",
+      "target_course_title": "循环、神经、术后与高风险情况",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 16,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-005",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-005",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G006",
+      "title": "体重波动、平台期、反弹与维持",
+      "source_course_orders": [
+        "006",
+        "066"
+      ],
+      "target_course_id": "COURSE-M05-004",
+      "target_course_title": "平衡期、反弹与效果管理",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 16,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-006",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-006",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G007",
+      "title": "公平对标、价值比较与价格异议",
+      "source_course_orders": [
+        "008",
+        "038",
+        "063"
+      ],
+      "target_course_id": "COURSE-M06-003",
+      "target_course_title": "效果、时间与比较类异议",
+      "module_id": "MOD-06",
+      "status": "integrated",
+      "accepted_points": 22,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-007",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-007",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G008",
+      "title": "智能提拉仪的标准体验流程",
+      "source_course_orders": [
+        "009"
+      ],
+      "target_course_id": "COURSE-M04-004",
+      "target_course_title": "磁波内雕与面部轮廓项目",
+      "module_id": "MOD-04",
+      "status": "integrated",
+      "accepted_points": 10,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-008",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-008",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G009",
+      "title": "多种健康问题的医疗分流与门店边界",
+      "source_course_orders": [
+        "010"
+      ],
+      "target_course_id": "COURSE-M02-012",
+      "target_course_title": "循环、神经、术后与高风险情况",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 7,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-009",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-009",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G010",
+      "title": "超V敏感部位与疾病类诉求的安全边界",
+      "source_course_orders": [
+        "030"
+      ],
+      "target_course_id": "COURSE-M03-007",
+      "target_course_title": "常见亚健康问题与项目沟通",
+      "module_id": "MOD-03",
+      "status": "integrated",
+      "accepted_points": 7,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-010",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-010",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G011",
+      "title": "点阵波的免疫与炎症表述边界",
+      "source_course_orders": [
+        "011"
+      ],
+      "target_course_id": "COURSE-PROD-POINT-WAVE-001",
+      "target_course_title": "点阵波是什么及工作原理",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 5,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-011",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-011",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G012",
+      "title": "点阵波与医院、按摩等方案的公平比较",
+      "source_course_orders": [
+        "012",
+        "071"
+      ],
+      "target_course_id": "COURSE-M02-004",
+      "target_course_title": "与其他项目和工具的区别",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 11,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-012",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-012",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G013",
+      "title": "点阵波复杂应用中的单次目标和阶段观察",
+      "source_course_orders": [
+        "013"
+      ],
+      "target_course_id": "COURSE-M02-002",
+      "target_course_title": "适用方向、部位与课程安排",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 6,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-013",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-013",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G014",
+      "title": "点阵波与超V联合体验的标准售前流程",
+      "source_course_orders": [
+        "015",
+        "058",
+        "074"
+      ],
+      "target_course_id": "COURSE-FLOW-NEW-CUSTOMER-001",
+      "target_course_title": "顾客沟通与需求确认",
+      "module_id": "MOD-01",
+      "status": "integrated",
+      "accepted_points": 21,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-014",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-014",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G015",
+      "title": "熟人关：称呼、倾听、自然聊天与触碰边界",
+      "source_course_orders": [
+        "016",
+        "026",
+        "075"
+      ],
+      "target_course_id": "COURSE-FLOW-NEW-CUSTOMER-001",
+      "target_course_title": "顾客沟通与需求确认",
+      "module_id": "MOD-01",
+      "status": "integrated",
+      "accepted_points": 21,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-015",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-015",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G016",
+      "title": "持续关系、联系频率与隐私",
+      "source_course_orders": [
+        "017"
+      ],
+      "target_course_id": "COURSE-FLOW-FOLLOWUP-001",
+      "target_course_title": "回访与下一步",
+      "module_id": "MOD-06",
+      "status": "integrated",
+      "accepted_points": 8,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-016",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-016",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G017",
+      "title": "减重与塑形项目选择地图",
+      "source_course_orders": [
+        "018",
+        "034",
+        "060"
+      ],
+      "target_course_id": "COURSE-KNOW-SLIMMING-001",
+      "target_course_title": "肥胖、体重与身材管理基础",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 18,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-017",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-017",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G018",
+      "title": "GLP-1类项目的员工权限与安全沟通",
+      "source_course_orders": [
+        "019",
+        "028",
+        "062"
+      ],
+      "target_course_id": "COURSE-PROD-GLP1-001",
+      "target_course_title": "贝那鲁肽与GLP-1基础",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 21,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-018",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-018",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G019",
+      "title": "轰脂、冰雕与抽脂的比较边界",
+      "source_course_orders": [
+        "020"
+      ],
+      "target_course_id": "COURSE-M05-019",
+      "target_course_title": "轰脂与冰雕、运动、抽脂等比较",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 7,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-019",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-019",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G020",
+      "title": "减重常见问题的回答原则",
+      "source_course_orders": [
+        "021",
+        "031"
+      ],
+      "target_course_id": "COURSE-KNOW-SLIMMING-001",
+      "target_course_title": "肥胖、体重与身材管理基础",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 15,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-020",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-020",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G021",
+      "title": "大夫关：专业解释、证据和边界",
+      "source_course_orders": [
+        "022",
+        "032"
+      ],
+      "target_course_id": "COURSE-FLOW-NEW-CUSTOMER-001",
+      "target_course_title": "顾客沟通与需求确认",
+      "module_id": "MOD-01",
+      "status": "integrated",
+      "accepted_points": 10,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-021",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-021",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G022",
+      "title": "效果沟通的基线、复测与真实性",
+      "source_course_orders": [
+        "023"
+      ],
+      "target_course_id": "COURSE-M06-003",
+      "target_course_title": "效果、时间与比较类异议",
+      "module_id": "MOD-06",
+      "status": "integrated",
+      "accepted_points": 6,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-022",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-022",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G023",
+      "title": "复杂与少见点阵波案例的升级管理",
+      "source_course_orders": [
+        "024"
+      ],
+      "target_course_id": "COURSE-M02-006",
+      "target_course_title": "特殊情况与使用限制",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 6,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-023",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-023",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G024",
+      "title": "纳米喷射仪的四步体验流程",
+      "source_course_orders": [
+        "027"
+      ],
+      "target_course_id": "COURSE-M04-003",
+      "target_course_title": "胶原微水光与纳米喷射补水",
+      "module_id": "MOD-04",
+      "status": "integrated",
+      "accepted_points": 11,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-024",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-024",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G025",
+      "title": "美妥的营养支持与替代原则",
+      "source_course_orders": [
+        "029"
+      ],
+      "target_course_id": "COURSE-PROD-MEITUO-001",
+      "target_course_title": "美妥：定位、成分口径与作用",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 7,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-025",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-025",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G026",
+      "title": "异议处理、方案呈现与自主选择",
+      "source_course_orders": [
+        "033",
+        "043",
+        "044",
+        "045"
+      ],
+      "target_course_id": "COURSE-FLOW-OBJECTION-001",
+      "target_course_title": "顾客异议的处理顺序",
+      "module_id": "MOD-06",
+      "status": "integrated",
+      "accepted_points": 23,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-026",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-026",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G027",
+      "title": "面膜与手膜的标准操作",
+      "source_course_orders": [
+        "035"
+      ],
+      "target_course_id": "COURSE-M04-002",
+      "target_course_title": "日常护肤、成分与产品",
+      "module_id": "MOD-04",
+      "status": "integrated",
+      "accepted_points": 7,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-027",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-027",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G028",
+      "title": "点阵波常见问题与异常反应处理",
+      "source_course_orders": [
+        "036",
+        "040"
+      ],
+      "target_course_id": "COURSE-OP-POINT-WAVE-001",
+      "target_course_title": "服务后常见反应",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 12,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-028",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-028",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G029",
+      "title": "阶段复评、复购与三个月转卡",
+      "source_course_orders": [
+        "039",
+        "047"
+      ],
+      "target_course_id": "COURSE-FLOW-FOLLOWUP-001",
+      "target_course_title": "回访与下一步",
+      "module_id": "MOD-06",
+      "status": "integrated",
+      "accepted_points": 15,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-029",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-029",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G030",
+      "title": "分享功能、券与会员权益的动态核验",
+      "source_course_orders": [
+        "042"
+      ],
+      "target_course_id": "COURSE-OPS-DYNAMIC-001",
+      "target_course_title": "价格、活动、券与动态信息",
+      "module_id": "MOD-01",
+      "status": "integrated",
+      "accepted_points": 7,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-030",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-030",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G031",
+      "title": "减重体验期、每日管理与售前流程",
+      "source_course_orders": [
+        "046",
+        "052",
+        "065"
+      ],
+      "target_course_id": "COURSE-M05-003",
+      "target_course_title": "运动、作息、应酬与执行",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 20,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-031",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-031",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G032",
+      "title": "腿部项目的风险筛查、体验与转卡",
+      "source_course_orders": [
+        "048"
+      ],
+      "target_course_id": "COURSE-M03-007",
+      "target_course_title": "常见亚健康问题与项目沟通",
+      "module_id": "MOD-03",
+      "status": "integrated",
+      "accepted_points": 5,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-032",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-032",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G033",
+      "title": "疼痛体验的解释、风险筛查与复测",
+      "source_course_orders": [
+        "049",
+        "050"
+      ],
+      "target_course_id": "COURSE-KNOW-PAIN-001",
+      "target_course_title": "疼痛、筋膜、结节与无菌性炎症",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 9,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-033",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-033",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G034",
+      "title": "顾客问题—企业方案—结果验证",
+      "source_course_orders": [
+        "051",
+        "068"
+      ],
+      "target_course_id": "COURSE-FLOW-CUSTOMER-ANSWER-001",
+      "target_course_title": "顾客问题定位与标准回答顺序",
+      "module_id": "MOD-01",
+      "status": "integrated",
+      "accepted_points": 16,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-034",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-034",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G035",
+      "title": "五关、服务执行与团队标准",
+      "source_course_orders": [
+        "053",
+        "055",
+        "059",
+        "069"
+      ],
+      "target_course_id": "COURSE-FLOW-NEW-CUSTOMER-001",
+      "target_course_title": "顾客沟通与需求确认",
+      "module_id": "MOD-01",
+      "status": "integrated",
+      "accepted_points": 21,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-035",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-035",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G036",
+      "title": "美容售前的清洁、观察、拍照与半脸比较",
+      "source_course_orders": [
+        "054",
+        "070"
+      ],
+      "target_course_id": "COURSE-PROD-BEAUTY-001",
+      "target_course_title": "皮肤结构、屏障、敏感与痘痘",
+      "module_id": "MOD-04",
+      "status": "integrated",
+      "accepted_points": 10,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-036",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-036",
+      "review_status": "editorially_refined"
+    },
+    {
+      "group_id": "VID-G037",
+      "title": "点阵波设备引入、试点与宣传证据",
+      "source_course_orders": [
+        "056"
+      ],
+      "target_course_id": "COURSE-PROD-POINT-WAVE-001",
+      "target_course_title": "点阵波是什么及工作原理",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 4,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-037",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-037",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G038",
+      "title": "点阵波与超V组合及腰背问题的安全应用",
+      "source_course_orders": [
+        "064"
+      ],
+      "target_course_id": "COURSE-PROD-COMBINATION-001",
+      "target_course_title": "点阵波与超V组合",
+      "module_id": "MOD-02",
+      "status": "integrated",
+      "accepted_points": 4,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-038",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-038",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G039",
+      "title": "减重项目的禁忌筛查与异常升级",
+      "source_course_orders": [
+        "067"
+      ],
+      "target_course_id": "COURSE-M05-008",
+      "target_course_title": "慢病、特殊人群与减重边界",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 6,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-039",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-039",
+      "review_status": "professional_review_required_for_source_claims"
+    },
+    {
+      "group_id": "VID-G040",
+      "title": "点阵波卡项与转卡的透明规则",
+      "source_course_orders": [
+        "072"
+      ],
+      "target_course_id": "COURSE-OPS-DYNAMIC-001",
+      "target_course_title": "价格、活动、券与动态信息",
+      "module_id": "MOD-01",
+      "status": "integrated",
+      "accepted_points": 5,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-040",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-040",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    },
+    {
+      "group_id": "VID-G041",
+      "title": "184饱腹食品的定位、使用与反应观察",
+      "source_course_orders": [
+        "076"
+      ],
+      "target_course_id": "COURSE-PROD-BODY-MGMT-001",
+      "target_course_title": "184饱腹产品基础",
+      "module_id": "MOD-05",
+      "status": "integrated",
+      "accepted_points": 5,
+      "skipped_as_duplicate": 0,
+      "knowledge_card_id": "CARD-VID-2026-041",
+      "rag_document_id": "VIDEO-KNOWLEDGE-2026-041",
+      "review_status": "editorial_summary_with_domain_review_notes"
+    }
+  ]
+}
