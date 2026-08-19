@@ -74,8 +74,8 @@ def run() -> None:
         check("qa_red_flag_turns_are_not_repeated", first_answer != follow_answer, [first_answer, follow_answer])
         check(
             "qa_red_flag_routes_to_safety",
-            first["result"]["route"]["primary_module"] == "安全、同意与合规服务"
-            and follow_up["result"]["route"]["primary_module"] == "安全、同意与合规服务",
+            first["result"]["route"]["primary_module"] == "企业治理与服务标准"
+            and follow_up["result"]["route"]["primary_module"] == "企业治理与服务标准",
             [first["result"]["route"], follow_up["result"]["route"]],
         )
 

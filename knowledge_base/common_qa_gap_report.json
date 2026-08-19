@@ -1,24 +1,17 @@
 {
-  "generated_on": "2026-08-18",
-  "source_id": "ENTERPRISE-QA",
-  "source_rows": 1059,
-  "unique_questions": 1032,
-  "duplicates_or_aliases_merged": 27,
-  "integration": {
-    "learning_courses": 73,
-    "knowledge_cards": 529,
-    "rag_question_documents": 1032,
-    "legacy_answers_imported": 0,
-    "policy": "新视频知识库的问题、课程和卡片已接入；顾客问答保留项目现有安全审核回答，压缩包中的原始导入答案不直接用于顾客回复。"
-  },
+  "generated_on": "2026-08-19",
+  "source_id": "NKB-2026-08-HIGH-DENSITY",
+  "source_rows": 43,
+  "unique_questions": 43,
   "status_counts": {
-    "covered": 105,
-    "boundary_only": 536,
-    "material_missing": 391
+    "covered": 43,
+    "boundary_only": 0,
+    "material_missing": 0
   },
-  "status_meanings": {
-    "covered": "题目已有具体标准答案，并映射到课程和知识主题。",
-    "boundary_only": "仅有通用边界。",
-    "material_missing": "缺少企业确认资料。"
+  "integration": {
+    "modules": 10,
+    "courses": 43,
+    "rag_documents": 172,
+    "legacy_answers_imported": 0
   }
 }

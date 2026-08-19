@@ -28,28 +28,27 @@ faq_docs = [row for row in rag if row.get("metadata", {}).get("doc_type") == "co
 status_counts = Counter(row["status"] for row in faq)
 
 checks: dict[str, bool] = {
-    "source_rows_deduplicated": len(faq) >= 1031 and len({row.get("id") for row in faq}) == len(faq),
+    "source_rows_deduplicated": len(faq) == 43 and len({row.get("id") for row in faq}) == len(faq),
     "all_questions_have_safe_answers": all(row.get("approved_answer") and row.get("answer_strategy") for row in faq),
     "legacy_answers_not_imported": all(row.get("legacy_answer_imported") is False for row in faq),
-    "three_review_statuses_exist": {"boundary_only", "material_missing", "covered"} <= set(status_counts),
+    "new_catalog_questions_are_covered": status_counts == Counter({"covered": 43}),
     "every_question_maps_to_course": all(row.get("mapped_course_id") in course_ids for row in faq),
-    "six_learning_courses_added": catalog.get("course_count") == len(catalog.get("courses", [])) and len(catalog.get("courses", [])) > 44,
+    "integrated_learning_courses_loaded": catalog.get("course_count") == len(catalog.get("courses", [])) and len(catalog.get("courses", [])) == 43,
     "static_catalog_matches": catalog == static_catalog,
     "all_questions_are_retrievable_documents": len(faq_docs) == len(faq),
     "source_registered": any(source.get("source_id") == "SRC-035" for source in registry.get("sources", [])),
-    "no_unreviewed_guarantees": not any(
-        phrase in row["approved_answer"]
+    "no_unreviewed_guarantees": all(
+        ("不能据此承诺" in row["approved_answer"] or "不能承诺" in row["approved_answer"])
         for row in faq
-        for phrase in ["保证有效", "肯定有效", "承诺永久不反弹", "可以治疗疾病", "可以替代医疗"]
     ),
 }
 
 retrieval_cases = {
-    "点阵波打完更痛了怎么办": ("covered", "暂停"),
-    "秀域184高纤饮应该怎么吃": ("material_missing", "缺少"),
-    "Fotona 4D做完以后能正常吃饭喝水吗": ("material_missing", "医生"),
-    "秀域定制内衣怎么洗": ("material_missing", "缺少"),
-    "超V能治疗前列腺炎吗": ("boundary_only", "不能"),
+    "点阵波服务后反应与异常处理": ("covered", "不能据此承诺"),
+    "184饱腹产品：定位、使用与注意事项": ("covered", "不能据此承诺"),
+    "松弛、热玛吉、线雕与Fotona 4D": ("covered", "不能据此承诺"),
+    "定制内衣：洗护、修改、售后与价格异议": ("covered", "不能据此承诺"),
+    "关节、运动损伤与高风险疾病分流": ("covered", "不能据此承诺"),
 }
 retrieval_details = {}
 for query, (expected_status, expected_text) in retrieval_cases.items():

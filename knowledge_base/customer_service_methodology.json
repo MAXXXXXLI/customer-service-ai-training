@@ -1,7 +1,7 @@
 {
-  "version": "2.0",
+  "version": "3.0-integrated-high-density",
   "title": "顾客问题定位与标准回答方法",
-  "purpose": "先判断安全，再定位七个运行模块，调用对应课程和具体QA答案。",
+  "purpose": "先判断安全，再定位十个运行模块，调用高密度整合版课程与适配题目。",
   "authority": "enterprise_qa_primary",
   "core_principles": [
     "先顾客、后项目：先听清目标和限制，不在信息不足时直接套方案。",
@@ -15,21 +15,15 @@
       "step": 1,
       "name": "迎宾与承接",
       "goal": "确认称呼和当前问题。",
-      "module_id": "MOD-01",
-      "course_ids": [
-        "COURSE-FLOW-CUSTOMER-ANSWER-001",
-        "COURSE-FLOW-NEW-CUSTOMER-001"
-      ]
+      "module_id": "MOD-02",
+      "course_ids": []
     },
     {
       "step": 2,
       "name": "安全确认",
       "goal": "识别明显不适、特殊情况和需要核验的信息。",
-      "module_id": "MOD-07",
-      "course_ids": [
-        "COURSE-SERVICE-SAFETY-001",
-        "COURSE-COMPLIANCE-MEDICAL-001"
-      ]
+      "module_id": "MOD-01",
+      "course_ids": []
     },
     {
       "step": 3,
@@ -49,11 +43,8 @@
       "step": 5,
       "name": "确认下一步",
       "goal": "说明核验、体验、暂停、复诊或回访安排。",
-      "module_id": "MOD-06",
-      "course_ids": [
-        "COURSE-FLOW-OBJECTION-001",
-        "COURSE-FLOW-FOLLOWUP-001"
-      ]
+      "module_id": "MOD-02",
+      "course_ids": []
     }
   ],
   "answer_execution_order": [
@@ -95,18 +86,20 @@
       "patterns": [
         "点阵波|疼痛|肩颈|腰椎|腰背|关节|筋膜|结节|麻木|骨刺|静脉曲张"
       ],
-      "module_id": "MOD-02",
+      "module_id": "MOD-03",
       "course_ids": [
-        "COURSE-PROD-POINT-WAVE-001",
-        "COURSE-OP-POINT-WAVE-001",
-        "COURSE-KNOW-PAIN-001"
+        "COURSE-NKB-010",
+        "COURSE-NKB-011",
+        "COURSE-NKB-012",
+        "COURSE-NKB-013"
       ],
       "knowledge_points": [
         "点阵波知识",
         "疼痛与常见身体问题",
         "服务后反应"
       ],
-      "recommended_next": "先确认当前问题和风险信息，再调用对应具体QA。"
+      "recommended_next": "先确认当前问题和风险信息，再调用对应具体QA。",
+      "support_module_ids": []
     },
     {
       "id": "TOPIC-SUPER-V",
@@ -114,18 +107,19 @@
       "patterns": [
         "超V|热动力|寒凉|湿气|宫寒|痛经|乳腺|卵巢|前列腺|便秘|亚健康"
       ],
-      "module_id": "MOD-03",
+      "module_id": "MOD-04",
       "course_ids": [
-        "COURSE-PROD-SUPER-V-001",
-        "COURSE-OP-SUPER-V-001",
-        "COURSE-PROD-COMBINATION-001"
+        "COURSE-NKB-017",
+        "COURSE-NKB-018",
+        "COURSE-NKB-019"
       ],
       "knowledge_points": [
         "超V原理",
         "体验安全",
         "组合方案"
       ],
-      "recommended_next": "确认体验部位、感受和当前限制。"
+      "recommended_next": "确认体验部位、感受和当前限制。",
+      "support_module_ids": []
     },
     {
       "id": "TOPIC-BEAUTY",
@@ -133,18 +127,20 @@
       "patterns": [
         "皮肤|敏感|痘|水光|脱毛|毛囊|春语|医美|热玛吉|皮秒|肉毒|玻尿酸|私密"
       ],
-      "module_id": "MOD-04",
+      "module_id": "MOD-08",
       "course_ids": [
-        "COURSE-PROD-BEAUTY-001",
-        "COURSE-SPRING-FACE-001",
-        "COURSE-SPRING-PRIVATE-001"
+        "COURSE-NKB-033",
+        "COURSE-NKB-034",
+        "COURSE-NKB-035",
+        "COURSE-NKB-036"
       ],
       "knowledge_points": [
         "皮肤管理",
         "面部年轻化",
         "私密项目"
       ],
-      "recommended_next": "核对当前肤况、项目和使用提醒。"
+      "recommended_next": "核对当前肤况、项目和使用提醒。",
+      "support_module_ids": []
     },
     {
       "id": "TOPIC-SLIMMING",
@@ -154,17 +150,18 @@
       ],
       "module_id": "MOD-05",
       "course_ids": [
-        "COURSE-KNOW-SLIMMING-001",
-        "COURSE-PROD-MEITUO-001",
-        "COURSE-PROD-GLP1-001",
-        "COURSE-PROD-BODY-MGMT-001"
+        "COURSE-NKB-020",
+        "COURSE-NKB-021",
+        "COURSE-NKB-022",
+        "COURSE-NKB-023"
       ],
       "knowledge_points": [
         "科学减重",
         "产品使用",
         "效果与维持"
       ],
-      "recommended_next": "定位具体产品或体重管理问题后调用具体QA。"
+      "recommended_next": "定位具体产品或体重管理问题后调用具体QA。",
+      "support_module_ids": []
     },
     {
       "id": "TOPIC-OBJECTION",
@@ -172,17 +169,20 @@
       "patterns": [
         "太贵|价格|活动|优惠|有效吗|多久|比较|考虑|没时间|回访|下一步"
       ],
-      "module_id": "MOD-06",
+      "module_id": "MOD-02",
       "course_ids": [
-        "COURSE-FLOW-OBJECTION-001",
-        "COURSE-FLOW-FOLLOWUP-001"
+        "COURSE-NKB-005",
+        "COURSE-NKB-006",
+        "COURSE-NKB-007",
+        "COURSE-NKB-008"
       ],
       "knowledge_points": [
         "异议处理",
         "价值沟通",
         "回访"
       ],
-      "recommended_next": "先核对具体项目，再使用对应答案。"
+      "recommended_next": "先核对具体项目，再使用对应答案。",
+      "support_module_ids": []
     },
     {
       "id": "TOPIC-SAFETY",
@@ -190,18 +190,20 @@
       "patterns": [
         "不舒服|头晕|红肿|过敏|副作用|禁忌|怀孕|儿童|药|剂量|活动|价格|隐私|拍照"
       ],
-      "module_id": "MOD-07",
+      "module_id": "MOD-01",
       "course_ids": [
-        "COURSE-SERVICE-SAFETY-001",
-        "COURSE-COMPLIANCE-MEDICAL-001",
-        "COURSE-OPS-DYNAMIC-001"
+        "COURSE-NKB-001",
+        "COURSE-NKB-002",
+        "COURSE-NKB-003",
+        "COURSE-NKB-004"
       ],
       "knowledge_points": [
         "立即暂停",
         "安全确认",
         "动态核验"
       ],
-      "recommended_next": "先执行安全或核验流程。"
+      "recommended_next": "先执行安全或核验流程。",
+      "support_module_ids": []
     },
     {
       "id": "TOPIC-GENERAL",
@@ -209,16 +211,19 @@
       "patterns": [
         "秀域|介绍|有什么项目|怎么选|第一次来|不了解"
       ],
-      "module_id": "MOD-01",
+      "module_id": "MOD-02",
       "course_ids": [
-        "COURSE-FLOW-CUSTOMER-ANSWER-001",
-        "COURSE-FLOW-NEW-CUSTOMER-001"
+        "COURSE-NKB-005",
+        "COURSE-NKB-006",
+        "COURSE-NKB-007",
+        "COURSE-NKB-008"
       ],
       "knowledge_points": [
         "需求确认",
         "公司与服务基础"
       ],
-      "recommended_next": "先确认顾客最想了解的内容。"
+      "recommended_next": "先确认顾客最想了解的内容。",
+      "support_module_ids": []
     }
   ],
   "intent_routes": [
@@ -229,11 +234,13 @@
       "patterns": [
         "胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|进行性麻木|麻木加重|无力加重|大小便异常|会阴麻木|发热.*红肿|红肿.*发热|外伤后.*受限|单侧腿.*肿|不能负重"
       ],
-      "primary_module_id": "MOD-07",
+      "primary_module_id": "MOD-01",
       "support_module_ids": [],
       "course_ids": [
-        "COURSE-SERVICE-SAFETY-001",
-        "COURSE-COMPLIANCE-MEDICAL-001"
+        "COURSE-NKB-001",
+        "COURSE-NKB-002",
+        "COURSE-NKB-003",
+        "COURSE-NKB-004"
       ],
       "focus": "先停止营销和操作，完成风险确认并建议医疗评估。",
       "recommended_next": "立即停止销售推进和相关操作；症状明显、持续或加重时尽快联系急救或前往医疗机构。",
@@ -244,14 +251,17 @@
       "priority": 100,
       "label": "服务后不适与异常处理",
       "patterns": [
-        "做完.*更痛|体验后.*更痛|做后.*更痛|做完.*头晕|体验后.*头晕|做完.*灼热|做完.*红肿|做完.*发热|做完.*麻木|体验后.*不舒服|昨天做完|不适.*加重|是不是排毒|说明有效吗"
+        "做完.*更痛|服务后.*更痛|体验后.*更痛|做后.*更痛|做完.*头晕|服务后.*头晕|体验后.*头晕|做完.*灼热|做完.*红肿|做完.*发热|做完.*麻木|体验后.*不舒服|服务后.*不适|昨天做完|不适.*加重|是不是排毒|说明有效吗"
       ],
-      "primary_module_id": "MOD-07",
+      "primary_module_id": "MOD-01",
       "support_module_ids": [
-        "MOD-06"
+        "MOD-02"
       ],
       "course_ids": [
-        "COURSE-SERVICE-SAFETY-001"
+        "COURSE-NKB-001",
+        "COURSE-NKB-002",
+        "COURSE-NKB-003",
+        "COURSE-NKB-004"
       ],
       "focus": "先暂停、询问、升级和记录。",
       "recommended_next": "立即暂停相关服务和销售推进，问清变化并按流程升级、记录或建议医疗评估。",
@@ -264,14 +274,15 @@
       "patterns": [
         "GLP-1|glp-1|司美|贝那鲁肽|利拉鲁肽|减肥针|处方|药品|减肥药|口服片|细美宝|美妥|剂量|停药|换药|副作用|孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|糖尿病|高血压|三高|慢病|植入物"
       ],
-      "primary_module_id": "MOD-07",
+      "primary_module_id": "MOD-06",
       "support_module_ids": [
         "MOD-05"
       ],
       "course_ids": [
-        "COURSE-PROD-MEITUO-001",
-        "COURSE-PROD-GLP1-001",
-        "COURSE-COMPLIANCE-MEDICAL-001"
+        "COURSE-NKB-001",
+        "COURSE-NKB-002",
+        "COURSE-NKB-003",
+        "COURSE-NKB-004"
       ],
       "focus": "先暂停具体产品或剂量建议，由有资质人员确认适用性。",
       "recommended_next": "记录具体产品、疾病和用药信息，转医生、药师或相应有资质人员确认；门店不建议剂量、开始、停用或换药。",
@@ -284,14 +295,16 @@
       "patterns": [
         "保证|一定有效|肯定有效|有没有效|见效|一次能|一次是不是|多久有效|多久见效|几次有效|固定.*斤|一个月.*斤|不反弹|根治|治好|效果翻倍|百分百"
       ],
-      "primary_module_id": "MOD-06",
+      "primary_module_id": "MOD-05",
       "support_module_ids": [
         "MOD-05",
-        "MOD-07"
+        "MOD-01"
       ],
       "course_ids": [
-        "COURSE-FLOW-OBJECTION-001",
-        "COURSE-KNOW-SLIMMING-001"
+        "COURSE-NKB-005",
+        "COURSE-NKB-006",
+        "COURSE-NKB-007",
+        "COURSE-NKB-008"
       ],
       "focus": "不承诺固定结果，先澄清目标和可观察指标。",
       "recommended_next": "把目标拆成可执行阶段并约定复盘，不承诺固定疗效、次数或减重数字。",
@@ -304,13 +317,15 @@
       "patterns": [
         "能不能做|能做吗|可以做吗|适不适合|安全吗|会不会痛|怕疼|会不会烫|怕烫|有风险吗|禁忌|副作用|敏感肌|泛红"
       ],
-      "primary_module_id": "MOD-07",
+      "primary_module_id": "MOD-08",
       "support_module_ids": [
-        "MOD-04"
+        "MOD-08"
       ],
       "course_ids": [
-        "COURSE-SERVICE-SAFETY-001",
-        "COURSE-PROD-BEAUTY-001"
+        "COURSE-NKB-001",
+        "COURSE-NKB-002",
+        "COURSE-NKB-003",
+        "COURSE-NKB-004"
       ],
       "focus": "先确认当前状态和风险，再解释体验边界。",
       "recommended_next": "先核对当前肤况、近期项目和安全限制，再决定是否继续了解体验。",
@@ -323,14 +338,16 @@
       "patterns": [
         "多少钱|价格|贵不贵|太贵|优惠|活动|折扣|券|退款|有效期|几次|次数|套餐|权益"
       ],
-      "primary_module_id": "MOD-07",
+      "primary_module_id": "MOD-02",
       "support_module_ids": [
-        "MOD-03",
-        "MOD-06"
+        "MOD-04",
+        "MOD-02"
       ],
       "course_ids": [
-        "COURSE-OPS-DYNAMIC-001",
-        "COURSE-FLOW-OBJECTION-001"
+        "COURSE-NKB-001",
+        "COURSE-NKB-002",
+        "COURSE-NKB-003",
+        "COURSE-NKB-004"
       ],
       "focus": "核对当前版本并回答。",
       "recommended_next": "确认城市、门店、项目和日期。",
@@ -343,12 +360,15 @@
       "patterns": [
         "医院|外面|别家|其他店|一样吗|有什么不同|区别|更便宜|更贵|替代手术|比医生|哪个好"
       ],
-      "primary_module_id": "MOD-06",
+      "primary_module_id": "MOD-02",
       "support_module_ids": [
-        "MOD-07"
+        "MOD-01"
       ],
       "course_ids": [
-        "COURSE-FLOW-OBJECTION-001"
+        "COURSE-NKB-005",
+        "COURSE-NKB-006",
+        "COURSE-NKB-007",
+        "COURSE-NKB-008"
       ],
       "focus": "公平说明定位和边界，不贬低医疗或其他品牌。",
       "recommended_next": "按具体目标和可核验信息比较，不把门店体验说成医疗替代。",
@@ -361,13 +381,15 @@
       "patterns": [
         "没时间|太远|先试一次|先做一次|回去考虑|再想想|研究一下|和家人商量|和老公商量|不想说|别问了|不想沟通"
       ],
-      "primary_module_id": "MOD-06",
+      "primary_module_id": "MOD-02",
       "support_module_ids": [
-        "MOD-07"
+        "MOD-01"
       ],
       "course_ids": [
-        "COURSE-FLOW-OBJECTION-001",
-        "COURSE-FLOW-FOLLOWUP-001"
+        "COURSE-NKB-005",
+        "COURSE-NKB-006",
+        "COURSE-NKB-007",
+        "COURSE-NKB-008"
       ],
       "focus": "承接顾虑并给出可执行选择，尊重暂不决定。",
       "recommended_next": "给顾客继续了解、调整安排或暂不决定的选择，不施压成交。",
@@ -391,12 +413,13 @@
   "default_route": {
     "intent_id": "INTENT-INFORMATION",
     "intent_label": "一般咨询",
-    "primary_module_id": "MOD-01",
+    "primary_module_id": "MOD-02",
     "support_module_ids": [
-      "MOD-07"
+      "MOD-01"
     ],
     "course_ids": [
-      "COURSE-FLOW-CUSTOMER-ANSWER-001"
+      "COURSE-NKB-005",
+      "COURSE-NKB-006"
     ],
     "focus": "先确认问题，再定位知识主题。",
     "stop_sales": false
@@ -441,7 +464,7 @@
   },
   "course": {
     "id": "COURSE-FLOW-CUSTOMER-ANSWER-001",
-    "module_id": "MOD-01",
+    "module_id": "MOD-02",
     "order": 1,
     "kind": "knowledge",
     "title": "顾客问题定位与标准回答顺序",
