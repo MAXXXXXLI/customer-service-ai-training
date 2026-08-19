@@ -839,7 +839,10 @@ function renderLearning() {
     <div><span>当前学习模块</span><h3>${escapeHtml(module.title)}</h3><p>${escapeHtml(module.description)}</p></div>
     <div class="summary-count"><strong>${groups.length}</strong><span>个章节</span><strong>${courses.length}</strong><span>节课程</span></div>`;
   els.learningChapters.innerHTML = groups.map((group, index) => {
-    const groupCourses = courses.filter((course) => course.group_id === group.group_id);
+    // Prefer the stable group id, but fall back to the catalog's explicit course_ids.
+    // This keeps the learning page usable when a refreshed catalog changes group labels.
+    const groupCourseIds = new Set(Array.isArray(group.course_ids) ? group.course_ids : []);
+    const groupCourses = courses.filter((course) => course.group_id === group.group_id || groupCourseIds.has(course.id));
     return `<article class="chapter-card">
       <div class="chapter-head"><div class="chapter-number">${String(index + 1).padStart(2, "0")}</div><div><h3>${escapeHtml(group.title)}</h3><p>${escapeHtml(group.description)}</p></div><span>${groupCourses.length} 节</span></div>
       <div class="chapter-courses">${groupCourses.map((course) => `
