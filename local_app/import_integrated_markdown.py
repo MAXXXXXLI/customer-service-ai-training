@@ -68,7 +68,7 @@ def parse_source(text: str) -> tuple[list[dict], list[dict]]:
                 "source_ids": ["NKB-2026-08-HIGH-DENSITY"],
                 "authority": "enterprise_integrated_markdown",
                 "sections": sections,
-                "group_id": f"M{module_index:02d}-G01",
+                "group_id": f"MOD-{module_index:02d}-G01",
                 "group_title": title,
             })
         modules.append({
