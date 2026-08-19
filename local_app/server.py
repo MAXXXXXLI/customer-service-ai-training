@@ -456,12 +456,23 @@ def sanitize_assessment_advice(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def context_block(docs: list[dict[str, Any]]) -> str:
+def context_block(docs: list[dict[str, Any]], max_docs: int | None = None, max_chars_per_doc: int | None = None) -> str:
+    """Render a bounded knowledge context for model prompts.
+
+    Retrieval keeps the full evidence set for citations and regression checks, but
+    interactive prompts should remain compact enough for reliable multi-turn API
+    responses.  Truncation happens only at prompt rendering time.
+    """
+    if max_docs is not None:
+        docs = docs[:max_docs]
     blocks = []
     for index, doc in enumerate(docs, start=1):
+        text = clean_text(doc.get("text", ""))
+        if max_chars_per_doc is not None and len(text) > max_chars_per_doc:
+            text = text[:max_chars_per_doc].rstrip() + "…"
         blocks.append(
             f"[知识内容{index}] 主题={public_doc_title(doc)}；类别={public_doc_category(doc)}\n"
-            f"{doc.get('text', '')}"
+            f"{text}"
         )
     return "\n\n".join(blocks)
 
@@ -1213,12 +1224,12 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
 
     if mode == "training":
         turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
-        training_system = f"{TRAIN_SYSTEM}\n\n顾客可知场景（只供 customer_reply 保持角色一致）：{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。must_test 及下面的方法、知识只供 feedback 使用，绝不能写进 customer_reply。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs)}"
+        training_system = f"{TRAIN_SYSTEM}\n\n顾客可知场景（只供 customer_reply 保持角色一致）：{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。must_test 及下面的方法、知识只供 feedback 使用，绝不能写进 customer_reply。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs, max_docs=4, max_chars_per_doc=650)}"
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
             result = normalize_training_result(result, scenario, history, message)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(training_system, [*dialogue_history, {"role": "user", "content": message}], model, api_key, temperature=0.35)
+        raw, meta = call_model(training_system, [*dialogue_history, {"role": "user", "content": message}], model, api_key, temperature=0.35, max_tokens=1200)
         result = apply_methodology_result(safety_filter(extract_json(raw) or {"customer_reply": raw, "feedback": {"level": "needs_work", "issue": "模型未按结构化格式返回。", "why": "请检查 Prompt 输出约束。", "suggested_reply": "请继续围绕顾客目标进行追问。", "next_goal": "完成需求分析。"}, "citations": citation_refs}, mode, message, route), mode, route)
         result = normalize_training_result(result, scenario, history, message)
         return response_payload(mode, result, docs, {**meta, "mock": False})
