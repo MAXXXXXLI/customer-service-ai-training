@@ -105,6 +105,8 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .course-preview strong { font-size: 10px; line-height: 1.5; }
 .course-preview small { display: -webkit-box; overflow: hidden; margin-top: 6px; color: var(--faint); font-size: 8px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .course-preview i { position: absolute; right: 13px; bottom: 11px; color: var(--lime); font-size: 8px; font-style: normal; }
+.course-summary-points { margin: 8px 0 0; padding-left: 16px; color: var(--muted); font-size: 10px; line-height: 1.6; text-align: left; }
+.course-summary-points li { margin-bottom: 2px; }
 
 .coaching-zone, .exam-zone { padding-bottom: 22px; }
 .scenario-frame { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.7fr); gap: 0; overflow: hidden; margin-top: 18px; border: 1px solid rgba(197, 139, 33, 0.18); border-radius: 13px; background: linear-gradient(120deg, rgba(251, 212, 148, 0.14), rgba(255, 255, 255, 0.82)); }

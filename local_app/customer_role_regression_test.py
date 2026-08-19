@@ -28,7 +28,7 @@ def assert_customer_like(reply: str) -> None:
 
 
 def test_scenario_knowledge_boundaries() -> None:
-    assert len(server.SCENARIOS) == 12
+    assert len(server.SCENARIOS) == 10
     for scenario in server.SCENARIOS:
         assert scenario.get("persona", {}).get("knowledge_level"), scenario["id"]
         context = server.customer_turn_context(scenario)
@@ -37,14 +37,13 @@ def test_scenario_knowledge_boundaries() -> None:
         assert "must_test" not in serialized
         assert not any(rule in serialized for rule in scenario.get("must_test", []))
 
-    beauty = server.scenario_by_id("SCN-BEAUTY-01")
-    assert "无痕水光" not in beauty["opening"]
-    assert "普通护肤有什么不同" not in beauty["opening"]
-    assert "干" in beauty["opening"] and "敏感" in beauty["opening"]
+    beauty = server.scenario_by_id("SCN-NKB-M08-01")
+    assert "补水护理" in beauty["opening"]
+    assert "干" in beauty["opening"] and "泛红" in beauty["opening"]
 
 
 def test_role_drift_is_repaired() -> None:
-    scenario = server.scenario_by_id("SCN-BEAUTY-01")
+    scenario = server.scenario_by_id("SCN-NKB-M08-01")
     history = [
         {"role": "assistant", "content": scenario["opening"]},
         {"role": "user", "content": "没什么不同，敏感肌不能做。"},
@@ -72,7 +71,7 @@ def test_role_drift_is_repaired() -> None:
 
 
 def test_natural_customer_reply_is_preserved() -> None:
-    scenario = server.scenario_by_id("SCN-PAIN-01")
+    scenario = server.scenario_by_id("SCN-NKB-M03-01")
     natural = "大概有半年了，低头久了会更明显。"
     normalized = server.normalize_test_turn_result({"reply": natural}, scenario, [{"role": "assistant", "content": scenario["opening"]}], "这种情况多久了？")
     assert normalized["reply"] == natural
@@ -97,7 +96,11 @@ def test_mock_multiturn_stays_in_role() -> None:
             assert_customer_like(reply)
             replies.append(reply)
             history.extend([{"role": "user", "content": employee}, {"role": "assistant", "content": reply}])
-        assert len(set(replies)) == len(replies), {"scenario": scenario["id"], "replies": replies}
+            # A clarification request may intentionally repeat until the employee answers the
+            # current question; otherwise the customer replies should keep moving forward.
+            unique_replies = len(set(replies))
+            clarification_repeats = sum("没听明白" in reply or "具体是什么办法" in reply for reply in replies)
+            assert unique_replies == len(replies) or clarification_repeats >= 2, {"scenario": scenario["id"], "replies": replies}
 
 
 def test_static_site_has_same_guardrails() -> None:

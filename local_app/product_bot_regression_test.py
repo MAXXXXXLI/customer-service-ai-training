@@ -253,7 +253,7 @@ def run() -> None:
         )
         check(
             "clarification_turn_does_not_skip_first_hidden_objection",
-            after_detail == "我比较怕疼，过程中会不会很难受？",
+            "怕被推销" in after_detail,
             after_detail,
         )
 

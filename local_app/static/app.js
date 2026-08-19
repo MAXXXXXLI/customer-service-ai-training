@@ -830,6 +830,13 @@ function renderModuleOptions() {
   els.testSelect.value = state.testModuleId;
 }
 
+function renderCourseSummary(summary) {
+  const items = String(summary || "").split(/[；;]\s*/).map((item) => item.trim()).filter(Boolean);
+  return items.length > 1
+    ? `<ul class="course-summary-points">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+    : `<p>${escapeHtml(items[0] || "按当前课程内容学习并核验生效版本。")}</p>`;
+}
+
 function renderLearning() {
   const module = moduleById(state.learningModuleId);
   if (!module) return;
@@ -848,7 +855,7 @@ function renderLearning() {
       <div class="chapter-courses">${groupCourses.map((course) => `
         <button class="course-preview" data-course-id="${escapeHtml(course.id)}" data-course-title="${escapeHtml(course.title)}">
           <span class="course-type">${course.kind === "objection" ? "话术案例" : "标准课程"} · ${course.estimated_minutes} 分钟</span>
-          <strong>${escapeHtml(course.title)}</strong><small>${escapeHtml(course.summary)}</small><i>打开课程 →</i>
+          <strong>${escapeHtml(course.title)}</strong>${renderCourseSummary(course.summary)}<i>打开课程 →</i>
         </button>`).join("")}</div>
     </article>`;
   }).join("");
