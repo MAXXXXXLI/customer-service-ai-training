@@ -48,7 +48,7 @@ def parse_source(text: str) -> tuple[list[dict], list[dict]]:
             for si, sm in enumerate(h4, 1):
                 send = h4[si].start() if si < len(h4) else len(cblock)
                 body = cblock[sm.end():send]
-                body = re.sub(r"^### 课程总结.*$", "", body, flags=re.S).strip()
+                body = re.split(r"\n### 课程总结\b", body, maxsplit=1)[0].strip()
                 content = paragraphs(body)
                 if content:
                     sections.append({"title": sm.group(1).strip(), "content": content})
