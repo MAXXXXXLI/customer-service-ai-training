@@ -642,7 +642,9 @@ async function staticApi(path, body) {
   const query = mode === "qa" ? staticQaQuery(message, history) : [...history.slice(-8).map((item) => item.content), message].join(" ");
   const route = staticRouteCustomerQuestion(query, data.methodology);
   const docs = staticRetrieve(query, data.documents, 8, route);
-  const context = docs.map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, 1200)}`).join("\n\n");
+  // Keep interactive prompts compact so multi-turn responses remain reliable
+  // on the static Pages build while retrieval/citations stay unchanged.
+  const context = docs.slice(0, mode === "training" ? 4 : 8).map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, mode === "training" ? 650 : 1200)}`).join("\n\n");
   if (!apiKey) {
     const result = normalizeStaticResult(staticMockProgressive(mode, action, scenario, history, data.rubric, message), mode, action, scenario, history, data.rubric, message, query, route);
     return { ok: true, mode, result, citations: mode === "qa" ? docs.slice(0, 3).map(publicStaticDocument) : [], retrieved: mode === "qa" ? docs.map(publicStaticDocument) : [], meta: { mock: true, model } };
@@ -660,6 +662,7 @@ async function staticApi(path, body) {
     system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n顾客可知场景：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。customer_reply 只能使用顾客可知信息；下面的方法路由和专业知识只供 feedback 使用，绝不能写进 customer_reply。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.35;
+    maxTokens = 1200;
   } else if (mode === "test" && action === "turn") {
     system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
     messages = [...dialogue, { role: "user", content: message }];

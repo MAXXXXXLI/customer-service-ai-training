@@ -28,7 +28,7 @@ def assert_customer_like(reply: str) -> None:
 
 
 def test_scenario_knowledge_boundaries() -> None:
-    assert len(server.SCENARIOS) == 10
+    assert len(server.SCENARIOS) == 30
     for scenario in server.SCENARIOS:
         assert scenario.get("persona", {}).get("knowledge_level"), scenario["id"]
         context = server.customer_turn_context(scenario)
@@ -37,13 +37,13 @@ def test_scenario_knowledge_boundaries() -> None:
         assert "must_test" not in serialized
         assert not any(rule in serialized for rule in scenario.get("must_test", []))
 
-    beauty = server.scenario_by_id("SCN-NKB-M08-01")
-    assert "补水护理" in beauty["opening"]
-    assert "干" in beauty["opening"] and "泛红" in beauty["opening"]
+    beauty = server.scenario_by_id("SCN-QBANK-M08-Q01")
+    assert "首次皮肤服务" in beauty["opening"]
+    assert "清洁" in beauty["opening"] and "项目选择" in beauty["opening"]
 
 
 def test_role_drift_is_repaired() -> None:
-    scenario = server.scenario_by_id("SCN-NKB-M08-01")
+    scenario = server.scenario_by_id("SCN-QBANK-M08-Q01")
     history = [
         {"role": "assistant", "content": scenario["opening"]},
         {"role": "user", "content": "没什么不同，敏感肌不能做。"},
@@ -71,7 +71,7 @@ def test_role_drift_is_repaired() -> None:
 
 
 def test_natural_customer_reply_is_preserved() -> None:
-    scenario = server.scenario_by_id("SCN-NKB-M03-01")
+    scenario = server.scenario_by_id("SCN-QBANK-M03-Q02")
     natural = "大概有半年了，低头久了会更明显。"
     normalized = server.normalize_test_turn_result({"reply": natural}, scenario, [{"role": "assistant", "content": scenario["opening"]}], "这种情况多久了？")
     assert normalized["reply"] == natural
