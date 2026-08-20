@@ -123,6 +123,28 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .scenario-focus li { position: relative; padding-left: 13px; color: var(--muted); font-size: 9px; line-height: 1.55; }
 .scenario-focus li::before { content: ""; position: absolute; top: 5px; left: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--lime); }
 .exam-frame { border-color: rgba(37, 90, 223, 0.16); background: rgba(37, 90, 223, 0.035); }
+.objective-exam { margin-bottom: 18px; padding: 18px; border: 1px solid rgba(37, 90, 223, 0.16); border-radius: 16px; background: #fff; }
+.exam-section-head span, .exam-ai-status { color: var(--lime); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.exam-section-head h3 { margin: 5px 0; font-size: 18px; }
+.exam-section-head p, .scenario-task { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.objective-exam details { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); }
+.objective-exam summary { cursor: pointer; font-weight: 800; }
+.exam-question-list { display: grid; gap: 10px; margin-top: 12px; }
+.exam-question { display: grid; gap: 8px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); font-size: 12px; line-height: 1.55; }
+.exam-question input[type="text"], .exam-question input:not([type]) { width: 100%; }
+.fill-question input { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font: inherit; }
+.exam-question legend { padding: 0 3px; font-weight: 700; }
+.exam-question legend small { color: var(--muted); font-weight: 500; }
+.exam-option { display: flex; align-items: flex-start; gap: 7px; cursor: pointer; }
+.exam-option b { min-width: 15px; color: var(--lime); }
+.exam-question em { color: #176c43; font-style: normal; font-size: 11px; }
+.exam-submit { margin-top: 14px; border: 0; border-radius: 9px; padding: 10px 14px; background: var(--lime); color: #fff; font-weight: 800; cursor: pointer; }
+.exam-result, .exam-total { margin-top: 12px; padding: 10px 12px; border-radius: 9px; background: rgba(37, 90, 223, .07); color: var(--ink); font-size: 12px; }
+.exam-result p, .exam-total span { display: block; margin: 4px 0 0; color: var(--muted); }
+.scenario-task { margin: 10px 0 0; }
+.exam-ai-status { display: block; margin-top: 11px; }
+.standard-answer { grid-column: 1 / -1; }
+.standard-answer ul { margin: 8px 0 0; padding-left: 18px; }
 .scenario-empty { grid-column: 1 / -1; padding: 24px; color: var(--faint); text-align: center; font-size: 10px; }
 
 .qa-welcome { position: relative; overflow: hidden; padding: 30px; border: 1px solid rgba(37, 90, 223, 0.14); border-radius: 18px; background: linear-gradient(125deg, rgba(37, 90, 223, 0.1), rgba(255, 255, 255, 0.92) 52%, rgba(83, 138, 249, 0.08)); box-shadow: var(--shadow); }

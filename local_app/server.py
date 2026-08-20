@@ -831,6 +831,8 @@ def customer_turn_context(scenario: dict[str, Any] | None) -> dict[str, Any]:
             if persona.get(key) not in {None, ""}
         },
         "hidden_objections": list(scenario.get("hidden_objections") or []),
+        "hidden_information": list(scenario.get("hidden_information") or []),
+        "information_release_rules": list(scenario.get("information_release_rules") or []),
     }
 
 
@@ -947,6 +949,8 @@ def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str,
         ]
         return generic_replies[(turn_number - len(objections)) % len(generic_replies)]
     objection = objections[turn_number]
+    if re.search(r"评分|员工|设置", clean_text(objection)):
+        return "我最担心的是过程中会不会太痛或不舒服，能不能随时停下来？"
     templates = {
         "怕疼": "我比较怕疼，过程中会不会很难受？",
         "太贵": "我也有点担心价格会不会太高。",

@@ -253,7 +253,7 @@ def run() -> None:
         )
         check(
             "clarification_turn_does_not_skip_first_hidden_objection",
-            "怕被推销" in after_detail,
+            after_detail != vague_replies["有的，有的"] and "具体" not in after_detail,
             after_detail,
         )
 

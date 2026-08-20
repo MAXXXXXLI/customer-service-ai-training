@@ -27,6 +27,10 @@ const state = {
   ended: false,
   revising: false,
   knowledge: {},
+  examBank: null,
+  examAnswers: {},
+  examObjectiveScore: null,
+  examScenarioScores: {},
 };
 
 const $ = (id) => document.getElementById(id);
@@ -114,7 +118,8 @@ async function loadStaticData() {
       fetch("./data/rag_documents.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/scoring_rubric.json").then((response) => response.json()),
       fetch("./data/customer_service_methodology.json").then((response) => response.json()),
-    ]).then(([scenarios, documents, rubric, methodology]) => ({ scenarios, documents, rubric, methodology }));
+      fetch("./data/comprehensive_exam_bank.json").then((response) => response.json()),
+    ]).then(([scenarios, documents, rubric, methodology, examBank]) => ({ scenarios, documents, rubric, methodology, examBank }));
   }
   return staticDataPromise;
 }
@@ -442,6 +447,8 @@ function staticCustomerScenario(scenario = {}) {
   return {
     persona: Object.fromEntries(["age", "gender", "occupation", "style", "goal", "risk", "knowledge_level"].filter((key) => persona[key] != null && persona[key] !== "").map((key) => [key, persona[key]])),
     hidden_objections: scenario.hidden_objections || [],
+    hidden_information: scenario.hidden_information || [],
+    information_release_rules: scenario.information_release_rules || [],
   };
 }
 
@@ -487,6 +494,7 @@ function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
     return genericReplies[(userTurns - objections.length) % genericReplies.length];
   }
   const objection = objections[userTurns];
+  if (/评分|员工|设置/.test(String(objection))) return "我最担心的是过程中会不会太痛或不舒服，能不能随时停下来？";
   const templates = {
     "怕疼": "我比较怕疼，过程中会不会很难受？",
     "太贵": "我也有点担心价格会不会太高。",
@@ -918,12 +926,64 @@ function bindCourseButtons(root) {
 
 function moduleScenarios(moduleId = activeModuleId()) {
   const ids = moduleById(moduleId)?.scenario_ids || [];
-  return ids.map((id) => state.scenarios.find((scenario) => scenario.id === id)).filter(Boolean);
+  const linked = ids.map((id) => state.scenarios.find((scenario) => scenario.id === id)).filter(Boolean);
+  return linked.length ? linked : state.scenarios.filter((scenario) => scenario.module_id === moduleId);
 }
 
 function selectScenario() {
   const choices = moduleScenarios();
-  state.scenario = choices[state.scenarioIndex % Math.max(choices.length, 1)] || state.scenarios[0] || null;
+  const selected = choices[state.scenarioIndex % Math.max(choices.length, 1)] || state.scenarios[0] || null;
+  const examDetail = state.examBank?.modules?.flatMap((item) => item.scenarios || []).find((item) => item.id === selected?.id);
+  state.scenario = examDetail ? { ...selected, ...examDetail } : selected;
+}
+
+function activeExamModule() {
+  return state.examBank?.modules?.find((item) => item.id === state.testModuleId) || null;
+}
+
+function objectiveAnswerKey(question) {
+  return `${state.testModuleId}:${question.id}`;
+}
+
+function renderObjectiveExam() {
+  const exam = activeExamModule();
+  if (!exam) return "";
+  const blanks = exam.fill_blanks.map((item, index) => `<label class="exam-question fill-question"><span>${index + 1}. ${escapeHtml(item.prompt)}</span><input data-exam-answer="${objectiveAnswerKey(item)}" value="${escapeHtml(state.examAnswers[objectiveAnswerKey(item)] || "")}" placeholder="填写答案">${state.examObjectiveScore ? `<em>标准答案：${escapeHtml(item.answers.join(" / "))}</em>` : ""}</label>`).join("");
+  const choices = exam.choices.map((item, index) => {
+    const key = objectiveAnswerKey(item);
+    const selected = new Set(state.examAnswers[key] || []);
+    return `<fieldset class="exam-question"><legend>${index + 1}. ${escapeHtml(item.prompt)} <small>${item.kind === "multiple" ? "多选" : "单选"}</small></legend>${item.options.map((option) => `<label class="exam-option"><input type="${item.kind === "multiple" ? "checkbox" : "radio"}" name="${key}" value="${option.key}" data-exam-choice="${key}" ${selected.has(option.key) ? "checked" : ""}><b>${option.key}</b>${escapeHtml(option.text)}</label>`).join("")}${state.examObjectiveScore ? `<em>标准答案：${escapeHtml(item.answers.join("、"))}。${escapeHtml(item.explanation)}</em>` : ""}</fieldset>`;
+  }).join("");
+  const reveal = state.examObjectiveScore ? `<div class="exam-result"><strong>客观题得分：${state.examObjectiveScore.score}/44</strong><p>${state.examObjectiveScore.correct}/14 题正确。标准答案已显示在各题下方。</p></div>` : "";
+  return `<section class="objective-exam"><div class="exam-section-head"><span>第一、二部分 · 44 分</span><h3>核心知识测试</h3><p>完成 6 道填空和 8 道选择题后提交，即可查看分数与标准答案。</p></div><details open><summary>填空题 · 12 分</summary><div class="exam-question-list">${blanks}</div></details><details open><summary>选择题 · 32 分</summary><div class="exam-question-list">${choices}</div></details><button class="exam-submit" data-submit-objective>提交客观题并查看答案</button>${reveal}</section>`;
+}
+
+function scoreObjectiveExam() {
+  const exam = activeExamModule();
+  if (!exam) return;
+  let score = 0;
+  let correct = 0;
+  const all = [...exam.fill_blanks, ...exam.choices];
+  all.forEach((question) => {
+    const key = objectiveAnswerKey(question);
+    const expected = question.answers.map((item) => String(item).replace(/[，、；。\s]/g, "").toLowerCase());
+    const actual = Array.isArray(state.examAnswers[key]) ? state.examAnswers[key].join("") : String(state.examAnswers[key] || "");
+    const normalized = actual.replace(/[，、；。\s]/g, "").toLowerCase();
+    const isCorrect = question.kind === "multiple" ? expected.every((item) => normalized.includes(item)) && expected.length === (state.examAnswers[key] || []).length : expected.some((item) => normalized === item || normalized.includes(item));
+    if (isCorrect) { score += question.kind ? 4 : 2; correct += 1; }
+  });
+  state.examObjectiveScore = { score, correct };
+  renderScenarioFrame();
+}
+
+function bindObjectiveExam(root) {
+  root.querySelectorAll("[data-exam-answer]").forEach((input) => input.addEventListener("input", () => { state.examAnswers[input.dataset.examAnswer] = input.value; }));
+  root.querySelectorAll("[data-exam-choice]").forEach((input) => input.addEventListener("change", () => {
+    const key = input.dataset.examChoice;
+    const checked = [...root.querySelectorAll(`[data-exam-choice="${key}"]:checked`)].map((item) => item.value);
+    state.examAnswers[key] = checked;
+  }));
+  root.querySelector("[data-submit-objective]")?.addEventListener("click", scoreObjectiveExam);
 }
 
 function renderScenarioFrame() {
@@ -936,17 +996,26 @@ function renderScenarioFrame() {
     return;
   }
   const focusLabel = state.mode === "test" ? "考核重点" : "本轮练习重点";
-  target.innerHTML = `
+  const scenarioStatus = state.mode === "test" ? `<div class="exam-ai-status">AI 对话 · 56 分 · 已完成 ${Object.keys(state.examScenarioScores).length}/3 个场景${state.examScenarioScores[scenario.id] != null ? ` · 本场 ${state.examScenarioScores[scenario.id]}/100` : ""}</div>` : "";
+  const objective = state.mode === "test" ? renderObjectiveExam() : "";
+  target.innerHTML = `${objective}
     <div class="scenario-main">
-      <div class="scenario-title-row"><div><span>${state.mode === "test" ? "考核场景" : "陪练场景"}</span><h3>${escapeHtml(scenario.goal || module.title)}</h3></div><button class="change-scenario" data-random-scenario>换一个场景 ↗</button></div>
+      <div class="scenario-title-row"><div><span>${state.mode === "test" ? "AI 多轮对话场景" : "陪练场景"}</span><h3>${escapeHtml(scenario.title || scenario.goal || module.title)}</h3></div><button class="change-scenario" data-random-scenario>换一个场景 ↗</button></div>
       <div class="scenario-opening"><span>顾客开场</span><p>“${escapeHtml(scenario.opening)}”</p></div>
+      ${state.mode === "test" && scenario.task ? `<p class="scenario-task"><b>作答任务：</b>${escapeHtml(scenario.task)}</p>` : ""}${scenarioStatus}
     </div>
     <div class="scenario-focus"><span>${focusLabel}</span><ul>${module.objectives.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`;
   target.querySelector("[data-random-scenario]")?.addEventListener("click", randomScenario);
+  bindObjectiveExam(target);
 }
 
 function changePracticeModule(moduleId) {
-  if (state.mode === "test") state.testModuleId = moduleId;
+  if (state.mode === "test") {
+    state.testModuleId = moduleId;
+    state.examAnswers = {};
+    state.examObjectiveScore = null;
+    state.examScenarioScores = {};
+  }
   else state.practiceModuleId = moduleId;
   state.scenarioIndex = 0;
   selectScenario();
@@ -1103,7 +1172,7 @@ async function sendMessage() {
     }
     const turns = state.history.filter((item) => item.role === "user").length;
     els.turnCount.textContent = `${turns} 轮对话`;
-    if (state.mode !== "qa") els.finish.disabled = turns < 1;
+    if (state.mode !== "qa") els.finish.disabled = state.mode === "test" ? turns < 4 : turns < 1;
   } catch (error) {
     typing.remove();
     userRow.remove();
@@ -1186,11 +1255,21 @@ async function finishSession() {
 }
 
 function renderAssessment(result) {
+  if (state.mode === "test" && state.scenario?.id) {
+    state.examScenarioScores[state.scenario.id] = Number(result.total_score || 0);
+  }
   const card = document.createElement("div");
   card.className = "assessment-card";
   const dimensions = (result.dimension_scores || []).map((item) => `<div class="score-row"><div class="score-row-head"><span>${escapeHtml(item.name)}</span><strong>${escapeHtml(item.score)}<i>/${escapeHtml(item.max_score)}</i></strong></div><small><b>对话证据</b>${escapeHtml(item.evidence || "对话中未体现")}<br><b>评分判断</b>${escapeHtml(item.comment || "")}</small></div>`).join("");
   const critical = (result.critical_failures || []).map((item) => `<div><b>${escapeHtml(item.code)}</b> ${escapeHtml(item.reason)}${item.evidence ? `<br><small>${escapeHtml(item.evidence)}</small>` : ""}</div>`).join("");
-  card.innerHTML = `<div class="assessment-header"><div><span>${state.mode === "training" ? "陪练结束报告" : "实战考核报告"}</span><p>${escapeHtml(result.summary || "本轮已完成评分。")}</p></div><strong>${escapeHtml(result.total_score ?? 0)}<i>/100</i></strong></div><div class="score-rows">${dimensions}</div>${critical ? `<div class="critical-block"><b>关键失败项</b><br>${critical}</div>` : ""}<div class="report-columns"><div class="report-block"><label>做得好的地方</label><p>${escapeHtml((result.strengths || []).join("；") || "继续保持完整沟通。")}</p></div><div class="report-block improve"><label>下一轮重点改进</label><p>${escapeHtml((result.improvements || []).join("；") || "继续练习需求分析和异议处理。")}</p></div></div>`;
+  const scenario = state.scenario || {};
+  const standardAnswer = state.mode === "test" && scenario.reference_answer ? `<div class="report-block standard-answer"><label>本场标准答案与必答点</label><p>${escapeHtml(scenario.reference_answer)}</p><ul>${(scenario.must_test || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : "";
+  const examTotal = state.mode === "test" && state.examObjectiveScore ? (() => {
+    const scores = Object.values(state.examScenarioScores);
+    const dialogue = scores.length ? (scores.reduce((sum, score) => sum + score, 0) / scores.length) * 0.56 : 0;
+    return `<div class="exam-total"><b>本模块当前总分：${(state.examObjectiveScore.score + dialogue).toFixed(1)}/100</b><span>客观题 ${state.examObjectiveScore.score}/44；AI 对话已完成 ${scores.length}/3 场，全部完成后取三场平均分折算 56 分。</span></div>`;
+  })() : "";
+  card.innerHTML = `<div class="assessment-header"><div><span>${state.mode === "training" ? "陪练结束报告" : "实战考核报告"}</span><p>${escapeHtml(result.summary || "本轮已完成评分。")}</p></div><strong>${escapeHtml(result.total_score ?? 0)}<i>/100</i></strong></div><div class="score-rows">${dimensions}</div>${critical ? `<div class="critical-block"><b>关键失败项</b><br>${critical}</div>` : ""}<div class="report-columns"><div class="report-block"><label>做得好的地方</label><p>${escapeHtml((result.strengths || []).join("；") || "继续保持完整沟通。")}</p></div><div class="report-block improve"><label>下一轮重点改进</label><p>${escapeHtml((result.improvements || []).join("；") || "继续练习需求分析和异议处理。")}</p></div>${standardAnswer}</div>${examTotal}`;
   els.messages.appendChild(card);
   els.messages.scrollTop = els.messages.scrollHeight;
 }
@@ -1266,17 +1345,19 @@ function switchMode(mode, updateHistory = true) {
 
 async function boot() {
   try {
-    const [bootstrap, moduleData, catalogData, health] = await Promise.all([
+    const [bootstrap, moduleData, catalogData, health, examBank] = await Promise.all([
       api("/api/bootstrap"),
       fetch(staticAsset("learning_modules.json")).then((response) => response.json()),
       fetch(staticAsset("learning_catalog.json")).then((response) => response.json()),
       api("/api/health"),
+      fetch(staticAsset("data/comprehensive_exam_bank.json")).then((response) => response.json()),
     ]);
     state.scenarios = bootstrap.scenarios || [];
     state.modules = moduleData.modules || [];
     state.courses = catalogData.courses || [];
     state.catalogIndex = catalogData.module_index || [];
     state.knowledge = bootstrap.knowledge || {};
+    state.examBank = examBank;
     state.models = bootstrap.models?.length ? bootstrap.models : AVAILABLE_MODELS;
     renderModelOptions();
     const firstModuleId = state.modules[0]?.id || null;
