@@ -124,6 +124,27 @@ def test_complete_safe_closure_is_not_false_critical() -> None:
     assert "完整的安全闭环" in result["feedback"]["why"], result
 
 
+def test_training_suggested_reply_strips_unverified_medical_advice() -> None:
+    scenario = exact_scenario("SCN-CEX-M03-S01")
+    result = server.normalize_training_result(
+        {
+            "customer_reply": "我的手还在发麻，怎么办？",
+            "feedback": {
+                "level": "critical",
+                "issue": "危险表达需要立即纠正。",
+                "why": "不能继续操作。",
+                "suggested_reply": "可能是神经受刺激，不要热敷或按摩，今天停止治疗。",
+            },
+        },
+        scenario,
+        [{"role": "assistant", "content": scenario["opening"]}],
+        "越痛越有效，今天继续加量。",
+    )
+    reply = result["feedback"]["suggested_reply"]
+    assert "神经受刺激" not in reply and "热敷" not in reply and "按摩" not in reply, result
+    assert "不在店内判断原因" in reply and "医疗机构评估" in reply, result
+
+
 def test_mock_multiturn_stays_in_role() -> None:
     employee_turns = ["我不太清楚，应该都差不多吧。", "我错了。", "好的。", "你还想了解什么？"]
     for scenario in server.SCENARIOS:
@@ -158,6 +179,7 @@ def test_static_site_has_same_guardrails() -> None:
         "staticCustomerFallback",
         "staticFeedbackUsesNewCustomerFact",
         "staticTrainingMessageHasCompleteSafeClosure",
+        "sanitizeStaticTrainingSuggestedReply",
     ]
     assert all(marker in APP_JS for marker in required)
     assert "隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}" in APP_JS
@@ -171,6 +193,7 @@ if __name__ == "__main__":
         test_natural_customer_reply_is_preserved,
         test_training_feedback_does_not_penalize_future_fact,
         test_complete_safe_closure_is_not_false_critical,
+        test_training_suggested_reply_strips_unverified_medical_advice,
         test_mock_multiturn_stays_in_role,
         test_static_site_has_same_guardrails,
     ]

@@ -542,6 +542,14 @@ function staticTrainingMessageHasCompleteSafeClosure(message = "") {
   return stopped && keepsBoundary && escalates && !staticCriticalHits(text).length;
 }
 
+function sanitizeStaticTrainingSuggestedReply(feedback) {
+  const advice = String(feedback.suggested_reply || "");
+  const unverifiedAdvice = /(?:可能是|可能涉及|说明|属于).{0,14}(?:神经|损伤|炎症|病变)|(?:不要|立即|马上|建议).{0,10}(?:热敷|冷敷|按摩|服药|停药|换药)|(?:热敷|冷敷|按摩).{0,8}(?:手臂|腿|疼痛|发麻)|(?:治疗|治好|治愈|根治)/i;
+  if (unverifiedAdvice.test(advice)) {
+    feedback.suggested_reply = "您刚补充的情况需要优先重视。我们先停止所有项目，不在店内判断原因；我会记录并上报负责人，并建议您尽快由医疗机构评估。";
+  }
+}
+
 function normalizeStaticTrainingFeedback(result, scenario, history, rubric, message, customerReply = "") {
   const fallback = staticMockProgressive("training", "turn", scenario, history, rubric, message).feedback;
   const provided = result?.feedback && typeof result.feedback === "object" ? result.feedback : {};
@@ -569,6 +577,7 @@ function normalizeStaticTrainingFeedback(result, scenario, history, rubric, mess
     feedback.suggested_reply = "您刚刚补充的情况需要优先重视，我们先暂停后续安排，再确认出现时间、范围和是否正在加重。";
     feedback.next_goal = "下一轮只处理顾客新透露的信息，并给出安全、可执行的下一步。";
   }
+  sanitizeStaticTrainingSuggestedReply(feedback);
   return feedback;
 }
 

@@ -118,8 +118,10 @@ checks = {
         [
             "staticFeedbackUsesNewCustomerFact",
             "staticTrainingMessageHasCompleteSafeClosure",
+            "sanitizeStaticTrainingSuggestedReply",
             "不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现",
             "不应被误判为继续操作或店内诊断",
+            "不在店内判断原因",
         ],
     ),
     "qa_natural_follow_up_keeps_context": contains_all(

@@ -1052,6 +1052,12 @@ def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, histo
 
 
 TRAINING_NEW_FACT_MARKERS = ["手麻", "腿麻", "发麻", "麻木", "无力", "胸痛", "呼吸困难", "晕厥", "头晕", "发热", "红肿", "灼热", "设备异常"]
+TRAINING_UNVERIFIED_ADVICE_PATTERN = re.compile(
+    r"(?:可能是|可能涉及|说明|属于).{0,14}(?:神经|损伤|炎症|病变)|"
+    r"(?:不要|立即|马上|建议).{0,10}(?:热敷|冷敷|按摩|服药|停药|换药)|"
+    r"(?:热敷|冷敷|按摩).{0,8}(?:手臂|腿|疼痛|发麻)|(?:治疗|治好|治愈|根治)",
+    re.I,
+)
 
 
 def training_feedback_uses_new_customer_fact(feedback: dict[str, Any], customer_reply: str, history: list[dict[str, Any]], employee_message: str) -> bool:
@@ -1066,6 +1072,11 @@ def training_message_has_complete_safe_closure(employee_message: str) -> bool:
     keeps_boundary = bool(re.search(r"不(?:要)?自行判断|无法判断|不能判断|不判断原因|不做诊断", message, re.I))
     escalates = bool(re.search(r"记录|上报|负责人|就医|医疗|急救|医院|医生", message, re.I))
     return stopped and keeps_boundary and escalates and not unsafe_claim_hits(message)
+
+
+def sanitize_training_suggested_reply(feedback: dict[str, Any]) -> None:
+    if TRAINING_UNVERIFIED_ADVICE_PATTERN.search(clean_text(feedback.get("suggested_reply", ""))):
+        feedback["suggested_reply"] = "您刚补充的情况需要优先重视。我们先停止所有项目，不在店内判断原因；我会记录并上报负责人，并建议您尽快由医疗机构评估。"
 
 
 def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> dict[str, Any]:
@@ -1109,6 +1120,7 @@ def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str,
             "suggested_reply": "您刚刚补充的情况需要优先重视，我们先暂停后续安排，再确认出现时间、范围和是否正在加重。",
             "next_goal": "下一轮只处理顾客新透露的信息，并给出安全、可执行的下一步。",
         })
+    sanitize_training_suggested_reply(normalized_feedback)
     result["feedback"] = normalized_feedback
     return result
 
