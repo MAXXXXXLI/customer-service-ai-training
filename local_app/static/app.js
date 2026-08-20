@@ -383,7 +383,11 @@ function normalizeStaticQaResult(result, message, query, route, history = []) {
   const current = String(message || "").trim();
   const context = String(query || current);
   const followUp = /怎么办|现在|下一步|那我|接下来/.test(current) && history.some((item) => item?.role === "user");
-  if (route.stop_sales) {
+  if (/(?:手麻|麻木).{0,18}(?:未缓解|没有缓解|加重)|(?:疼痛加重).{0,18}(?:麻木|手麻)/.test(context)) {
+    normalized.answer = "您提到点阵波后疼痛加重并伴有手麻、且目前没有缓解，这需要优先由有资质的医疗人员评估。门店不能判断原因，也不能指导您在家采用热敷、冷敷或其他处理方式；在情况明确前，请停止项目和自行处理。";
+    normalized.uncertainties = ["需要由医疗人员评估症状及是否存在紧急情况。"];
+    normalized.recommended_action = "如症状持续、加重或伴随无力、胸痛、呼吸困难、晕厥等情况，请及时就医或联系急救；同时保留服务时间和反应记录。";
+  } else if (route.stop_sales) {
     normalized.answer = followUp
       ? "现在先停止体验和销售沟通，不要自行判断原因。若胸痛、呼吸困难、晕厥、明显出冷汗或进行性麻木无力正在发生、持续或加重，请尽快联系急救或前往医疗机构；情况稳定后再由门店负责人记录并跟进。"
       : "您提到的情况需要先确认安全，今天先不要做项目，也不要继续产品推荐。请告诉我症状从什么时候开始、是否正在加重，以及有没有胸痛、呼吸困难、晕厥或进行性麻木无力；症状明显、持续或加重时，请尽快联系急救或前往医疗机构。";
