@@ -534,6 +534,14 @@ function staticFeedbackUsesNewCustomerFact(feedback, customerReply, history = []
   return TRAINING_NEW_FACT_MARKERS.some((marker) => String(customerReply || "").includes(marker) && !knownBeforeReply.includes(marker) && critique.includes(marker));
 }
 
+function staticTrainingMessageHasCompleteSafeClosure(message = "") {
+  const text = String(message || "");
+  const stopped = /暂停|停止|先不要|不继续|不要继续|不要做|不做/i.test(text);
+  const keepsBoundary = /不(?:要)?自行判断|无法判断|不能判断|不判断原因|不做诊断/i.test(text);
+  const escalates = /记录|上报|负责人|就医|医疗|急救|医院|医生/i.test(text);
+  return stopped && keepsBoundary && escalates && !staticCriticalHits(text).length;
+}
+
 function normalizeStaticTrainingFeedback(result, scenario, history, rubric, message, customerReply = "") {
   const fallback = staticMockProgressive("training", "turn", scenario, history, rubric, message).feedback;
   const provided = result?.feedback && typeof result.feedback === "object" ? result.feedback : {};
@@ -544,7 +552,15 @@ function normalizeStaticTrainingFeedback(result, scenario, history, rubric, mess
   });
   if (!new Set(["good", "needs_work", "critical"]).has(feedback.level)) feedback.level = "needs_work";
   if (staticCriticalHits(message).length) feedback.level = "critical";
-  if (!staticCriticalHits(message).length && staticFeedbackUsesNewCustomerFact(feedback, customerReply, history, message)) {
+  if (feedback.level === "critical" && staticTrainingMessageHasCompleteSafeClosure(message)) {
+    feedback.level = "good";
+    feedback.issue = "你已明确暂停项目、不判断原因，并完成记录上报和必要的医疗分流。";
+    feedback.why = "这些表达形成了完整的安全闭环，不应被误判为继续操作或店内诊断。";
+    feedback.method_step = "停止服务并完成安全升级";
+    feedback.knowledge_focus = "异常记录、负责人升级与医疗分流";
+    feedback.suggested_reply = "现在先停止所有项目，我们不在店内判断原因。我会记录并上报，同时根据情况建议您尽快由医疗机构评估。";
+    feedback.next_goal = "确认顾客理解安全安排，并完成记录、上报与跟进。";
+  } else if (!staticCriticalHits(message).length && staticFeedbackUsesNewCustomerFact(feedback, customerReply, history, message)) {
     feedback.level = "needs_work";
     feedback.issue = "你已承接顾客当前担心并追问变化；下一轮需要优先处理顾客刚刚补充的新情况。";
     feedback.why = "本轮反馈只评价你说话时已经掌握的信息，不能因为顾客在回复中首次透露的情况倒扣本轮表现。";

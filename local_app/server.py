@@ -1060,6 +1060,14 @@ def training_feedback_uses_new_customer_fact(feedback: dict[str, Any], customer_
     return any(marker in customer_reply and marker not in known_before_reply and marker in critique for marker in TRAINING_NEW_FACT_MARKERS)
 
 
+def training_message_has_complete_safe_closure(employee_message: str) -> bool:
+    message = clean_text(employee_message)
+    stopped = bool(re.search(r"暂停|停止|先不要|不继续|不要继续|不要做|不做", message, re.I))
+    keeps_boundary = bool(re.search(r"不(?:要)?自行判断|无法判断|不能判断|不判断原因|不做诊断", message, re.I))
+    escalates = bool(re.search(r"记录|上报|负责人|就医|医疗|急救|医院|医生", message, re.I))
+    return stopped and keeps_boundary and escalates and not unsafe_claim_hits(message)
+
+
 def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> dict[str, Any]:
     result = result if isinstance(result, dict) else {}
     result["customer_reply"] = normalized_customer_reply(result.get("customer_reply", ""), scenario, history, employee_message)
@@ -1081,6 +1089,16 @@ def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str,
         normalized_feedback["level"] = "needs_work"
     if unsafe_claim_hits(employee_message):
         normalized_feedback["level"] = "critical"
+    elif normalized_feedback["level"] == "critical" and training_message_has_complete_safe_closure(employee_message):
+        normalized_feedback.update({
+            "level": "good",
+            "issue": "你已明确暂停项目、不判断原因，并完成记录上报和必要的医疗分流。",
+            "why": "这些表达形成了完整的安全闭环，不应被误判为继续操作或店内诊断。",
+            "method_step": "停止服务并完成安全升级",
+            "knowledge_focus": "异常记录、负责人升级与医疗分流",
+            "suggested_reply": "现在先停止所有项目，我们不在店内判断原因。我会记录并上报，同时根据情况建议您尽快由医疗机构评估。",
+            "next_goal": "确认顾客理解安全安排，并完成记录、上报与跟进。",
+        })
     elif training_feedback_uses_new_customer_fact(normalized_feedback, result["customer_reply"], history, employee_message):
         normalized_feedback.update({
             "level": "needs_work",
