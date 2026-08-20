@@ -42,7 +42,11 @@ def parse_source(text: str) -> tuple[list[dict], list[dict]]:
             summary_match = re.search(r"### 课程摘要\n(.*?)(?=\n### )", cblock, re.S)
             summary_lines = []
             if summary_match:
-                summary_lines = [re.sub(r"^[-*]\s*", "", line).strip() for line in summary_match.group(1).splitlines() if line.strip()]
+                summary_lines = [
+                    re.sub(r"^[-*]\s*", "", line).strip().rstrip("。；;")
+                    for line in summary_match.group(1).splitlines()
+                    if line.strip()
+                ]
             sections = []
             h4 = list(re.finditer(r"^#### (.+)$", cblock, re.M))
             for si, sm in enumerate(h4, 1):
@@ -63,7 +67,7 @@ def parse_source(text: str) -> tuple[list[dict], list[dict]]:
                 "order": order,
                 "kind": "knowledge",
                 "title": course_title,
-                "summary": "；".join(summary_lines)[:1000],
+                "summary": ("；".join(summary_lines).rstrip("；") + "。")[:1000] if summary_lines else "",
                 "estimated_minutes": max(12, min(45, 8 + sum(len(x["content"]) for x in sections) // 180)),
                 "source_ids": ["NKB-2026-08-HIGH-DENSITY"],
                 "authority": "enterprise_integrated_markdown",
@@ -88,7 +92,7 @@ def parse_source(text: str) -> tuple[list[dict], list[dict]]:
 
 
 def safe_answer(course: dict) -> str:
-    summary = course["summary"] or "请按当前课程内容和门店生效版本核验。"
+    summary = (course["summary"] or "请按当前课程内容和门店生效版本核验").rstrip("。；;")
     # The source is an employee learning document; customer-facing answers must retain a conservative boundary.
     return (
         f"关于“{course['title']}”，当前课程重点是：{summary}。"

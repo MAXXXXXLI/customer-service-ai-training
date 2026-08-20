@@ -21,6 +21,13 @@ CASES = [
         "stop_sales": True,
     },
     {
+        "name": "diagnosed_numbness_cannot_be_surgery_substitute",
+        "question": "我腰椎间盘突出而且腿麻，你们的点阵波能替代手术吗？",
+        "primary": "MOD-01",
+        "supports": ["MOD-03"],
+        "stop_sales": True,
+    },
+    {
         "name": "pain_project",
         "question": "点阵波做肩颈是什么感受？",
         "primary": "MOD-03",

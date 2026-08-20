@@ -51,6 +51,12 @@ specs = [
         "must_groups": [["不能"], ["医疗"]],
     },
     {
+        "name": "shoulder_hand_numbness_referral",
+        "question": "肩颈不舒服半年了，有时候手麻，那我还能先体验吗？",
+        "must_groups": [["手麻", "麻木"], ["医疗"]],
+        "must_not": ["腰椎间盘突出和腿麻"],
+    },
+    {
         "name": "dynamic_price",
         "question": "现在超V一次多少钱？培训表里的代金券还能用吗？",
         "must_groups": [["门店"], ["核", "查询"]],
@@ -80,6 +86,7 @@ for spec in specs:
     checks = {
         "has_answer": bool(answer),
         "contains_required_points": all(any(token in answer for token in alternatives) for alternatives in spec["must_groups"]),
+        "avoids_wrong_specific_template": not any(token in answer for token in spec.get("must_not", [])),
         "no_internal_names": not INTERNAL.search(json.dumps(response, ensure_ascii=False)),
         "has_course_reference": bool(references) and all(item.get("title") for item in references),
     }

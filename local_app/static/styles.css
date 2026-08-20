@@ -73,6 +73,28 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 
 .product-page, .conversation-stage { max-width: 1120px; margin: 38px auto 0; }
 .product-page { display: grid; gap: 18px; }
+.portal-page { align-content: start; min-height: 430px; }
+.portal-intro, .gateway-head { padding: 8px 2px 4px; }
+.portal-intro h2, .gateway-head h2 { margin: 9px 0 7px; color: #0c255d; font-size: 26px; letter-spacing: -0.04em; }
+.portal-intro p, .gateway-head p { max-width: 680px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+.portal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.portal-card { display: grid; grid-template-columns: 52px 1fr; gap: 18px; min-height: 210px; padding: 27px; color: var(--text); text-align: left; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 255, 0.98)); box-shadow: var(--shadow); }
+.portal-card:hover { border-color: rgba(37, 90, 223, 0.32); transform: translateY(-2px); box-shadow: 0 24px 60px rgba(31, 70, 145, 0.15); }
+.portal-number { display: grid; place-items: center; width: 48px; height: 48px; color: var(--lime); border: 1px solid rgba(37, 90, 223, 0.18); border-radius: 14px; background: rgba(37, 90, 223, 0.06); font-size: 13px; font-weight: 900; }
+.portal-card h3 { margin: 3px 0 9px; color: #102b66; font-size: 20px; }
+.portal-card p { min-height: 48px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+.portal-card b { display: block; margin-top: 23px; color: var(--lime); font-size: 11px; }
+.gateway-head { display: grid; justify-items: start; }
+.route-back { min-height: 44px; margin-bottom: 20px; padding: 8px 12px; color: var(--blue); border: 1px solid rgba(37, 90, 223, 0.18); border-radius: 9px; background: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 800; }
+.route-back:hover { border-color: rgba(37, 90, 223, 0.36); background: #fff; }
+.compact-heading .route-back { margin-bottom: 13px; }
+.module-route-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.module-route-card { position: relative; display: grid; min-height: 154px; padding: 20px 21px; color: var(--text); text-align: left; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 12px 30px rgba(31, 70, 145, 0.07); }
+.module-route-card:hover { border-color: rgba(37, 90, 223, 0.3); transform: translateY(-1px); }
+.module-route-card > span { color: var(--sand); font-size: 8px; font-weight: 900; letter-spacing: 0.09em; }
+.module-route-card h3 { margin: 8px 0 6px; font-size: 14px; line-height: 1.5; }
+.module-route-card p { margin: 0; color: var(--muted); font-size: 10px; }
+.module-route-card b { align-self: end; margin-top: 16px; color: var(--lime); font-size: 9px; }
 .feature-card { padding: 25px; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(249, 251, 255, 0.98)); box-shadow: var(--shadow); }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .compact-heading { padding-bottom: 19px; border-bottom: 1px solid var(--line); }
@@ -114,7 +136,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .scenario-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .scenario-title-row span, .scenario-focus > span { color: var(--sand); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; }
 .scenario-title-row h3 { margin: 6px 0 0; font-size: 15px; }
-.change-scenario { flex: 0 0 auto; padding: 7px 9px; color: var(--lime); border: 1px solid var(--line); border-radius: 8px; background: transparent; font-size: 8px; }
+.change-scenario { flex: 0 0 auto; min-height: 44px; padding: 7px 10px; color: var(--lime); border: 1px solid var(--line); border-radius: 8px; background: transparent; font-size: 9px; }
 .scenario-opening { margin-top: 15px; padding: 12px 13px; border: 1px solid rgba(197, 139, 33, 0.1); border-radius: 9px; background: rgba(251, 212, 148, 0.12); }
 .scenario-opening span { color: var(--faint); font-size: 8px; font-weight: 700; }
 .scenario-opening p { margin: 6px 0 0; font-size: 11px; line-height: 1.65; }
@@ -123,6 +145,8 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .scenario-focus li { position: relative; padding-left: 13px; color: var(--muted); font-size: 9px; line-height: 1.55; }
 .scenario-focus li::before { content: ""; position: absolute; top: 5px; left: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--lime); }
 .exam-frame { border-color: rgba(37, 90, 223, 0.16); background: rgba(37, 90, 223, 0.035); }
+.exam-frame.objective-only { display: block; overflow: visible; border: 0; background: transparent; }
+.exam-frame.objective-only .objective-exam { margin: 0; }
 .objective-exam { margin-bottom: 18px; padding: 18px; border: 1px solid rgba(37, 90, 223, 0.16); border-radius: 16px; background: #fff; }
 .exam-section-head span, .exam-ai-status { color: var(--lime); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .exam-section-head h3 { margin: 5px 0; font-size: 18px; }
@@ -138,9 +162,16 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .exam-option { display: flex; align-items: flex-start; gap: 7px; cursor: pointer; }
 .exam-option b { min-width: 15px; color: var(--lime); }
 .exam-question em { color: #176c43; font-style: normal; font-size: 11px; }
-.exam-submit { margin-top: 14px; border: 0; border-radius: 9px; padding: 10px 14px; background: var(--lime); color: #fff; font-weight: 800; cursor: pointer; }
+.exam-submit, .exam-restart { min-height: 44px; margin-top: 14px; border-radius: 9px; padding: 10px 14px; font-weight: 800; cursor: pointer; }
+.exam-submit { color: #fff; border: 0; background: var(--lime); }
+.exam-restart { color: var(--blue); border: 1px solid rgba(37, 90, 223, .22); background: #fff; }
 .exam-result, .exam-total { margin-top: 12px; padding: 10px 12px; border-radius: 9px; background: rgba(37, 90, 223, .07); color: var(--ink); font-size: 12px; }
 .exam-result p, .exam-total span { display: block; margin: 4px 0 0; color: var(--muted); }
+.exam-question.is-correct { border-color: rgba(21, 150, 111, .3); background: rgba(21, 150, 111, .035); }
+.exam-question.is-wrong { border-color: rgba(220, 67, 86, .3); background: rgba(220, 67, 86, .035); }
+.answer-review { display: grid; gap: 5px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.answer-review span { color: var(--muted); font-size: 11px; }
+.answer-review em { line-height: 1.65; }
 .scenario-task { margin: 10px 0 0; }
 .exam-ai-status { display: block; margin-top: 11px; }
 .standard-answer { grid-column: 1 / -1; }
@@ -152,7 +183,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .qa-welcome h2 { max-width: 770px; margin: 9px 0 9px; font-size: 25px; letter-spacing: -0.04em; }
 .qa-welcome p { max-width: 760px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.75; }
 .qa-examples { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
-.qa-examples button { padding: 8px 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; background: rgba(255, 255, 255, 0.78); font-size: 9px; }
+.qa-examples button { min-height: 44px; padding: 8px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; background: rgba(255, 255, 255, 0.78); font-size: 9px; }
 .qa-examples button:hover { color: var(--lime); border-color: rgba(37, 90, 223, 0.3); background: #fff; }
 
 .conversation-stage { display: flex; flex-direction: column; min-height: 590px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 255, 0.99)); box-shadow: var(--shadow); }
@@ -316,20 +347,25 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   .brand-product strong { font-size: 10px; }
   .brand-product small { display: none; }
   .nav-label, .sidebar-spacer, .kb-health { display: none; }
-  .mode-nav { display: flex; overflow-x: auto; }
+  .mode-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
   .mode-group, .submode-nav { display: contents; }
   .mode-group-head { display: none; }
-  .mode-button { min-width: 175px; padding: 9px; }
+  .mode-button { grid-template-columns: 1fr; min-width: 0; min-height: 48px; padding: 9px; text-align: center; }
+  .mode-button .mode-index, .mode-button small { display: none; }
   .settings-button { position: absolute; top: 15px; right: 15px; width: auto; gap: 8px; padding: 8px 10px; }
   .main-content { width: 100%; margin-left: 0; padding: 22px 15px 40px; }
   .api-pill { display: none; }
   .topbar h1 { font-size: 31px; }
+  .portal-grid { grid-template-columns: 1fr; }
+  .portal-card { min-height: 170px; }
+  .module-route-grid { grid-template-columns: 1fr; }
   .section-heading { display: grid; }
   .module-picker { width: 100%; }
   .selected-module-summary { align-items: flex-start; }
   .chapter-courses { grid-template-columns: 1fr; padding-left: 12px; }
   .course-preview { min-height: 110px; }
   .conversation-stage { margin-top: 24px; }
+  .subtle-button, .finish-button, .send-button { min-height: 44px; }
   .score-rows, .report-columns { grid-template-columns: 1fr; }
 }
 
@@ -345,4 +381,6 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   .assessment-card { margin-left: 0; }
   .course-modal { max-height: 86vh; padding: 20px; }
   .toast { right: 10px; bottom: 12px; left: 10px; }
+  .portal-card { grid-template-columns: 42px 1fr; gap: 13px; padding: 20px; }
+  .portal-number { width: 40px; height: 40px; }
 }

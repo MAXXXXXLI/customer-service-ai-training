@@ -23,15 +23,9 @@
         </div>
         <div class="nav-label">核心功能</div>
         <nav class="mode-nav" aria-label="核心功能">
-          <div class="mode-group">
-            <div class="mode-group-head"><span class="mode-index">01</span><span><strong>学习与陪练</strong><small>分步完成知识学习和模拟练习</small></span></div>
-            <div class="submode-nav" aria-label="学习与陪练子页面">
-              <button class="mode-button submode-button active" data-mode="learning"><span class="submode-index">A</span><span><strong>课程学习</strong><small>按模块查看章节和知识</small></span></button>
-              <button class="mode-button submode-button" data-mode="training"><span class="submode-index">B</span><span><strong>情景陪练</strong><small>与 AI 顾客反复练习</small></span></button>
-            </div>
-          </div>
-          <button class="mode-button" data-mode="test"><span class="mode-index">02</span><span><strong>实战考核</strong><small>完整对话后统一评分</small></span></button>
-          <button class="mode-button" data-mode="qa"><span class="mode-index">03</span><span><strong>智能接待</strong><small>AI 基于知识库回答顾客</small></span></button>
+          <button class="mode-button active" data-route="learning"><span class="mode-index">01</span><span><strong>学习与陪练</strong><small>课程学习与模拟练习</small></span></button>
+          <button class="mode-button" data-route="exam"><span class="mode-index">02</span><span><strong>实战考核</strong><small>客观题与模拟顾客考核</small></span></button>
+          <button class="mode-button" data-route="qa"><span class="mode-index">03</span><span><strong>智能接待</strong><small>AI 基于知识库回答顾客</small></span></button>
         </nav>
         <div class="sidebar-spacer"></div>
         <div class="kb-health hidden" aria-hidden="true">
@@ -44,18 +38,39 @@
       <main class="main-content">
         <header class="topbar">
           <div>
-            <div class="breadcrumb">秀域 AI / <span id="mode-breadcrumb">学习与陪练 / 课程学习</span></div>
-            <h1 id="page-title">课程学习</h1>
-            <p id="page-description">学习标准课程与服务知识。</p>
+            <div class="breadcrumb">秀域 AI / <span id="mode-breadcrumb">学习与陪练</span></div>
+            <h1 id="page-title">学习与陪练</h1>
+            <p id="page-description">先选择学习方式，再进入对应模块。</p>
           </div>
           <div class="api-pill"><i></i><span id="api-status">SiliconFlow 已连接</span></div>
         </header>
 
-        <section class="product-page" id="learning-page">
+        <section class="product-page portal-page" id="learning-hub-page">
+          <div class="portal-intro"><span class="step-tag">LEARN & PRACTICE</span><h2>今天想完成什么？</h2><p>先选择学习方式，下一步再选择知识模块。页面只展示当前任务需要的内容。</p></div>
+          <div class="portal-grid">
+            <button class="portal-card" data-route="learning/course"><span class="portal-number">01</span><div><h3>课程学习</h3><p>按模块阅读课程、章节与知识要点。</p><b>选择学习模块 →</b></div></button>
+            <button class="portal-card" data-route="learning/practice"><span class="portal-number">02</span><div><h3>情景陪练</h3><p>和模拟顾客对话，每轮获得即时纠正。</p><b>选择陪练模块 →</b></div></button>
+          </div>
+        </section>
+
+        <section class="product-page portal-page hidden" id="assessment-hub-page">
+          <div class="portal-intro"><span class="step-tag">ASSESSMENT</span><h2>选择考试方式</h2><p>客观题与模拟顾客考试独立进入，避免题目和对话内容同时堆叠。</p></div>
+          <div class="portal-grid">
+            <button class="portal-card" data-route="exam/objective"><span class="portal-number">A</span><div><h3>客观题考试</h3><p>每模块 6 道填空与 8 道选择，提交后查看分数和答案。</p><b>选择考试模块 →</b></div></button>
+            <button class="portal-card" data-route="exam/simulation"><span class="portal-number">B</span><div><h3>模拟顾客考核</h3><p>主观题 · AI 扮演顾客进行多轮对话，结束后按证据评分。</p><b>选择考核模块 →</b></div></button>
+          </div>
+        </section>
+
+        <section class="product-page portal-page hidden" id="module-gateway-page">
+          <div class="gateway-head"><button class="route-back" id="gateway-back">← 返回</button><span class="step-tag" id="gateway-tag">MODULE</span><h2 id="gateway-title">选择模块</h2><p id="gateway-description">选择后进入对应页面。</p></div>
+          <div class="module-route-grid" id="module-route-grid"></div>
+        </section>
+
+        <section class="product-page hidden" id="learning-page">
           <article class="feature-card learning-zone">
             <div class="section-heading compact-heading">
-              <div><span class="step-tag">课程学习</span><h2>选择学习模块</h2><p>查看模块章节与完整课程内容。</p></div>
-              <label class="module-picker">学习模块<select id="learning-module-select" aria-label="选择学习模块"></select></label>
+              <div><button class="route-back" data-route="learning/course">← 返回模块选择</button><span class="step-tag">课程学习</span><h2>模块课程</h2><p>查看章节与完整课程内容。</p></div>
+              <select class="hidden" id="learning-module-select" aria-label="选择学习模块"></select>
             </div>
             <div class="selected-module-summary" id="learning-module-summary"></div>
             <div class="chapter-list" id="learning-chapters"></div>
@@ -65,8 +80,8 @@
         <section class="product-page hidden" id="training-page">
           <article class="feature-card coaching-zone">
             <div class="section-heading compact-heading">
-              <div><span class="step-tag">情景陪练</span><h2>选择陪练模块</h2><p>进入顾客情景，获得即时纠正与推荐表达。</p></div>
-              <label class="module-picker">陪练模块<select id="practice-module-select" aria-label="选择陪练模块"></select></label>
+              <div><button class="route-back" data-route="learning/practice">← 返回模块选择</button><span class="step-tag">情景陪练</span><h2>模拟顾客练习</h2><p>进入顾客情景，获得即时纠正与推荐表达。</p></div>
+              <select class="hidden" id="practice-module-select" aria-label="选择陪练模块"></select>
             </div>
             <div class="scenario-frame" id="training-scenario-frame"></div>
           </article>
@@ -75,8 +90,8 @@
         <section class="product-page hidden" id="test-page">
           <article class="feature-card exam-zone">
             <div class="section-heading compact-heading">
-              <div><span class="step-tag">实战考核</span><h2>选择考核模块</h2><p>完成无提示对话，结束后查看评分。</p></div>
-              <label class="module-picker">考核模块<select id="test-module-select" aria-label="选择考核模块"></select></label>
+              <div><button class="route-back" id="test-route-back">← 更换模块</button><span class="step-tag" id="test-route-tag">实战考核</span><h2 id="test-route-title">考试内容</h2><p id="test-route-description">完成后查看结果。</p></div>
+              <select class="hidden" id="test-module-select" aria-label="选择考核模块"></select>
             </div>
             <div class="scenario-frame exam-frame" id="test-scenario-frame"></div>
           </article>
@@ -132,6 +147,6 @@
       </div>
     </div>
     <div class="toast hidden" id="toast"></div>
-    <script src="./app.js?v=20260820-3"></script>
+    <script src="./app.js?v=20260820-5"></script>
   </body>
 </html>

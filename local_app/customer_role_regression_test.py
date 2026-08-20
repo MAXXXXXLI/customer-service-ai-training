@@ -27,6 +27,12 @@ def assert_customer_like(reply: str) -> None:
     assert not PROFESSIONAL_DRIFT.search(reply), reply
 
 
+def exact_scenario(scenario_id: str) -> dict:
+    scenario = next((item for item in server.SCENARIOS if item.get("id") == scenario_id), None)
+    assert scenario is not None, f"测试场景不存在：{scenario_id}"
+    return scenario
+
+
 def test_scenario_knowledge_boundaries() -> None:
     assert len(server.SCENARIOS) == 30
     for scenario in server.SCENARIOS:
@@ -37,13 +43,13 @@ def test_scenario_knowledge_boundaries() -> None:
         assert "must_test" not in serialized
         assert not any(rule in serialized for rule in scenario.get("must_test", []))
 
-    beauty = server.scenario_by_id("SCN-CEX-M08-S01")
+    beauty = exact_scenario("SCN-CEX-M08-S01")
     assert "纳米喷射" in beauty["opening"]
     assert "补水" in beauty["opening"]
 
 
 def test_role_drift_is_repaired() -> None:
-    scenario = server.scenario_by_id("SCN-CEX-M08-S01")
+    scenario = exact_scenario("SCN-CEX-M08-S01")
     history = [
         {"role": "assistant", "content": scenario["opening"]},
         {"role": "user", "content": "没什么不同，敏感肌不能做。"},
@@ -71,7 +77,7 @@ def test_role_drift_is_repaired() -> None:
 
 
 def test_natural_customer_reply_is_preserved() -> None:
-    scenario = server.scenario_by_id("SCN-CEX-M03-S02")
+    scenario = exact_scenario("SCN-CEX-M03-S02")
     natural = "大概有半年了，低头久了会更明显。"
     normalized = server.normalize_test_turn_result({"reply": natural}, scenario, [{"role": "assistant", "content": scenario["opening"]}], "这种情况多久了？")
     assert normalized["reply"] == natural

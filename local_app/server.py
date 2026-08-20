@@ -66,13 +66,13 @@ for item in [*CARDS, *OBJECTIONS]:
         SOURCE_TO_COURSES.setdefault(source_id, []).append(course)
 
 DOMAIN_TO_MODULE = {
-    "onboarding": "MOD-01", "company": "MOD-01", "reception": "MOD-01", "sales_skills": "MOD-01",
-    "point_wave": "MOD-02", "point_wave_ops": "MOD-02", "professional_qa": "MOD-02", "training_video": "MOD-02",
-    "super_v": "MOD-03", "point_wave_super_v": "MOD-03",
-    "beauty": "MOD-04", "beauty_ops": "MOD-04",
+    "onboarding": "MOD-01", "company": "MOD-01", "reception": "MOD-02", "sales_skills": "MOD-02",
+    "point_wave": "MOD-03", "point_wave_ops": "MOD-03", "professional_qa": "MOD-03", "training_video": "MOD-03",
+    "super_v": "MOD-04", "point_wave_super_v": "MOD-04",
+    "beauty": "MOD-08", "beauty_ops": "MOD-08",
     "slimming": "MOD-05", "slimming_reception": "MOD-05", "slimming_product": "MOD-05", "slimming_science": "MOD-05",
-    "objections": "MOD-06", "comparison": "MOD-06",
-    "safety": "MOD-07", "service_safety": "MOD-07", "operations": "MOD-07", "product_ops": "MOD-07",
+    "objections": "MOD-02", "comparison": "MOD-02",
+    "safety": "MOD-01", "service_safety": "MOD-01", "operations": "MOD-01", "product_ops": "MOD-01",
 }
 
 DOMAIN_LABELS = {
@@ -134,7 +134,7 @@ def route_customer_question(query: str) -> dict[str, Any]:
                 "id": default.get("intent_id", "INTENT-INFORMATION"),
                 "label": default.get("intent_label", "一般需求咨询"),
                 "primary_module_id": default.get("primary_module_id", "MOD-01"),
-                "support_module_ids": default.get("support_module_ids", ["MOD-07"]),
+                "support_module_ids": default.get("support_module_ids", ["MOD-01"]),
                 "course_ids": default.get("course_ids", []),
                 "focus": default.get("focus", "先确认顾客目标和必要安全信息。"),
                 "stop_sales": default.get("stop_sales", False),
@@ -157,8 +157,8 @@ def route_customer_question(query: str) -> dict[str, Any]:
         if topic.get("module_id") != primary_module_id:
             support_module_ids.append(topic.get("module_id"))
     support_module_ids.extend(intent.get("support_module_ids", []))
-    if primary_module_id != "MOD-07":
-        support_module_ids.append("MOD-07")
+    if primary_module_id != "MOD-01":
+        support_module_ids.append("MOD-01")
     support_module_ids = [item for item in unique_items(support_module_ids) if item in MODULE_BY_ID and item != primary_module_id]
 
     course_ids = [*intent.get("course_ids", [])]
@@ -168,8 +168,8 @@ def route_customer_question(query: str) -> dict[str, Any]:
         knowledge_points.extend(topic.get("knowledge_points", []))
     if not topics and not matched_intent:
         course_ids.extend(default.get("course_ids", []))
-    if primary_module_id == "MOD-07" or intent.get("stop_sales"):
-        course_ids.extend(["COURSE-SERVICE-SAFETY-001", "COURSE-COMPLIANCE-MEDICAL-001"])
+    if intent.get("stop_sales"):
+        course_ids.extend(["COURSE-NKB-001", "COURSE-NKB-002", "COURSE-NKB-003", "COURSE-NKB-004"])
     course_ids = [item for item in unique_items(course_ids) if item in COURSE_BY_ID]
 
     if intent.get("stop_sales"):
@@ -334,7 +334,9 @@ def public_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     persona = scenario.get("persona", {})
     return {
         "id": scenario.get("id"),
+        "module_id": scenario.get("module_id"),
         "domain": scenario.get("domain"),
+        "title": scenario.get("title"),
         "age": persona.get("age"),
         "gender": persona.get("gender"),
         "occupation": persona.get("occupation"),
@@ -550,7 +552,7 @@ def safety_filter(result: dict[str, Any], mode: str, user_text: str = "", route:
         result["safety_filter_triggered"] = True
         return result
     if mode == "qa" and re.search(r"GLP-1|glp-1|司美|减肥针|处方|药品|减肥药|口服片|剂量|停药|换药|怎么用", user_text, flags=re.I):
-        result["answer"] = "您问的是药品适用性、用法和剂量，这些必须依据具体药品的当前说明书和医生处方，门店不能只凭体重、疾病名称或聊天给剂量，也不能建议开始、停用或更换药物。请先确认具体药名、剂型、开药医生、正在使用的其他药物和当前不适，再由开药医生或药师核实。"
+        result["answer"] = "若涉及儿童或未成年人，药品适用性不能仅凭聊天判断。具体药品的用法和剂量必须依据当前说明书与医生处方，门店不能给剂量，也不能建议开始、停用或更换药物。请先确认具体药名、剂型、开药医生、正在使用的其他药物和当前不适，再由开药医生或药师核实。"
         result["uncertainties"] = ["需要确认具体药品身份、处方、合并用药和当前症状。"]
         result["recommended_action"] = "暂停具体产品或剂量建议，携带药品包装和用药记录咨询开药医生或药师。"
         result["safety_filter_triggered"] = True
@@ -563,13 +565,31 @@ def safety_filter(result: dict[str, Any], mode: str, user_text: str = "", route:
         return result
     if mode == "qa" and route.get("stop_sales"):
         follow_up = bool(re.search(r"怎么办|现在|下一步|那我|接下来", user_text, flags=re.I))
+        surgery_question = bool(re.search(r"替代手术", user_text, flags=re.I))
+        numbness_boundary = bool(re.search(r"腰椎间盘突出|颈椎病|腿麻|手麻|麻木|无力", user_text, flags=re.I))
         result["answer"] = (
-            "现在先停止体验和销售沟通，不要自行判断原因。若胸痛、呼吸困难、晕厥、明显出冷汗或进行性麻木无力正在发生、持续或加重，请尽快联系急救或前往医疗机构；情况稳定后再由门店负责人记录并跟进。"
+            "点阵波不能替代手术、医疗诊断或医生制定的治疗方案。您还提到明确疾病或麻木症状，今天应先停止项目与销售推进，并由医疗机构评估；若麻木或无力持续、加重，或伴随大小便异常、会阴麻木等情况，请及时就医或联系急救。"
+            if surgery_question
+            else "您提到持续不适并出现手麻、腿麻、麻木或无力，这需要先由医疗机构评估；今天先不要体验项目，也不要继续销售沟通。门店不能判断病因，也不能用项目体验替代医疗诊断或评估；症状持续或加重时请及时就医。"
+            if numbness_boundary
+            else "现在先停止体验和销售沟通，不要自行判断原因。若胸痛、呼吸困难、晕厥、明显出冷汗或进行性麻木无力正在发生、持续或加重，请尽快联系急救或前往医疗机构；情况稳定后再由门店负责人记录并跟进。"
             if follow_up
             else "您提到的情况需要先确认安全，今天先不要做项目，也不要继续产品推荐。请告诉我症状从什么时候开始、是否正在加重，以及有没有胸痛、呼吸困难、晕厥或进行性麻木无力；症状明显、持续或加重时，请尽快联系急救或前往医疗机构。"
         )
         result["uncertainties"] = ["需要确认症状开始时间、程度、变化和伴随情况。"]
         result["recommended_action"] = "停止销售推进，完成风险问询、负责人升级和必要的医疗分流。"
+        result["safety_filter_triggered"] = True
+        return result
+    if mode == "qa" and re.search(r"(?:背部|后背).{0,8}(?:凉|冷)|(?:凉|冷).{0,8}(?:背部|后背)|器官功能", user_text, flags=re.I):
+        result["answer"] = "背部发凉是一种主观感受，不能据此判断某个器官功能不好，也不能由门店作疾病诊断。先确认从什么时候开始、是否持续或加重，以及有没有疼痛、麻木、无力、胸痛、呼吸困难、发热等伴随情况；症状明显、持续或伴随异常时应由医疗机构评估。"
+        result["uncertainties"] = ["需要确认持续时间、变化、诱因和伴随症状。"]
+        result["recommended_action"] = "先做风险问询；不能用项目体验替代医疗诊断或评估。"
+        result["safety_filter_triggered"] = True
+        return result
+    if mode == "qa" and re.search(r"水分测试笔|水分(?:测试|数值|值)|含水量|含水(?:测试|数值)", user_text, flags=re.I):
+        result["answer"] = "一次水分数值升高最多说明当次、当时测量出现变化，不能直接证明长期改善。比较时要尽量使用同一设备、同一部位、相近时间和环境，并记录护肤、清洁等条件；长期结论需要在相同条件下多次复测并结合持续观察。"
+        result["uncertainties"] = ["需要确认设备、部位、时间、环境和前后测量条件是否一致。"]
+        result["recommended_action"] = "按统一条件记录本次结果，约定后续复测，不把单次读数宣传为长期效果。"
         result["safety_filter_triggered"] = True
         return result
     if not hits:
@@ -780,7 +800,15 @@ def mock_qa_response(message: str, route: dict[str, Any], docs: list[dict[str, A
     """Provide a useful, deterministic QA answer when no provider key is configured."""
     intent_id = route.get("intent_id")
     module_ids = {route.get("primary_module_id"), *route.get("support_module_ids", [])}
-    if intent_id == "INTENT-RESULT" or re.search(r"一次|几次|多久|有效|见效|保证|反弹", message, re.I):
+    if re.search(r"(?:背部|后背).{0,8}(?:凉|冷)|(?:凉|冷).{0,8}(?:背部|后背)|器官功能", message, re.I):
+        answer = "背部发凉是一种主观感受，不能据此判断某个器官功能不好，也不能由门店作疾病诊断。先确认持续时间、变化和伴随症状；症状明显、持续或伴随异常时应由医疗机构评估。"
+        uncertainties = ["需要确认持续时间、变化、诱因和伴随症状。"]
+        recommended_action = "先做风险问询；不能用项目体验替代医疗诊断或评估。"
+    elif re.search(r"水分测试笔|水分(?:测试|数值|值)|含水量|含水(?:测试|数值)", message, re.I):
+        answer = "一次水分数值升高最多说明当次、当时测量出现变化，不能直接证明长期改善。比较时要使用同一设备、同一部位、相近时间和环境，并在相同条件下多次复测。"
+        uncertainties = ["需要确认设备、部位、时间、环境和前后测量条件是否一致。"]
+        recommended_action = "按统一条件记录并复测，不把单次读数宣传为长期效果。"
+    elif intent_id == "INTENT-RESULT" or re.search(r"一次|几次|多久|有效|见效|保证|反弹", message, re.I):
         answer = "我理解您希望尽快看到变化，但不能承诺一次、固定时间或固定结果，也不能保证不反弹。先确认您最想改善的指标和既往情况，再按相同条件记录并做阶段观察；长期变化还会受到生活方式和个体差异影响。"
         uncertainties = ["需要确认具体项目、顾客目标和用于判断变化的指标。"]
         recommended_action = "先确定一个可观察指标和必要安全信息，再决定是否体验及何时复盘。"

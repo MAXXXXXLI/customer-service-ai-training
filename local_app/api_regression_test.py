@@ -9,7 +9,11 @@ from pathlib import Path
 BASE_URL = "http://127.0.0.1:8787/api/chat"
 REPORT_PATH = Path(__file__).resolve().parent / "api_regression_report.json"
 CATALOG_PATH = Path(__file__).resolve().parent.parent / "knowledge_base" / "learning_catalog.json"
+MODULE_PATH = Path(__file__).resolve().parent.parent / "knowledge_base" / "learning_modules.json"
+SCENARIO_PATH = Path(__file__).resolve().parent.parent / "knowledge_base" / "scenario_library.jsonl"
 COURSE_TITLES = {item["title"] for item in json.loads(CATALOG_PATH.read_text(encoding="utf-8"))["courses"]}
+MODULE_TITLES = {item["title"] for item in json.loads(MODULE_PATH.read_text(encoding="utf-8"))["modules"]}
+SCENARIOS = [json.loads(line) for line in SCENARIO_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
 FORBIDDEN = re.compile(
     r"(?:SRC-\d+|CHUNK-\d+|document_id|source_id|"
     r"\b(?:FLOW|PROD|OP|KNOW|SERVICE|OPS|COMPLIANCE|OB)-[A-Z0-9-]+\b|"
@@ -37,6 +41,13 @@ def post(payload):
         return json.loads(response.read().decode("utf-8"))
 
 
+def exact_scenario(scenario_id: str):
+    scenario = next((item for item in SCENARIOS if item.get("id") == scenario_id), None)
+    if scenario is None:
+        raise AssertionError(f"测试场景不存在：{scenario_id}")
+    return scenario
+
+
 cases = []
 
 qa = post({
@@ -47,39 +58,38 @@ qa = post({
 })
 cases.append({"name": "knowledge_advisor", "response": qa})
 
-training_history = [
-    {"role": "assistant", "content": "我低头工作久了肩颈很硬，偶尔头晕，你们这个是不是能治颈椎病？"},
-]
+training_scenario = exact_scenario("SCN-CEX-M03-S01")
+training_history = [{"role": "assistant", "content": training_scenario["opening"]}]
 training = post({
     "mode": "training",
     "action": "turn",
-    "message": "我先了解一下，头晕多久了，最近有没有突然加重，是否伴随手脚麻木无力？我们不做疾病诊断，如果症状明显建议先做医疗评估。",
+    "scenario_id": training_scenario["id"],
+    "message": "我理解您现在更痛会担心。先确认疼痛的位置、程度、从什么时候开始，是否持续加重；我们不能判断病因，如果症状明显建议先做医疗评估。",
     "history": training_history,
 })
 cases.append({"name": "scenario_coaching", "response": training})
 
-test_history = [
-    {"role": "assistant", "content": "我每天上班，没时间来店里，你们能保证一个月瘦十斤吗？"},
-]
+assessment_scenario = exact_scenario("SCN-CEX-M05-S01")
+test_history = [{"role": "assistant", "content": assessment_scenario["opening"]}]
 test_turn = post({
     "mode": "test",
     "action": "turn",
-    "scenario_id": "SCN-SLIM-01",
-    "message": "我理解您想尽快看到变化。先了解一下您的作息、饮食和之前尝试过的方法，再看什么目标更适合；我们不能承诺固定减重斤数。",
+    "scenario_id": assessment_scenario["id"],
+    "message": "我理解您很配合却看到体重上涨会失望。先确认两次测量条件，再了解这周饮食、睡眠、活动和围度变化；单次体重不能直接判断效果。",
     "history": test_history,
 })
 cases.append({"name": "assessment_customer_turn", "response": test_turn})
 
 full_history = [
     *test_history,
-    {"role": "user", "content": "我理解您想尽快看到变化。先了解一下您的作息、饮食和之前尝试过的方法，再看什么目标更适合；我们不能承诺固定减重斤数。"},
+    {"role": "user", "content": "我理解您很配合却看到体重上涨会失望。先确认两次测量条件，再了解这周饮食、睡眠、活动和围度变化；单次体重不能直接判断效果。"},
     {"role": "assistant", "content": test_turn["result"]["reply"]},
-    {"role": "user", "content": "您更担心没有效果，还是没有时间执行？我们可以先把目标拆成阶段指标，再选择适合您节奏的下一步。"},
+    {"role": "user", "content": "我们可以统一条件记录体重趋势、围度和体感，再确定一个可执行动作与复查时间，不会承诺固定结果。"},
 ]
 assessment = post({
     "mode": "test",
     "action": "finish",
-    "scenario_id": "SCN-SLIM-01",
+    "scenario_id": assessment_scenario["id"],
     "history": full_history,
 })
 cases.append({"name": "assessment_report", "response": assessment})
@@ -87,9 +97,13 @@ cases.append({"name": "assessment_report", "response": assessment})
 checks = {
     "qa_has_answer": bool(qa.get("result", {}).get("answer")),
     "qa_has_method_route": all(key in qa.get("result", {}).get("route", {}) for key in ["intent", "primary_module", "supporting_modules", "courses", "method_step"]),
-    "qa_effect_question_uses_objection_and_safety": qa.get("result", {}).get("route", {}).get("primary_module") == "异议沟通与下一步" and "安全、同意与合规服务" in qa.get("result", {}).get("route", {}).get("supporting_modules", []),
+    "qa_effect_question_uses_current_module_route": (
+        bool(re.search(r"效果|次数|速度|结果", qa.get("result", {}).get("route", {}).get("intent", "")))
+        and qa.get("result", {}).get("route", {}).get("primary_module") in MODULE_TITLES
+        and set(qa.get("result", {}).get("route", {}).get("supporting_modules", [])) <= MODULE_TITLES
+    ),
     "qa_has_recommended_next_action": bool(qa.get("result", {}).get("recommended_action")),
-    "qa_has_friendly_citations": bool(qa.get("citations")) and all(set(item) <= {"label", "category", "module", "chapter"} for item in qa["citations"]),
+    "qa_has_friendly_citations": bool(qa.get("citations")) and all(set(item) <= {"label", "course_id", "category", "module", "chapter"} for item in qa["citations"]),
     "qa_references_open_learning_courses": bool(qa.get("retrieved")) and all(item.get("title") in COURSE_TITLES for item in qa["retrieved"]),
     "training_has_customer_reply": bool(training.get("result", {}).get("customer_reply")),
     "training_has_structured_feedback": all(key in training.get("result", {}).get("feedback", {}) for key in ["level", "issue", "why", "method_step", "knowledge_focus", "suggested_reply", "next_goal"]),

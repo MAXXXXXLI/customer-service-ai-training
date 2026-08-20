@@ -15,27 +15,66 @@
       "answer": "不能只凭‘敏感肌’三个字判断能不能做。先确认目前有没有持续泛红、刺痛、破损、渗出、明显痘痘炎症或过敏发作，以及近期是否做过医美、刷酸、激光或使用强刺激产品。存在这些情况时先不操作，并建议由皮肤科或原医疗机构确认；状态稳定时，也要再核对具体项目、成分、设备禁忌和门店当前SOP，先做小范围感受测试，过程中一旦刺痛、灼热或泛红加重立即停止。降低次数不能替代适用性判断。",
       "references": [
         {
-          "title": "面部提拉项目的操作顺序与安全确认",
+          "course_id": "COURSE-NKB-001",
+          "title": "秀域品牌、业务板块与员工知识地图",
           "category": "标准课程",
-          "module": "美容护理",
-          "chapter": "操作与体验安全"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "美容护理项目：需求分析与表达边界",
+          "course_id": "COURSE-NKB-002",
+          "title": "顾客接待、需求确认与方案进入",
           "category": "标准课程",
-          "module": "美容护理",
-          "chapter": "美容项目沟通"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "所有员工必须掌握的医疗与营销红线",
-          "category": "安全规则",
-          "module": "安全服务",
-          "chapter": "服务与合规底线"
+          "course_id": "COURSE-NKB-003",
+          "title": "安全、知情同意、异常处理与医疗分流",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-004",
+          "title": "动态信息、服务记录与知识更新",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-033",
+          "title": "皮肤基础、清洁分析与服务记录",
+          "category": "标准课程",
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
+        },
+        {
+          "course_id": "COURSE-NKB-034",
+          "title": "胶原微水光、纳米喷射、面膜与手膜",
+          "category": "标准课程",
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
+        },
+        {
+          "course_id": "COURSE-NKB-035",
+          "title": "智能提拉、磁波内雕与面部轮廓体验",
+          "category": "标准课程",
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
+        },
+        {
+          "course_id": "COURSE-NKB-036",
+          "title": "冰点脱毛：原理、疗程、护理与常见问题",
+          "category": "标准课程",
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
         }
       ],
       "checks": {
         "has_answer": true,
         "contains_required_points": true,
+        "avoids_wrong_specific_template": true,
         "no_internal_names": true,
         "has_course_reference": true
       },
@@ -55,30 +94,69 @@
           "药师"
         ]
       ],
-      "answer": "这类情况不能仅凭聊天直接判断‘可以做’。先暂停项目或产品推荐，确认具体年龄/阶段、疾病与用药、当前症状和产品或设备说明书，再由有资质的医生、药师或相应专业人员确认。门店不能通过降低能量、缩短时间或减少次数来替代适用性评估。",
+      "answer": "若涉及儿童或未成年人，药品适用性不能仅凭聊天判断。具体药品的用法和剂量必须依据当前说明书与医生处方，门店不能给剂量，也不能建议开始、停用或更换药物。请先确认具体药名、剂型、开药医生、正在使用的其他药物和当前不适，再由开药医生或药师核实。",
       "references": [
         {
-          "title": "口服产品与药品问题的安全回答",
+          "course_id": "COURSE-NKB-001",
+          "title": "秀域品牌、业务板块与员工知识地图",
           "category": "标准课程",
-          "module": "体重管理",
-          "chapter": "产品与药品安全"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "顾客说“药/GLP-1安全吗”时怎么回应",
+          "course_id": "COURSE-NKB-002",
+          "title": "顾客接待、需求确认与方案进入",
           "category": "标准课程",
-          "module": "安全服务",
-          "chapter": "高风险顾客问答"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "所有员工必须掌握的医疗与营销红线",
-          "category": "安全规则",
-          "module": "安全服务",
-          "chapter": "服务与合规底线"
+          "course_id": "COURSE-NKB-003",
+          "title": "安全、知情同意、异常处理与医疗分流",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-004",
+          "title": "动态信息、服务记录与知识更新",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-020",
+          "title": "肥胖、体重、体脂与错误减肥",
+          "category": "标准课程",
+          "module": "科学减重与营养管理",
+          "chapter": "科学减重与营养管理"
+        },
+        {
+          "course_id": "COURSE-NKB-021",
+          "title": "饮食结构、运动作息与日常执行",
+          "category": "标准课程",
+          "module": "科学减重与营养管理",
+          "chapter": "科学减重与营养管理"
+        },
+        {
+          "course_id": "COURSE-NKB-022",
+          "title": "平台期、体重反升、反弹与效果管理",
+          "category": "标准课程",
+          "module": "科学减重与营养管理",
+          "chapter": "科学减重与营养管理"
+        },
+        {
+          "course_id": "COURSE-NKB-023",
+          "title": "古方减脂、拔罐与减重服务流程",
+          "category": "标准课程",
+          "module": "科学减重与营养管理",
+          "chapter": "科学减重与营养管理"
         }
       ],
       "checks": {
         "has_answer": true,
         "contains_required_points": true,
+        "avoids_wrong_specific_template": true,
         "no_internal_names": true,
         "has_course_reference": true
       },
@@ -95,36 +173,152 @@
           "医疗"
         ]
       ],
-      "answer": "不能承诺做一次就一定有效。更合适的回答是：‘每个人的情况和感受不同，我们先了解您最想改善的问题、持续时间和既往情况；体验前记录您关心的指标，体验后再一起对照当次感受和可观察变化。一次体验、固定次数或固定结果都不能保证。如果涉及疾病、药品或明显不适，需要先由有资质人员或医疗机构评估。’",
+      "answer": "点阵波不能替代手术、医疗诊断或医生制定的治疗方案。您还提到明确疾病或麻木症状，今天应先停止项目与销售推进，并由医疗机构评估；若麻木或无力持续、加重，或伴随大小便异常、会阴麻木等情况，请及时就医或联系急救。",
       "references": [
         {
-          "title": "所有员工必须掌握的医疗与营销红线",
+          "course_id": "COURSE-NKB-001",
+          "title": "秀域品牌、业务板块与员工知识地图",
           "category": "标准课程",
-          "module": "安全服务",
-          "chapter": "服务与合规底线"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "疼痛问题：如何判断、解释和转介",
+          "course_id": "COURSE-NKB-002",
+          "title": "顾客接待、需求确认与方案进入",
           "category": "标准课程",
-          "module": "疼痛项目",
-          "chapter": "疼痛判断与转介"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "点阵波项目：顾客能听懂的介绍",
+          "course_id": "COURSE-NKB-003",
+          "title": "安全、知情同意、异常处理与医疗分流",
           "category": "标准课程",
-          "module": "疼痛项目",
-          "chapter": "项目认知"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "身体观察与沟通的统一方法",
+          "course_id": "COURSE-NKB-004",
+          "title": "动态信息、服务记录与知识更新",
           "category": "标准课程",
-          "module": "接待洞察",
-          "chapter": "需求观察与沟通"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-010",
+          "title": "点阵波的项目定位、原理框架与知识边界",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
+        },
+        {
+          "course_id": "COURSE-NKB-011",
+          "title": "点阵波评估、部位选择、操作与复测",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
+        },
+        {
+          "course_id": "COURSE-NKB-012",
+          "title": "点阵波服务后反应与异常处理",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
+        },
+        {
+          "course_id": "COURSE-NKB-013",
+          "title": "点阵波与按摩、针灸、冲击波和筋膜枪的比较",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
         }
       ],
       "checks": {
         "has_answer": true,
         "contains_required_points": true,
+        "avoids_wrong_specific_template": true,
+        "no_internal_names": true,
+        "has_course_reference": true
+      },
+      "passed": true
+    },
+    {
+      "name": "shoulder_hand_numbness_referral",
+      "question": "肩颈不舒服半年了，有时候手麻，那我还能先体验吗？",
+      "must_groups": [
+        [
+          "手麻",
+          "麻木"
+        ],
+        [
+          "医疗"
+        ]
+      ],
+      "must_not": [
+        "腰椎间盘突出和腿麻"
+      ],
+      "answer": "您提到持续不适并出现手麻、腿麻、麻木或无力，这需要先由医疗机构评估；今天先不要体验项目，也不要继续销售沟通。门店不能判断病因，也不能用项目体验替代医疗诊断或评估；症状持续或加重时请及时就医。",
+      "references": [
+        {
+          "course_id": "COURSE-NKB-001",
+          "title": "秀域品牌、业务板块与员工知识地图",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-002",
+          "title": "顾客接待、需求确认与方案进入",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-003",
+          "title": "安全、知情同意、异常处理与医疗分流",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-004",
+          "title": "动态信息、服务记录与知识更新",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
+        },
+        {
+          "course_id": "COURSE-NKB-010",
+          "title": "点阵波的项目定位、原理框架与知识边界",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
+        },
+        {
+          "course_id": "COURSE-NKB-011",
+          "title": "点阵波评估、部位选择、操作与复测",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
+        },
+        {
+          "course_id": "COURSE-NKB-012",
+          "title": "点阵波服务后反应与异常处理",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
+        },
+        {
+          "course_id": "COURSE-NKB-013",
+          "title": "点阵波与按摩、针灸、冲击波和筋膜枪的比较",
+          "category": "标准课程",
+          "module": "点阵波与疼痛服务",
+          "chapter": "点阵波与疼痛服务"
+        }
+      ],
+      "checks": {
+        "has_answer": true,
+        "contains_required_points": true,
+        "avoids_wrong_specific_template": true,
         "no_internal_names": true,
         "has_course_reference": true
       },
@@ -142,42 +336,62 @@
           "查询"
         ]
       ],
-      "answer": "关于超V的具体单次价格及培训表中代金券的当前有效性，目前资料库中未包含最新的实时价目表和代金券核销规则。培训资料明确提示：不可依据旧截图、聊天记录或历史表格中的示例数据直接回答当前权益，具体金额和优惠需以门店系统实时显示及当前OA/系统流程为准。建议您直接查询门店最新价目表或联系店长确认，以确保信息准确。",
+      "answer": "价格和活动会随城市、门店、具体项目和日期变化，我不能用历史资料先口头保证。请告诉我您咨询的城市、门店和项目，我会按当前系统里的有效版本核对后准确回复。",
       "references": [
         {
-          "title": "点阵波与超V组合方案怎么讲",
+          "course_id": "COURSE-NKB-001",
+          "title": "秀域品牌、业务板块与员工知识地图",
           "category": "标准课程",
-          "module": "超V热动力",
-          "chapter": "项目与方案认知"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "价格、优惠与门店政策怎么回答",
+          "course_id": "COURSE-NKB-002",
+          "title": "顾客接待、需求确认与方案进入",
           "category": "标准课程",
-          "module": "安全服务",
-          "chapter": "价格与政策信息"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "超V热动力：项目介绍与体验流程",
+          "course_id": "COURSE-NKB-003",
+          "title": "安全、知情同意、异常处理与医疗分流",
           "category": "标准课程",
-          "module": "超V热动力",
-          "chapter": "项目与方案认知"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "体重管理：从目标分析到长期方案",
+          "course_id": "COURSE-NKB-004",
+          "title": "动态信息、服务记录与知识更新",
           "category": "标准课程",
-          "module": "体重管理",
-          "chapter": "体重管理基础"
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         },
         {
-          "title": "所有员工必须掌握的医疗与营销红线",
-          "category": "安全规则",
-          "module": "安全服务",
-          "chapter": "服务与合规底线"
+          "course_id": "COURSE-NKB-017",
+          "title": "超V热动力的定位、原理框架与知识边界",
+          "category": "标准课程",
+          "module": "超V热动力与亚健康服务",
+          "chapter": "超V热动力与亚健康服务"
+        },
+        {
+          "course_id": "COURSE-NKB-018",
+          "title": "超V操作、热感安全与服务后观察",
+          "category": "标准课程",
+          "module": "超V热动力与亚健康服务",
+          "chapter": "超V热动力与亚健康服务"
+        },
+        {
+          "course_id": "COURSE-NKB-019",
+          "title": "寒凉、月经、乳腺、男性与消化问题的沟通边界",
+          "category": "标准课程",
+          "module": "超V热动力与亚健康服务",
+          "chapter": "超V热动力与亚健康服务"
         }
       ],
       "checks": {
         "has_answer": true,
         "contains_required_points": true,
+        "avoids_wrong_specific_template": true,
         "no_internal_names": true,
         "has_course_reference": true
       },
@@ -194,36 +408,41 @@
           "器官"
         ]
       ],
-      "answer": "背部摸起来凉属于体感或表面温度的差异，不能直接说明器官功能不好。门店服务中，我们只记录您感受到的温度变化、肌肉紧张度或动作情况，不做医学诊断，也不推断内脏器官的状态。如果您担心身体有潜在问题，建议先由专业医疗机构进行评估。",
+      "answer": "背部发凉是一种主观感受，不能据此判断某个器官功能不好，也不能由门店作疾病诊断。先确认从什么时候开始、是否持续或加重，以及有没有疼痛、麻木、无力、胸痛、呼吸困难、发热等伴随情况；症状明显、持续或伴随异常时应由医疗机构评估。",
       "references": [
         {
-          "title": "新顾客接待的完整八步",
+          "course_id": "COURSE-NKB-005",
+          "title": "熟人关：称呼、倾听、聊天与关系维护",
           "category": "标准课程",
-          "module": "接待洞察",
-          "chapter": "接待流程基础"
+          "module": "顾客沟通与服务闭环",
+          "chapter": "顾客沟通与服务闭环"
         },
         {
-          "title": "身体观察与沟通的统一方法",
+          "course_id": "COURSE-NKB-006",
+          "title": "大夫关：专业可信、解释方法与知识边界",
           "category": "标准课程",
-          "module": "接待洞察",
-          "chapter": "需求观察与沟通"
+          "module": "顾客沟通与服务闭环",
+          "chapter": "顾客沟通与服务闭环"
         },
         {
-          "title": "体重管理：从目标分析到长期方案",
+          "course_id": "COURSE-NKB-007",
+          "title": "“有问题—有方案—有效果”知识论证框架",
           "category": "标准课程",
-          "module": "体重管理",
-          "chapter": "体重管理基础"
+          "module": "顾客沟通与服务闭环",
+          "chapter": "顾客沟通与服务闭环"
         },
         {
-          "title": "所有员工必须掌握的医疗与营销红线",
-          "category": "安全规则",
-          "module": "安全服务",
-          "chapter": "服务与合规底线"
+          "course_id": "COURSE-NKB-002",
+          "title": "顾客接待、需求确认与方案进入",
+          "category": "标准课程",
+          "module": "企业治理与服务标准",
+          "chapter": "企业治理与服务标准"
         }
       ],
       "checks": {
         "has_answer": true,
         "contains_required_points": true,
+        "avoids_wrong_specific_template": true,
         "no_internal_names": true,
         "has_course_reference": true
       },
@@ -240,42 +459,41 @@
           "条件"
         ]
       ],
-      "answer": "水分测试笔数值变高，只能说明当次测试时皮肤表面含水量有变化，不能直接证明皮肤长期变好或真皮层效果。短期数值受是否带妆、刚清洁、环境温湿度等因素影响较大。建议结合顾客当次的肤感、光泽度等主观感受综合评估，并约定在相同条件下（如未化妆、清洁后、环境稳定）进行多次复测，观察趋势而非单次结果。",
+      "answer": "一次水分数值升高最多说明当次、当时测量出现变化，不能直接证明长期改善。比较时要尽量使用同一设备、同一部位、相近时间和环境，并记录护肤、清洁等条件；长期结论需要在相同条件下多次复测并结合持续观察。",
       "references": [
         {
-          "title": "美容护理项目：需求分析与表达边界",
+          "course_id": "COURSE-NKB-033",
+          "title": "皮肤基础、清洁分析与服务记录",
           "category": "标准课程",
-          "module": "美容护理",
-          "chapter": "美容项目沟通"
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
         },
         {
-          "title": "新顾客接待的完整八步",
+          "course_id": "COURSE-NKB-034",
+          "title": "胶原微水光、纳米喷射、面膜与手膜",
           "category": "标准课程",
-          "module": "接待洞察",
-          "chapter": "接待流程基础"
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
         },
         {
-          "title": "体重管理基础：饥饿、摄入与长期习惯",
+          "course_id": "COURSE-NKB-035",
+          "title": "智能提拉、磁波内雕与面部轮廓体验",
           "category": "标准课程",
-          "module": "体重管理",
-          "chapter": "体重管理基础"
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
         },
         {
-          "title": "体重管理：从目标分析到长期方案",
+          "course_id": "COURSE-NKB-036",
+          "title": "冰点脱毛：原理、疗程、护理与常见问题",
           "category": "标准课程",
-          "module": "体重管理",
-          "chapter": "体重管理基础"
-        },
-        {
-          "title": "所有员工必须掌握的医疗与营销红线",
-          "category": "安全规则",
-          "module": "安全服务",
-          "chapter": "服务与合规底线"
+          "module": "皮肤管理",
+          "chapter": "皮肤管理、设备操作与毛囊养护"
         }
       ],
       "checks": {
         "has_answer": true,
         "contains_required_points": true,
+        "avoids_wrong_specific_template": true,
         "no_internal_names": true,
         "has_course_reference": true
       },
