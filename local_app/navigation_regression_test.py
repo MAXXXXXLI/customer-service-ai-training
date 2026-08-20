@@ -116,11 +116,15 @@ checks = {
     "training_feedback_uses_only_known_facts": contains_all(
         JS,
         [
-            "staticFeedbackUsesNewCustomerFact",
+            "const customerSystem =",
+            "const coachSystem =",
+            "Promise.all",
+            "staticPublicTrainingScenario",
+            "sanitizeStaticTrainingFutureClaims",
             "staticTrainingMessageHasCompleteSafeClosure",
             "sanitizeStaticTrainingSuggestedReply",
-            "不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现",
-            "不应被误判为继续操作或店内诊断",
+            "你不会获得且不得猜测任何未公开的剧情",
+            "suggested_reply 是对员工本轮原话的直接改写",
             "不在店内判断原因",
         ],
     ),

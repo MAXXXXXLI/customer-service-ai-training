@@ -77,7 +77,15 @@ def test_role_drift_is_repaired() -> None:
 
 
 def test_natural_customer_reply_is_preserved() -> None:
-    scenario = exact_scenario("SCN-CEX-M03-S02")
+    # Structural release isolation intentionally replaces every model-authored
+    # turn when a scenario carries release rules.  Candidate preservation is
+    # still required for ordinary scenarios with no hidden release contract.
+    scenario = {
+        **exact_scenario("SCN-CEX-M03-S02"),
+        "id": "SCN-NO-RELEASE-RULES",
+        "hidden_information": [],
+        "information_release_rules": [],
+    }
     natural = "大概有半年了，低头久了会更明显。"
     normalized = server.normalize_test_turn_result({"reply": natural}, scenario, [{"role": "assistant", "content": scenario["opening"]}], "这种情况多久了？")
     assert normalized["reply"] == natural
@@ -174,15 +182,21 @@ def test_static_site_has_same_guardrails() -> None:
     required = [
         "LIMITED_CUSTOMER_POLICY",
         "staticCustomerScenario",
+        "staticPublicTrainingScenario",
         "CUSTOMER_ROLE_DRIFT_MARKERS",
         "normalizeStaticCustomerReply",
         "staticCustomerFallback",
-        "staticFeedbackUsesNewCustomerFact",
+        "staticTrainingSafetyDecision",
         "staticTrainingMessageHasCompleteSafeClosure",
+        "sanitizeStaticTrainingFutureClaims",
         "sanitizeStaticTrainingSuggestedReply",
+        "customerSystem",
+        "coachSystem",
+        "Promise.all",
     ]
     assert all(marker in APP_JS for marker in required)
-    assert "隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}" in APP_JS
+    assert "隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario))}" in APP_JS
+    assert "公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}" in APP_JS
     assert "隐藏场景（不得泄露）：${JSON.stringify(scenario)}" not in APP_JS
 
 

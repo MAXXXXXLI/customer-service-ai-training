@@ -205,7 +205,7 @@ function staticMatchesAny(text, patterns = []) {
   });
 }
 
-const STATIC_NEGATED_RED_FLAG_PATTERN = /(?:没有|并没有|并无|未出现|未发生|不伴有?|否认)(?:明显|持续|进行性|新发|突然)?(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿)(?:(?:、|或|和|及|以及)(?:明显|持续|进行性|新发|突然)?(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿))*/gi;
+const STATIC_NEGATED_RED_FLAG_PATTERN = /(?:没有|没|并没有|并无|尚无|未见|未出现|未发生|没出现|不伴有?|否认|无)(?:(?:任何|一点儿?|明显|持续|进行性|新发|突然)){0,2}(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿(?:部)?(?:新发|新|发)?麻|手(?:臂)?(?:新发|新|发)?麻|胳膊(?:新发|新|发)?麻|发麻|麻木|无力|大小便异常|会阴麻木|发热|红肿|头晕)(?:(?:、|或|和|及|以及)(?:(?:任何|一点儿?|明显|持续|进行性|新发|突然)){0,2}(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿(?:部)?(?:新发|新|发)?麻|手(?:臂)?(?:新发|新|发)?麻|胳膊(?:新发|新|发)?麻|发麻|麻木|无力|大小便异常|会阴麻木|发热|红肿|头晕))*/gi;
 
 function staticAffirmedSafetyText(text) {
   return String(text || "").replace(STATIC_NEGATED_RED_FLAG_PATTERN, " ");
@@ -410,20 +410,32 @@ function staticMock(mode, action, scenario) {
 }
 
 const STATIC_CRITICAL_PATTERNS = [
-  /治愈|根治|治好|包治/,
-  /百分百|100%|替代手术|不需要看医生|不反弹/,
-  /(?:一定|肯定|保证).{0,8}(?:有效|见效|缓解|改善|结果|减重|减肥)/,
-  /(?:停药|换药|口服|注射|剂量)/,
+  /自动诊疗/i,
+  /替代手术/i,
+  /保证(?:效果|结果|瘦|减重)/i,
+  /(?:保证|一定|肯定).{0,10}(?:治好|治愈|根治)/i,
+  /(?:治愈|根治|治疗|治好)[^，。；！？,.;!?\r\n]{0,8}(?:疾病|颈椎病|糖尿病|三高|脂肪肝|炎症)/i,
+  /(?:有效|能够|可以|会)[^，。；！？,.;!?\r\n]{0,10}(?:治疗|治好|根治|改善糖尿病|改善三高|改善脂肪肝|提高免疫力|增强免疫力)/i,
+  /(?:固定|保证).{0,8}(?:减重|减肥).{0,8}(?:斤|公斤)/i,
+  /不反弹/i,
+  /百分之百|百分百|100%/i,
+  /白血球.{0,10}(?:增加|提高)/i,
+  /(?:宫寒|卵巢|肾虚).{0,12}(?:受孕|衰老|疾病|治疗)/i,
+  /国家药监局.{0,20}(?:批准|认证)/i,
+  /单次治疗|后续疗程|按疗程|进入疗程/i,
+  /压迫.{0,8}(?:血管|神经)/i,
+  /(?:可能)?涉及.{0,6}(?:神经|血管)/i,
+  /脑部.{0,8}供血|供血供氧.{0,8}不足/i,
+  /(?:检查|查体).{0,12}(?:僵硬程度|结节|体征)/i,
+  /(?:一定|肯定|保证).{0,8}(?:有效|缓解|改善|见效|结果)/i,
+  /(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)/i,
 ];
 
 function staticCriticalHits(message) {
   const text = String(message || "");
-  return STATIC_CRITICAL_PATTERNS.filter((pattern) => {
-    const match = text.match(pattern);
-    if (!match) return false;
-    const prefix = text.slice(Math.max(0, match.index - 14), match.index);
-    return !/(?:不能|不可|不应|无法|不得|不会|不做|避免|禁止|拒绝).{0,10}$/.test(prefix);
-  }).map((pattern) => pattern.source);
+  return STATIC_CRITICAL_PATTERNS
+    .filter((pattern) => staticHasAffirmativeEmployeeMatch(text, pattern))
+    .map((pattern) => pattern.source);
 }
 
 function staticMockProgressive(mode, action, scenario, history = [], rubric = null, message = "") {
@@ -526,28 +538,234 @@ function normalizeStaticQaResult(result, message, query, route, history = []) {
   return normalized;
 }
 
-const TRAINING_NEW_FACT_MARKERS = ["手麻", "腿麻", "发麻", "麻木", "无力", "胸痛", "呼吸困难", "晕厥", "头晕", "发热", "红肿", "灼热", "设备异常"];
+const STATIC_TRAINING_RED_FLAG_PATTERN = /胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|突发剧痛|进行性麻木|手(?:臂)?(?:新发|新|发)?麻|胳膊(?:新发|新|发)?麻|腿(?:部)?(?:新发|新|发)?麻|发麻|麻木|无力|发热|红肿|大小便异常|会阴麻木/i;
+const STATIC_TRAINING_DISCOMFORT_PATTERN = /疼|痛|灼热|烫|头晕|不舒服|设备异常|设备报警|麻|无力/i;
 
-function staticFeedbackUsesNewCustomerFact(feedback, customerReply, history = [], message = "") {
-  const knownBeforeReply = `${history.map((item) => item?.content || "").join(" ")} ${message}`;
-  const critique = `${feedback.issue || ""} ${feedback.why || ""}`;
-  return TRAINING_NEW_FACT_MARKERS.some((marker) => String(customerReply || "").includes(marker) && !knownBeforeReply.includes(marker) && critique.includes(marker));
+function staticAffirmedCustomerText(value = "") {
+  // Remove only the symptom directly covered by a negator.  Do not delete a
+  // whole clause: “没有胸痛但手麻” must retain the affirmed hand numbness.
+  return String(value || "").replace(STATIC_NEGATED_RED_FLAG_PATTERN, " ");
+}
+
+function staticVisibleCustomerText(scenario, history = []) {
+  const visibleTurns = history
+    .filter((item) => item?.role === "assistant")
+    .map((item) => String(item.content || "").trim())
+    .filter(Boolean);
+  return staticAffirmedCustomerText([scenario?.opening || "", ...visibleTurns].join(" "));
+}
+
+function staticHasAffirmativeEmployeeMatch(message, pattern) {
+  const text = String(message || "");
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const matcher = new RegExp(pattern.source, flags);
+  let match;
+  while ((match = matcher.exec(text))) {
+    const preceding = text.slice(0, match.index);
+    const clauseStart = Math.max(...["，", "。", "；", "！", "？", ",", ".", ";", "!", "?"].map((mark) => preceding.lastIndexOf(mark))) + 1;
+    const followingBoundaries = ["，", "。", "；", "！", "？", ",", ".", ";", "!", "?"]
+      .map((mark) => {
+        const position = text.indexOf(mark, match.index + match[0].length);
+        return position < 0 ? Number.POSITIVE_INFINITY : position + (/[！？!?]/.test(mark) ? 1 : 0);
+      });
+    const clauseEnd = Math.min(...followingBoundaries, text.length);
+    const clause = text.slice(clauseStart, clauseEnd);
+    const clausePrefix = text.slice(clauseStart, match.index);
+    const semanticPrefix = clausePrefix.split(/(?:但是|但|而是|可是|然而|不过|却|仍然?|还是|也|所以|因此|然后|同时)/i).at(-1) || "";
+    const negated = /(?:不能|不可|不要|不应|不建议|不会|不用|不必|无需|无须|未必|不一定|不代表|不认为|不觉得|不承认|并不|绝不|暂不|先不|停止|避免|拒绝|别)[^，。；！？,.;!?]{0,20}$/i.test(semanticPrefix)
+      || /(?:不是|并非)(?:要|让|叫|建议)?(?:你|您|我们)?$/i.test(semanticPrefix)
+      || /不把.{0,12}(?:说成|解释成|当成)$/i.test(semanticPrefix)
+      || /(?:不|不能|不可)算(?:是)?$/i.test(semanticPrefix)
+      || /不$/i.test(semanticPrefix);
+    const questioned = (/[？?]/.test(clause) && /难道|是否|是不是|会不会|要不要|能不能|可不可以|有没有|怎么(?:能|会|可以)|为什么|为何/i.test(clause))
+      || /(?:是否|是不是|算不算|可否)[^，。；！？,.;!?]{0,8}$/i.test(semanticPrefix);
+    const directQuestionSuffix = /^[^，。；！,.;!]{0,10}(?:吗|么|呢)[？?]/i.test(text.slice(match.index + match[0].length));
+    if (!negated && !questioned && !directQuestionSuffix) return true;
+    if (!match[0].length) matcher.lastIndex += 1;
+  }
+  return false;
+}
+
+function staticTrainingMessageDeniesSafetyAction(message = "") {
+  return staticHasAffirmativeEmployeeMatch(
+    message,
+    /(?:不用|不必|无需|无须|不要|不会|拒绝|别|不需要|没必要).{0,8}(?:暂停|停止|记录|登记|留档|上报|联系负责人|联系店长|就医|去医院|医疗评估|检查)|(?:不|别)(?:建议|需要).{0,8}(?:就医|去医院|医疗评估|检查)/i,
+  );
+}
+
+function staticTrainingSafeActionFlags(message = "") {
+  const text = String(message || "");
+  return {
+    stopped: staticHasAffirmativeEmployeeMatch(text, /暂停|停止|先不(?:做|继续|安排)|不继续|不会继续(?:做|操作|安排)?|绝不继续|不要继续|今天不(?:做|安排)|不做/i),
+    keepsBoundary: staticHasAffirmativeEmployeeMatch(text, /不(?:要)?自行判断|无法判断|不能判断|不(?:在店内)?判断原因|不在店内(?:判断|诊断)|不做诊断|不能诊断/i),
+    records: staticHasAffirmativeEmployeeMatch(text, /记录|登记|留档|核对上次/i),
+    escalates: staticHasAffirmativeEmployeeMatch(text, /上报|升级处理|联系.{0,6}(?:负责人|店长)|负责人|店长/i),
+    refers: staticHasAffirmativeEmployeeMatch(text, /就医|医疗|急救|医院|医生|专业评估|去检查|尽快检查/i),
+    takesSeriously: staticHasAffirmativeEmployeeMatch(text, /重视|关注|需要注意|不能忽视|需要特别关注/i),
+  };
+}
+
+function staticTrainingMessageHasUnsafeContradiction(message = "") {
+  const text = String(message || "");
+  const normalizes = staticHasAffirmativeEmployeeMatch(text, /(?:正常(?:反应|现象)?|没啥问题|没什么问题|没问题|没事|没关系|不要紧|不碍事|微损伤|自我修复|排寒反应|排毒反应)/i);
+  const continues = staticHasAffirmativeEmployeeMatch(text, /(?:继续做|继续操作|接着做(?:完)?|照常(?:做|操作)|再做一次|把.{0,4}(?:项目|体验|操作)?做完|做完再说|明天.{0,4}可以做|加量|加大|加强|打透|不用停|不必停|没必要暂停|忍一忍|坚持一下|越痛越有效)/i);
+  return staticCriticalHits(text).length > 0 || normalizes || continues || staticTrainingMessageDeniesSafetyAction(text);
 }
 
 function staticTrainingMessageHasCompleteSafeClosure(message = "") {
   const text = String(message || "");
-  const stopped = /暂停|停止|先不要|不继续|不要继续|不要做|不做/i.test(text);
-  const keepsBoundary = /不(?:要)?自行判断|无法判断|不能判断|不判断原因|不做诊断/i.test(text);
-  const escalates = /记录|上报|负责人|就医|医疗|急救|医院|医生/i.test(text);
-  return stopped && keepsBoundary && escalates && !staticCriticalHits(text).length;
+  const actions = staticTrainingSafeActionFlags(text);
+  return actions.stopped && actions.keepsBoundary && actions.records && actions.escalates && actions.refers
+    && !staticTrainingMessageHasUnsafeContradiction(text);
 }
 
-function sanitizeStaticTrainingSuggestedReply(feedback) {
+function staticTrainingMessageHasSafeDirection(message = "") {
+  const text = String(message || "");
+  if (staticTrainingMessageDeniesSafetyAction(text)) return false;
+  return Object.values(staticTrainingSafeActionFlags(text)).some(Boolean);
+}
+
+function staticTrainingSafetyDecision(scenario, history = [], message = "") {
+  const employee = String(message || "");
+  const customerFacts = staticVisibleCustomerText(scenario, history);
+  const knownRedFlag = STATIC_TRAINING_RED_FLAG_PATTERN.test(customerFacts);
+  const knownWorsening = /(?:做完|项目后|服务后|点阵波).{0,24}(?:更疼|更痛|疼痛加重|比.{0,8}(?:更重|还重|更痛))|(?:今天|现在).{0,14}(?:比.{0,8})?(?:更疼|更痛|还重|疼痛加重)/i.test(customerFacts);
+  const minimizes = staticHasAffirmativeEmployeeMatch(employee, /(?:正常(?:反应|现象)?|没啥问题|没什么问题|没问题|没事|没关系|不要紧|不碍事|微损伤|自我修复|排寒反应|排毒反应)/i);
+  const promisesImprovement = staticHasAffirmativeEmployeeMatch(employee, /(?:会|能|肯定|一定).{0,16}(?:更轻松|缓解|好转|恢复|越来越好)/i);
+  const continues = staticHasAffirmativeEmployeeMatch(employee, /(?:继续做|继续操作|接着做(?:完)?|照常(?:做|操作)|再做一次|把.{0,4}(?:项目|体验|操作)?做完|做完再说|明天.{0,4}可以做|加量|加大|加强|打透|不用停|不必停|没必要暂停|忍一忍|坚持一下|越痛越有效)/i);
+  const deniesSafety = staticTrainingMessageDeniesSafetyAction(employee);
+  const globalCritical = staticCriticalHits(employee).length > 0;
+
+  // A dangerous contradiction always wins, even when the same sentence also
+  // contains safe words such as "暂停" or "就医".
+  if (globalCritical || (knownWorsening && (minimizes || promisesImprovement || continues || deniesSafety)) || (knownRedFlag && (minimizes || promisesImprovement || continues || deniesSafety))) {
+    const hasKnownRedFlag = knownRedFlag;
+    return {
+      level: "critical",
+      issue: hasKnownRedFlag
+        ? "顾客已明确出现需要优先处理的新症状，本轮却仍在弱化风险、拒绝安全处置或推进服务。"
+        : "顾客已明确说服务后疼痛加重，本轮却将它说成正常、拒绝必要安全处置或保证会好转。",
+      why: hasKnownRedFlag
+        ? "已知存在需要优先处理的新症状时，必须停止项目、保持不诊断边界，并完成记录上报和医疗分流。"
+        : "疼痛比服务前加重已是本轮已知信息，不能先定性为正常，也不能保证之后会变轻。",
+      method_step: "立即纠正风险表达并完成安全问询",
+      knowledge_focus: "服务后变化、异常记录与必要分流",
+      suggested_reply: hasKnownRedFlag
+        ? "您已经提到了新的异常症状，我们现在先停止所有项目，不在店内判断原因。我会记录并上报负责人，建议您尽快由医疗机构评估。"
+        : "我理解您担心被打坏。疼痛比原来更重不能先说是正常反应；我先确认出现时间、部位和变化，以及有没有发热、肿胀、麻木或无力等新情况。",
+      next_goal: hasKnownRedFlag ? "确认顾客理解暂停和医疗分流安排。" : "先问清时间、部位、变化和伴随情况，再给安全的下一步。",
+    };
+  }
+
+  if ((knownRedFlag || knownWorsening) && staticTrainingMessageHasCompleteSafeClosure(employee)) {
+    return {
+      level: "good",
+      issue: "你已明确暂停项目、不判断原因，并完成记录上报和必要的医疗分流。",
+      why: "这些表达形成了完整的安全闭环，没有在店内诊断或继续推进服务。",
+      method_step: "停止服务并完成安全升级",
+      knowledge_focus: "异常记录、负责人升级与医疗分流",
+      suggested_reply: knownRedFlag
+        ? "您提到的新症状需要优先处理。现在先停止所有项目，我们不在店内判断原因；我会记录并上报负责人，建议您尽快由医疗机构评估。"
+        : "您提到服务后疼痛加重，我们先暂停后续项目，不在店内判断原因。我会完整记录并上报负责人，必要时建议您由医疗机构评估。",
+      next_goal: "确认顾客理解安全安排，并完成记录、上报与跟进。",
+    };
+  }
+
+  const acknowledges = /理解|担心|重视|抱歉|先不判断|不能先说/i.test(employee);
+  const pauses = staticTrainingSafeActionFlags(employee).stopped;
+  const asksChange = /什么时候|何时|多久|是否.{0,6}加重|是否.{0,8}更重|比.{0,8}(?:重|疼|痛)|变化/i.test(employee);
+  const asksCompanion = /伴随|还有.{0,10}(?:不适|症状|反应)|(?:有没有|是否)?其他.{0,8}(?:不适|症状|反应)|有没有.{0,12}(?:麻|无力|发热|红肿|胸痛|不舒服)|是否.{0,12}(?:麻|无力|发热|红肿|胸痛|不舒服)/i.test(employee);
+  const priorSafePause = history.some((item) => {
+    if (item?.role !== "user") return false;
+    const prior = String(item.content || "");
+    return staticTrainingSafeActionFlags(prior).stopped
+      && !staticTrainingMessageHasUnsafeContradiction(prior);
+  });
+  if (knownWorsening && asksCompanion) {
+    if (pauses || priorSafePause) {
+      return {
+        level: "good",
+        issue: "你在暂停后继续追问麻木、无力、发热或红肿等伴随情况，问询顺序正确。",
+        why: "本轮只筛查尚未确认的伴随情况，没有把它们提前当作顾客已经出现的事实。",
+        method_step: "在暂停后完成伴随情况筛查",
+        knowledge_focus: "麻木、无力、发热、红肿等异常变化",
+        suggested_reply: "除了疼痛加重，还有没有麻木、无力、发热、红肿或其他新出现的不适？",
+        next_goal: "根据顾客下一轮实际补充的信息，决定记录升级和医疗分流。",
+      };
+    }
+    return {
+      level: "needs_work",
+      issue: "你已追问伴随情况，但还没有先明确暂停今天的后续项目。",
+      why: "服务后疼痛加重时应先暂停安排，再筛查时间、变化和伴随情况。",
+      method_step: "先暂停，再完成伴随情况筛查",
+      knowledge_focus: "服务后变化与安全问询顺序",
+      suggested_reply: "疼痛比原来加重需要先重视，今天先暂停后续项目；除了疼痛变化，还有没有麻木、无力、发热、红肿或其他新不适？",
+      next_goal: "确认暂停后，根据顾客实际回答决定是否升级和分流。",
+    };
+  }
+  if (knownWorsening && acknowledges && pauses && asksChange) {
+    return {
+      level: "good",
+      issue: "你已经承接顾客的担心、先暂停后续安排，并追问疼痛开始时间和变化。",
+      why: "本轮只使用顾客已经说出的“服务后更痛”来判断；先暂停、再问变化，符合安全优先的接待顺序。",
+      method_step: "暂停安排并完成服务后变化问询",
+      knowledge_focus: "出现时间、变化趋势与伴随情况",
+      suggested_reply: "我理解您会担心。疼痛比原来加重不能先简单说是正常，今天先暂停后续项目；请告诉我从什么时候开始、现在是否还在加重。",
+      next_goal: "根据顾客下一轮实际补充的信息，再决定是否需要记录升级和医疗分流。",
+    };
+  }
+
+  if (knownRedFlag && staticTrainingMessageHasSafeDirection(employee)) {
+    return {
+      level: "needs_work",
+      issue: "你已经给出重视和就医的正确方向，但还没有明确暂停服务、保持不诊断边界，并完成记录上报。",
+      why: "顾客在本轮之前已经说出新症状；建议就医是安全的，但处置流程仍需补齐。",
+      method_step: "补齐暂停、记录上报和医疗分流",
+      knowledge_focus: "红旗症状的安全闭环",
+      suggested_reply: "您已经提到新的异常症状，我们今天先停止所有项目，不在店内判断原因。我会完整记录并上报负责人，建议您尽快由医疗机构评估。",
+      next_goal: "确认顾客理解暂停和分流安排。",
+    };
+  }
+  return null;
+}
+
+function sanitizeStaticTrainingSuggestedReply(feedback, scenario, history = []) {
   const advice = String(feedback.suggested_reply || "");
   const unverifiedAdvice = /(?:可能是|可能涉及|说明|属于).{0,14}(?:神经|损伤|炎症|病变)|(?:不要|立即|马上|建议).{0,10}(?:热敷|冷敷|按摩|服药|停药|换药)|(?:热敷|冷敷|按摩).{0,8}(?:手臂|腿|疼痛|发麻)|(?:治疗|治好|治愈|根治)/i;
-  if (unverifiedAdvice.test(advice)) {
-    feedback.suggested_reply = "您刚补充的情况需要优先重视。我们先停止所有项目，不在店内判断原因；我会记录并上报负责人，并建议您尽快由医疗机构评估。";
+  if (!unverifiedAdvice.test(advice)) return;
+  const knownRedFlag = STATIC_TRAINING_RED_FLAG_PATTERN.test(staticVisibleCustomerText(scenario, history));
+  feedback.suggested_reply = knownRedFlag
+    ? "您提到的新症状需要优先处理。我们先停止所有项目，不在店内判断原因；我会记录并上报负责人，并建议您尽快由医疗机构评估。"
+    : "我先不对原因下结论，想确认这种情况从什么时候开始、是否加重，以及有没有其他新的不适，再按安全流程给您下一步安排。";
+}
+
+const STATIC_TRAINING_FACT_MARKERS = ["手麻", "腿麻", "发麻", "麻木", "无力", "胸痛", "呼吸困难", "晕厥", "头晕", "发热", "红肿", "灼热", "设备异常"];
+
+function staticTrainingTextMentionsUnknownFact(text, knownCustomerText) {
+  return STATIC_TRAINING_FACT_MARKERS.some((marker) => !knownCustomerText.includes(marker) && String(text || "").includes(marker));
+}
+
+function staticTrainingTextClaimsUnknownFact(text, knownCustomerText) {
+  return STATIC_TRAINING_FACT_MARKERS.some((marker) => {
+    if (knownCustomerText.includes(marker) || !String(text || "").includes(marker)) return false;
+    const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const assertion = new RegExp(`(?:已(?:经)?|刚(?:刚)?|明确|目前|现在|新发|出现|伴有|补充|提到|说(?:了)?).{0,12}${escaped}|${escaped}.{0,8}(?:已(?:经)?|出现|加重|持续)`, "i");
+    return assertion.test(String(text || ""));
+  });
+}
+
+function sanitizeStaticTrainingFutureClaims(feedback, fallback, scenario, history = []) {
+  const knownCustomerText = staticVisibleCustomerText(scenario, history);
+  let claimedUnknownFact = false;
+  ["issue", "why", "method_step", "knowledge_focus", "next_goal"].forEach((key) => {
+    if (staticTrainingTextClaimsUnknownFact(feedback[key], knownCustomerText)) claimedUnknownFact = true;
+    if (staticTrainingTextMentionsUnknownFact(feedback[key], knownCustomerText)) feedback[key] = fallback[key];
+  });
+  if (staticTrainingTextClaimsUnknownFact(feedback.suggested_reply, knownCustomerText)) {
+    claimedUnknownFact = true;
+    feedback.suggested_reply = "我先根据您现在已经说明的情况来处理。这种变化从什么时候开始，现在是否加重，还有没有其他新的不适？";
   }
+  if (claimedUnknownFact) feedback.level = fallback.level;
 }
 
 function normalizeStaticTrainingFeedback(result, scenario, history, rubric, message, customerReply = "") {
@@ -559,25 +777,10 @@ function normalizeStaticTrainingFeedback(result, scenario, history, rubric, mess
     feedback[key] = value || fallback[key];
   });
   if (!new Set(["good", "needs_work", "critical"]).has(feedback.level)) feedback.level = "needs_work";
-  if (staticCriticalHits(message).length) feedback.level = "critical";
-  if (feedback.level === "critical" && staticTrainingMessageHasCompleteSafeClosure(message)) {
-    feedback.level = "good";
-    feedback.issue = "你已明确暂停项目、不判断原因，并完成记录上报和必要的医疗分流。";
-    feedback.why = "这些表达形成了完整的安全闭环，不应被误判为继续操作或店内诊断。";
-    feedback.method_step = "停止服务并完成安全升级";
-    feedback.knowledge_focus = "异常记录、负责人升级与医疗分流";
-    feedback.suggested_reply = "现在先停止所有项目，我们不在店内判断原因。我会记录并上报，同时根据情况建议您尽快由医疗机构评估。";
-    feedback.next_goal = "确认顾客理解安全安排，并完成记录、上报与跟进。";
-  } else if (!staticCriticalHits(message).length && staticFeedbackUsesNewCustomerFact(feedback, customerReply, history, message)) {
-    feedback.level = "needs_work";
-    feedback.issue = "你已承接顾客当前担心并追问变化；下一轮需要优先处理顾客刚刚补充的新情况。";
-    feedback.why = "本轮反馈只评价你说话时已经掌握的信息，不能因为顾客在回复中首次透露的情况倒扣本轮表现。";
-    feedback.method_step = "承接新信息并完成安全确认";
-    feedback.knowledge_focus = "服务后变化、红旗症状与必要分流";
-    feedback.suggested_reply = "您刚刚补充的情况需要优先重视，我们先暂停后续安排，再确认出现时间、范围和是否正在加重。";
-    feedback.next_goal = "下一轮只处理顾客新透露的信息，并给出安全、可执行的下一步。";
-  }
-  sanitizeStaticTrainingSuggestedReply(feedback);
+  sanitizeStaticTrainingFutureClaims(feedback, fallback, scenario, history);
+  const safetyDecision = staticTrainingSafetyDecision(scenario, history, message);
+  if (safetyDecision) Object.assign(feedback, safetyDecision);
+  sanitizeStaticTrainingSuggestedReply(feedback, scenario, history);
   return feedback;
 }
 
@@ -592,6 +795,15 @@ function staticCustomerScenario(scenario = {}) {
     hidden_objections: scenario.hidden_objections || [],
     hidden_information: scenario.hidden_information || [],
     information_release_rules: scenario.information_release_rules || [],
+  };
+}
+
+function staticPublicTrainingScenario(scenario = {}) {
+  return {
+    title: scenario.title || "",
+    module_title: scenario.module_title || "",
+    task: scenario.task || "",
+    opening: scenario.opening || "",
   };
 }
 
@@ -621,10 +833,256 @@ function staticHiddenObjectionIndex(history = []) {
   return Math.max(0, userTurns - heldTurns);
 }
 
+function staticSafetyFlowCustomerReply(scenario, history = [], employeeMessage = "") {
+  const customerFacts = staticVisibleCustomerText(scenario, history);
+  if (!STATIC_TRAINING_RED_FLAG_PATTERN.test(customerFacts) || !staticTrainingMessageHasSafeDirection(employeeMessage) || staticTrainingMessageHasUnsafeContradiction(employeeMessage)) return "";
+  if (staticTrainingMessageHasCompleteSafeClosure(employeeMessage)) {
+    return "好的，那我先不做了。麻烦您帮我记录下来，也告诉我后面怎么联系负责人。";
+  }
+  return "好的，我会尽快去检查。那我今天是不是先不做任何项目了？";
+}
+
+function staticPointWaveReleaseReply(scenario, history = [], employeeMessage = "", candidateReply = "") {
+  if (scenario?.id !== "SCN-CEX-M03-S01") return "";
+  return staticGenericInformationReleaseReply(candidateReply, scenario, history, employeeMessage);
+}
+
+const STATIC_GENERIC_RELEASE_ASK_MARKERS = /[？?]|(?:请|麻烦).{0,8}(?:说|告诉|提供)|(?:想|需要).{0,6}(?:了解|确认)|是否|有没有|有无|什么|怎么|如何|哪|几|多久|多长|吗|么|呢/i;
+const STATIC_GENERIC_RELEASE_SHORT_FACTS = /成都|空腹|高血压|手麻|发麻|麻木|胸闷|胸痛|头晕|发热|无力|电击|备孕|结石|反黑|漏尿|出血|哺乳|便秘|晒伤|红肿|渗出|视物模糊|甲状腺|酸类|玻尿酸|经期|腰围|排便|不耐受|喝不下水|没吃早饭|眼周肿|异味|灌痛/gi;
+const STATIC_GENERIC_RELEASE_NUMBER_FACTS = /(?:\d+(?:\.\d+)?|[一二两三四五六七八九十半]+)(?:个)?(?:年|月|天|小时|分钟|分|厘米|次|袋)/gi;
+const STATIC_GENERIC_RELEASE_DENIED_QUESTION = /(?:不是|并非).{0,10}(?:问|询问|追问|了解|确认)|(?:不|没|没有|无需|无须|不用|不必|不要|并不|不想|暂不|别).{0,4}(?:问|询问|追问|了解|确认)|(?:多久|多长时间|什么时候|何时|是否|有没有).{0,8}(?:不问|别问|不用问|无需问|不必问)/i;
+
+const STATIC_GENERIC_RELEASE_COMPOUND_QUESTIONS = {
+  "时间和变化": [/多久|多长时间|什么时候|何时|哪天|开始|持续/i, /变化|加重|变重|更重|更痛|更疼|越来越|减轻|好转|严重/i],
+  "病史和进食": [/病史|高血压|慢性病|基础病/i, /进食|吃饭|吃东西|早饭|空腹/i],
+  "饮食和经期": [/饮食|吃|聚餐/i, /经期|月经|例假|生理期/i],
+  "复查和出血": [/复查|产后检查|检查过/i, /出血|流血|血性/i],
+  "饮水排便": [/饮水|喝水|水喝/i, /排便|大便|便秘/i],
+  "试感和停止方式": [/试感|试一下|小范围|先试/i, /停止|停下|随时停|叫停/i],
+};
+
+const STATIC_GENERIC_RELEASE_SINGLE_QUESTIONS = {
+  "持续时间": /多久|多长时间|持续|几天|几个月|几年/i,
+  "开始时间": /什么时候|何时|哪天|刚开始|开始时间/i,
+  "产后时间": /产后.{0,6}(?:多久|时间)|生完.{0,6}多久|几个月/i,
+  "伴随症状": /伴随|其他.{0,8}(?:不适|症状|反应)|有没有.{0,12}(?:麻|无力|发热|胸痛|胸闷|不舒服)/i,
+  "门店": /门店|哪家店|哪个店|城市|地区|在哪里/i,
+  "券名": /券名|券的名称|什么券|哪张券|券.{0,5}截图/i,
+  "贵在哪里": /贵.{0,8}(?:哪|什么|原因|顾虑)|在意.{0,8}(?:价格|效果|预算)/i,
+  "竞品包含内容": /竞品|别家|楼下|对方.{0,6}(?:包含|包括)|包了什么|做几次/i,
+  "使用体验": /使用体验|用着|用了.{0,6}(?:感觉|觉得)|舒服|效果/i,
+  "疼痛程度": /疼痛|疼|痛.{0,6}(?:程度|几分|多严重)|\d+\s*分/i,
+  "感觉": /什么感觉|怎么痛|哪种感觉|感觉.{0,6}(?:像|是)/i,
+  "进食饮水": /进食|吃饭|吃东西|早饭|空腹|饮水|喝水|喝不下/i,
+  "变化": /变化|加重|变重|变大|扩大|更痛|更疼|越来越|减轻|好转|严重/i,
+  "检查": /检查|报告|查过|复查/i,
+  "症状": /症状|不适|哪里难受|痛|痒|灼|异味|分泌物/i,
+  "测量": /测量|称重|什么时候称|早上|晚上/i,
+  "其他指标": /其他指标|腰围|体围|体脂|除了体重/i,
+  "餐次": /餐次|早餐|早饭|晚餐|一天几顿|怎么吃/i,
+  "反应": /反应|不耐受|不舒服|过敏|红肿/i,
+  "身体状态": /身体|状态|不舒服|乏力|头晕|精神/i,
+  "用药": /用药|药物|吃药|服药|注射|打针/i,
+  "特殊情况": /特殊情况|备孕|怀孕|哺乳|孕期/i,
+  "病史": /病史|以前得过|慢性病|基础病|结石|高血压/i,
+  "执行": /怎么.{0,6}(?:用|打|执行)|每天|频次|按计划/i,
+  "营养": /营养|进食|吃得|食量|胃口/i,
+  "复诊": /复诊|回诊|看过医生|定期检查/i,
+  "怎么吃": /怎么吃|怎么喝|一天几袋|什么时候喝|代餐/i,
+  "旧产品": /旧产品|以前的|哪个牌子|谁家|买了多久/i,
+  "不适位置": /不适|哪里|位置|部位|钢圈|肩带|压痛/i,
+  "主要问题": /主要|最想|哪个问题|困扰|诉求|目标/i,
+  "目标": /目标|最想|想改善|想解决|在意|诉求/i,
+  "既往产品": /既往|以前|之前|用过.{0,8}(?:产品|护肤品)|什么产品/i,
+  "护肤": /护肤|刷酸|酸类|产品|昨晚用/i,
+  "其他反应": /其他.{0,8}(?:反应|不适|症状)|眼周|呼吸|肿/i,
+  "皮肤状态": /皮肤|皮肤状态|晒伤|暴晒|发红|破损/i,
+  "皮肤": /皮肤|发红|红肿|表面|触痛/i,
+  "既往反应": /既往|以前|之前|反应|红肿|过敏/i,
+  "面部状态": /面部|脸型|脸.{0,5}(?:瘦|凹)|太阳穴|容量/i,
+  "既往项目": /既往|以前|之前|做过.{0,8}(?:项目|填充|医美)|最近做/i,
+  "既往史": /既往|以前|之前|激光|反黑|治疗过/i,
+  "防晒": /防晒|暴晒|晒太阳|户外/i,
+  "既往注射": /既往|以前|之前|注射|填充|打过什么/i,
+  "眼部症状": /眼部|眼睛|视力|视物|模糊/i,
+  "性生活": /性生活|性经历|伴侣|频率/i,
+  "产后功能": /产后|盆底|漏尿|功能|憋不住/i,
+  "使用产品": /使用.{0,6}(?:产品|洗液|药)|用了什么|洗液/i,
+  "出血": /出血|流血|血性/i,
+};
+
+const STATIC_GENERIC_RELEASE_ACTIONS = {
+  "堆叠项目": /项目.{0,28}项目|(?:所有|全部|全套|一整套|很多|多个).{0,8}项目/i,
+  "直接承诺": /承诺|保证|肯定|一定|绝对|(?:可以|能).{0,8}(?:叠加|一起用)/i,
+  "施压成交": /今天必须|现在就|马上.{0,6}(?:付款|购买|买|定)|不买.{0,8}(?:后悔|没有)|逼|必须买/i,
+  "贬低原品牌": /原品牌.{0,8}(?:不好|没效|差|垃圾)|别的牌子.{0,8}(?:不好|没效|差)/i,
+  "道歉并重新介绍": /抱歉|不好意思|是我.{0,6}(?:太快|没听清)|重新介绍|我是.{0,10}(?:顾问|负责|接待)/i,
+  "继续解释套餐": /套餐|卡项|办卡/i,
+  "建议继续做": /继续做|再做一次|加量|打透|照常做/i,
+  "谈钱": /钱|价格|费用|浪费|退款/i,
+  "否定按摩": /按摩.{0,8}(?:没用|无效|不好|不行)|不要.{0,5}按摩/i,
+  "提医疗治疗": /医疗|治疗|医院|医生|就医/i,
+  "说越热越好": /越热越好|热一点.{0,8}(?:更好|有效)|温度越高/i,
+  "提出小范围试用": /小范围|小面积|先试用|试用一下/i,
+  "提出试感和停止方式": /(?=.*(?:试感|试一下|小范围|先试))(?=.*(?:停止|停下|随时停|叫停))/i,
+  "说继续": /继续做|继续操作|照常做|再做|加量/i,
+  "承诺项目": /承诺|保证|一定|肯定|(?:能|可以).{0,8}(?:治好|解决|改善)/i,
+  "承诺快速效果": /快速|马上|很快|一个月.{0,8}(?:减|瘦)|承诺.{0,8}(?:减|瘦)/i,
+  "要求运动": /必须|要求|每天|每周|运动|锻炼/i,
+  "直接推荐填充": /直接.{0,6}填充|现在.{0,6}填充|今天.{0,6}填充|建议.{0,6}填充/i,
+  "直接推荐": /直接推荐|马上.{0,6}(?:用|做|开始)|就用这个|建议你.{0,8}(?:用|做|买)/i,
+  "只建议观察": /再观察|先观察|回家观察|等一等|暂时不用处理/i,
+  "给具体加量": /加量|多喝.{0,4}(?:一袋|两袋|\d+袋)|增加.{0,6}(?:用量|剂量)/i,
+  "说正常": /正常反应|正常现象|这很正常|没问题|没事/i,
+  "承诺不勒": /保证.{0,8}不勒|一定.{0,8}不勒|绝对.{0,8}不勒|不会勒/i,
+  "默认组合": /两个.{0,8}(?:一起|组合)|组合.{0,8}(?:做|项目)|都给你安排/i,
+  "安排马上做": /马上做|立即做|现在做|今天就做|当天做/i,
+  "承诺一次": /一次.{0,8}(?:去净|解决|治好|有效)|保证.{0,8}一次|永久/i,
+  "直接教凝胶用量": /凝胶.{0,10}(?:用量|剂量|次|毫升|克|次数)|每次.{0,8}凝胶/i,
+};
+
+function staticInformationReleaseRuleParts(rule) {
+  const text = String(rule || "").trim();
+  const delimiter = text.indexOf("时，");
+  if (delimiter < 0) return ["", ""];
+  return [text.slice(0, delimiter).replace(/^员工/, "").trim(), text.slice(delimiter + 2).replace(/[。.\s]+$/, "").trim()];
+}
+
+function staticEmployeeAffirmativelyAsksReleaseQuestion(employeeMessage, pattern) {
+  const message = String(employeeMessage || "").trim();
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const matcher = new RegExp(pattern.source, flags);
+  let match;
+  while ((match = matcher.exec(message))) {
+    const before = message.slice(0, match.index);
+    const after = message.slice(match.index + match[0].length);
+    const clausePrefix = before.split(/[，。；！？,.;!?]/).at(-1) || "";
+    const clauseSuffix = after.split(/[，。；！？,.;!?]/)[0] || "";
+    const clause = `${clausePrefix}${match[0]}${clauseSuffix}`;
+    const deniedBefore = /(?:不是|并非).{0,8}(?:在)?(?:问|询问|追问|了解|确认).{0,8}$|(?:不|没|没有|无需|无须|不用|不必|不要|并不|不想|暂不|别).{0,4}(?:问|询问|追问|了解|确认).{0,8}$/i.test(clausePrefix);
+    const deniedAfter = /^(?:先|就|我们|现在|暂时)?.{0,4}(?:不问|别问|不用问|无需问|无须问|不必问|不需要问)/i.test(clauseSuffix);
+    if (!deniedBefore && !deniedAfter && STATIC_GENERIC_RELEASE_ASK_MARKERS.test(clause)) return true;
+    if (!match[0].length) matcher.lastIndex += 1;
+  }
+  return false;
+}
+
+function staticEmployeeTriggersInformationReleaseRule(employeeMessage, rule) {
+  const [condition] = staticInformationReleaseRuleParts(rule);
+  const employee = String(employeeMessage || "").trim();
+  if (!condition || !employee) return false;
+  if (/^(?:问|询问|追问)/.test(condition)) {
+    if (!STATIC_GENERIC_RELEASE_ASK_MARKERS.test(employee)) return false;
+    const core = condition.replace(/^(?:问|询问|追问)/, "").replace(/^[“\"']|[”\"']$/g, "").trim();
+    const compound = STATIC_GENERIC_RELEASE_COMPOUND_QUESTIONS[core];
+    if (compound) return compound.every((pattern) => staticEmployeeAffirmativelyAsksReleaseQuestion(employee, pattern));
+    const pattern = STATIC_GENERIC_RELEASE_SINGLE_QUESTIONS[core];
+    if (pattern) return staticEmployeeAffirmativelyAsksReleaseQuestion(employee, pattern);
+    const tokens = core.split(/和|及|、/).filter((token) => token.length >= 2);
+    return Boolean(tokens.length) && tokens.every((token) => staticEmployeeAffirmativelyAsksReleaseQuestion(
+      employee,
+      new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+    ));
+  }
+  const pattern = STATIC_GENERIC_RELEASE_ACTIONS[condition];
+  return pattern ? staticHasAffirmativeEmployeeMatch(employee, pattern) : false;
+}
+
+function staticInformationReleaseReply(rule) {
+  const [, disclosure] = staticInformationReleaseRuleParts(rule);
+  if (!disclosure) return "";
+  const quoted = [...disclosure.matchAll(/[“\"]([^”\"]+)[”\"]/g)].map((match) => match[1]);
+  if (quoted.length) {
+    const text = String(quoted[0]).trim().replace(/[。！？!?]+$/, "");
+    return `${text}${/[？?]/.test(quoted[0]) ? "？" : "。"}`;
+  }
+  const naturalResponses = [
+    [/发送截图.*名称模糊/i, "我只能发一张截图，不过上面的名称有点模糊。"],
+    [/顾客更反感/i, "你这样催我，我更不想现在决定了。"],
+    [/顾客终止对话/i, "那我先不考虑了。"],
+    [/顾客态度缓和/i, "好，那你先说说看。"],
+    [/顾客愿意继续/i, "可以，那我们先小范围试试看。"],
+    [/顾客马上同意/i, "那我今天就再做一次吧。"],
+    [/顾客表示胸闷更明显/i, "我现在感觉胸闷更明显了。"],
+    [/顾客表示害怕/i, "这么热我有点害怕，先停一下吧。"],
+    [/顾客要求加热出更多汗/i, "那再加热一点，让我多出些汗吧。"],
+    [/顾客说自己没看病/i, "我没有去医院看过，也没有诊断。"],
+    [/顾客追问具体斤数/i, "那一个月具体能减多少斤？"],
+    [/顾客说产品来自网络/i, "这个产品是我从网上买的。"],
+    [/顾客说越来越严重/i, "可我感觉越来越严重了。"],
+    [/顾客问是否能喝两袋/i, "那我可以一次喝两袋吗？"],
+    [/顾客要求下周继续/i, "那我下周还可以继续做吗？"],
+    [/顾客追问能否保证/i, "那你能保证一定不会勒吗？"],
+    [/顾客说只想选一个/i, "我只想选一个项目，不想两个一起做。"],
+    [/顾客要求写进合同/i, "那可以把这个保证写进合同吗？"],
+    [/顾客问当天能否做/i, "那我今天可以直接做吗？"],
+    [/顾客拒绝/i, "这个细节我不想回答。"],
+  ];
+  const natural = naturalResponses.find(([pattern]) => pattern.test(disclosure));
+  if (natural) return natural[1];
+  const payload = disclosure.replace(/^(?:顾客)?(?:说明|回答|说|表示|追问|要求)/, "").replace(/^[，,\s]+/, "").trim();
+  if (!payload) return "我还想再了解清楚一点。";
+  if (/^\d+分$/.test(payload)) return `大概${payload}。`;
+  return `我这边的情况是：${payload.replace(/。$/, "")}。`;
+}
+
+function staticCompactReleaseText(value) {
+  return String(value || "").trim().replace(/^(?:顾客|客户|她|他)/, "").replace(/[\s，,。.；;:：！!？?“”\"'、]/g, "");
+}
+
+function staticTextHasNewHiddenFragment(candidate, scenario, history = []) {
+  const candidateCompact = staticCompactReleaseText(candidate);
+  if (!candidateCompact) return false;
+  const visibleCompact = staticCompactReleaseText(history.filter((item) => item?.role === "assistant").map((item) => item.content || "").join(" "));
+  const disclosures = (scenario?.information_release_rules || []).map((rule) => staticInformationReleaseRuleParts(rule)[1]);
+  const sources = [...(scenario?.hidden_information || []), ...disclosures];
+  for (const source of sources) {
+    const sourceCompact = staticCompactReleaseText(source);
+    if (!sourceCompact) continue;
+    for (let size = Math.min(10, sourceCompact.length); size >= 4; size -= 1) {
+      for (let index = 0; index <= sourceCompact.length - size; index += 1) {
+        const fragment = sourceCompact.slice(index, index + size);
+        if (candidateCompact.includes(fragment) && !visibleCompact.includes(fragment)) return true;
+      }
+    }
+    for (const pattern of [STATIC_GENERIC_RELEASE_NUMBER_FACTS, STATIC_GENERIC_RELEASE_SHORT_FACTS]) {
+      pattern.lastIndex = 0;
+      for (const match of sourceCompact.matchAll(pattern)) {
+        const fragment = staticCompactReleaseText(match[0]);
+        if (fragment && candidateCompact.includes(fragment) && !visibleCompact.includes(fragment)) return true;
+      }
+    }
+    for (const match of String(source || "").matchAll(/[“\"]([^”\"]+)[”\"]/g)) {
+      const fragment = staticCompactReleaseText(match[1]);
+      if (fragment.length >= 2 && candidateCompact.includes(fragment) && !visibleCompact.includes(fragment)) return true;
+    }
+  }
+  return false;
+}
+
+function staticGenericInformationReleaseReply(candidateReply, scenario, history = [], employeeMessage = "") {
+  const rules = scenario?.information_release_rules || [];
+  if (!rules.length) return "";
+  const visibleCompact = staticCompactReleaseText(history.filter((item) => item?.role === "assistant").map((item) => item.content || "").join(" "));
+  for (const rule of rules) {
+    if (!staticEmployeeTriggersInformationReleaseRule(employeeMessage, rule)) continue;
+    const reply = staticInformationReleaseReply(rule);
+    if (reply && !visibleCompact.includes(staticCompactReleaseText(reply))) return reply;
+  }
+  // Rule-bearing scenarios never pass model-authored text through.  Semantic
+  // paraphrases are otherwise able to evade exact hidden-fragment matching.
+  const safetyFallback = staticSafetyFlowCustomerReply(scenario, history, employeeMessage);
+  if (safetyFallback) return safetyFallback;
+  const fallbackEmployee = STATIC_GENERIC_RELEASE_DENIED_QUESTION.test(String(employeeMessage || "")) ? "" : employeeMessage;
+  return staticCustomerFallback(scenario, history, fallbackEmployee);
+}
+
 function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
   const persona = scenario?.persona || {};
   const goal = String(persona.goal || "我现在这个困扰").trim();
   const employee = String(employeeMessage || "").trim();
+  const safetyFlowReply = staticSafetyFlowCustomerReply(scenario, history, employee);
+  if (safetyFlowReply) return safetyFlowReply;
   if (/我错了|说错了|不好意思|抱歉/.test(employee)) return `没关系，你重新给我讲清楚就行。我主要还是想解决${goal}。`;
   if (/不能做|做不了|没什么不同|没区别|都一样|不适合/.test(employee)) return `那我有点没听明白，我主要是${goal}，想知道还有没有别的办法。`;
   if (/多久|多长时间|什么时候开始/.test(employee)) return "有一阵子了，最近感觉比以前明显一些。";
@@ -676,6 +1134,18 @@ function invalidStaticCustomerReply(reply) {
 
 function normalizeStaticCustomerReply(reply, scenario, history = [], employeeMessage = "") {
   let normalized = String(reply || "").trim();
+  if ((scenario?.information_release_rules || []).length) {
+    // A rule-bearing scenario always resolves to one normalized release group
+    // or a deterministic fallback; model-authored text never crosses the gate.
+    if (scenario?.id === "SCN-CEX-M03-S01") return staticPointWaveReleaseReply(scenario, history, employeeMessage, normalized);
+    return staticGenericInformationReleaseReply(normalized, scenario, history, employeeMessage);
+  }
+  const safetyFlowReply = staticSafetyFlowCustomerReply(scenario, history, employeeMessage);
+  if (safetyFlowReply) return safetyFlowReply;
+  const safetyDecision = staticTrainingSafetyDecision(scenario, history, employeeMessage);
+  if (safetyDecision?.level === "critical" && /(?:好的|好|明白|可以).{0,16}(?:去检查|就医|先不做|暂停|帮我记录|联系负责人)/i.test(normalized)) {
+    return "我还是不放心，你刚才这样说到底是什么意思？";
+  }
   if (staticEmployeeMessageNeedsCustomerClarification(history, employeeMessage)) return staticCustomerClarificationReply(scenario, history);
   const previous = history.filter((item) => item?.role === "assistant").map((item) => String(item.content || "").trim());
   const repeated = previous.some((item) => normalized === item || (normalized.length >= 18 && item.length >= 18 && normalized.slice(0, 18) === item.slice(0, 18)));
@@ -695,26 +1165,31 @@ function staticAssessmentFailureMatches(history = []) {
   const add = (code, message) => {
     if (!matches.has(code)) matches.set(code, `员工原话：“${String(message || "").trim().slice(0, 180)}”`);
   };
-  const redFlagPattern = /胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|突发剧痛|突然剧痛|进行性麻木|腿麻|手麻|麻木|无力|发热红肿|红肿发热/i;
-  const discomfortPattern = /疼|痛|灼热|烫|头晕|不舒服|设备异常|设备报警/i;
-  const continuePattern = /继续做|继续操作|照常做|再做一次|加量|加大|安排项目|先体验|正常反应|正常现象|没事|不用停|不必停|忍一忍|坚持一下/i;
-  const safetyStopPattern = /暂停|停止|先不|不要继续|不再继续|医疗|就医|医院|医生|评估|转介|急救/i;
+  const continuePattern = /可以(?:继续)?做|还可以做|继续做|继续操作|接着做(?:完)?|照常(?:做|操作)|再做一次|把.{0,4}(?:项目|体验|操作)?做完|做完再说|加量|加大|安排项目|先体验|正常(?:反应|现象|的)?|没(?:啥|什么)?问题|没事|没关系|不要紧|不碍事|不用停|不必停|没必要暂停|忍一忍|坚持一下/i;
   const refusalPattern = /不想|拒绝|不要触碰|不拍照|不愿意|别问了|回家考虑|和家人商量/i;
   const pressurePattern = /必须|今天就|现在就|一定要|不能拒绝|不买|不做.{0,8}(?:后悔|更严重)|别告诉|隐瞒/i;
   let priorCustomerText = "";
+  let priorCustomerHasRedFlag = false;
+  let priorCustomerHasDiscomfort = false;
   history.forEach((item) => {
     const message = String(item?.content || "").trim();
     if (!message) return;
     if (item?.role === "assistant") {
       priorCustomerText += ` ${message}`;
+      const affirmed = staticAffirmedCustomerText(message);
+      if (STATIC_TRAINING_RED_FLAG_PATTERN.test(affirmed)) priorCustomerHasRedFlag = true;
+      if (STATIC_TRAINING_DISCOMFORT_PATTERN.test(affirmed)) priorCustomerHasDiscomfort = true;
       return;
     }
     if (item?.role !== "user") return;
-    if (staticCriticalHits(message).length || /(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)/i.test(message)) add("CF-02", message);
-    const unsafeContinuation = continuePattern.test(message) && !safetyStopPattern.test(message);
-    if (unsafeContinuation && (redFlagPattern.test(message) || redFlagPattern.test(priorCustomerText))) add("CF-01", message);
-    if (pressurePattern.test(message) && refusalPattern.test(priorCustomerText)) add("CF-03", message);
-    if (unsafeContinuation && (discomfortPattern.test(message) || discomfortPattern.test(priorCustomerText))) add("CF-04", message);
+    if (staticCriticalHits(message).length || staticHasAffirmativeEmployeeMatch(message, /(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)/i)) add("CF-02", message);
+    const unsafeContinuation = staticHasAffirmativeEmployeeMatch(message, continuePattern);
+    // Only customer facts visible before this employee turn can trigger a
+    // failure. A red flag disclosed by a later customer reply never travels
+    // backwards into an earlier score.
+    if (unsafeContinuation && priorCustomerHasRedFlag) add("CF-01", message);
+    if (staticHasAffirmativeEmployeeMatch(message, pressurePattern) && refusalPattern.test(priorCustomerText)) add("CF-03", message);
+    if (unsafeContinuation && priorCustomerHasDiscomfort) add("CF-04", message);
   });
   return [...matches].map(([code, evidence]) => ({ code, evidence }));
 }
@@ -750,6 +1225,72 @@ function staticEvidenceUsesCustomerOnlyText(evidence, history = []) {
   });
 }
 
+function staticEvidenceIsGroundedInEmployee(evidence, history = []) {
+  if (String(evidence || "").includes("对话中未体现")) return true;
+  const employeeMessages = history
+    .filter((item) => item?.role === "user" && String(item.content || "").trim())
+    .map((item) => String(item.content).trim());
+  if (!employeeMessages.length) return false;
+  const quoted = [...String(evidence || "").matchAll(/[“"]([^”"]+)[”"]/g)].map((match) => match[1].trim()).filter(Boolean);
+  if (quoted.length) return quoted.some((value) => employeeMessages.some((message) => message.includes(value)));
+  const compact = (value) => String(value || "").replace(/[\s，,。.；;:：！!？?“”"'、]/g, "");
+  const evidenceCompact = compact(evidence);
+  return employeeMessages.some((message) => {
+    const messageCompact = compact(message);
+    if (messageCompact.length < 6) return Boolean(messageCompact) && evidenceCompact.includes(messageCompact);
+    for (let index = 0; index <= messageCompact.length - 6; index += 1) {
+      if (evidenceCompact.includes(messageCompact.slice(index, index + 6))) return true;
+    }
+    return false;
+  });
+}
+
+const STATIC_ASSESSMENT_SPECIFIC_ADVICE = /(?:古方|口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物|隔天一次|每天\s*\d+\s*次)/i;
+const STATIC_ASSESSMENT_CONCRETE_ADVICE = /(?:\d+(?:\.\d+)?\s*(?:mg|g|ml|毫克|克|毫升|片|粒|支|单位))|(?:(?:每天|每日|每周|每次|隔天|早晚|睡前|餐前|餐后).{0,8}(?:\d+|一|两|二|三|四|五|六|七|八|九|十).{0,3}次)|(?:(?:口服|注射).{0,12}(?:\d+|一|两|二|三|四|五|六|七|八|九|十)\s*(?:次|片|粒|支|毫升|毫克|mg|ml))/i;
+const STATIC_ASSESSMENT_SAFE_ADVICE_BOUNDARY = /(?:(?:具体)?(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物)[^，,。；;！？!?\n]{0,18}(?:交由|由|请|需|需要|应|应该|须|必须)[^，,。；;！？!?\n]{0,10}(?:医生|医师|药师|医疗机构)[^，,。；;！？!?\n]{0,14}(?:评估|决定|指导|核实|开具|处方))|(?:(?:医生|医师|药师|医疗机构)[^，,。；;！？!?\n]{0,14}(?:评估|决定|指导|核实|开具|处方)[^，,。；;！？!?\n]{0,18}(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物))|(?:(?:门店|我们|员工)[^，,。；;！？!?\n]{0,8}(?:不能|不可|不会|不应|不得|不建议|不提供|不决定|不调整|无权)[^，,。；;！？!?\n]{0,14}(?:给出?|提供|建议|决定|调整|安排)?(?:具体)?(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物))|(?:(?:不能|不可|不要|不得|不建议|避免)[^，,。；;！？!?\n]{0,8}(?:自行|擅自)[^，,。；;！？!?\n]{0,5}(?:停换药|停药|停用|换药|更换药物|调整用药))|(?:(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物)[^，,。；;！？!?\n]{0,8}(?:遵医嘱|按医嘱))/gi;
+const STATIC_ASSESSMENT_COMMENT_BOUNDARY = "员工尚未把顾客顾虑转化为可执行的下一步。建议先澄清时间、预算和服务偏好，再给出门店当前已核验且符合安全边界的选择。";
+const STATIC_ASSESSMENT_IMPROVEMENT_BOUNDARY = "不要替顾客直接选择具体产品或使用安排；先核验适用条件和门店当前标准，再提供非医疗、可选择的下一步。";
+const STATIC_ASSESSMENT_STRENGTH_BOUNDARY = "完成了基本沟通；涉及医疗决定时仍需明确门店边界，并交由医生或药师评估。";
+const STATIC_ASSESSMENT_FAILURE_REASON_BOUNDARY = "员工表达涉及未经核验的具体用药或使用安排，应明确门店边界并交由医生或药师评估。";
+const STATIC_ASSESSMENT_SUMMARY_BOUNDARY = "本轮需要加强需求分析和个性化表达。后续重点练习在不承诺结果、不擅自补充具体产品或使用安排的前提下，把顾客顾虑转化为可执行的服务下一步。";
+
+function staticAssessmentAdviceNeedsSanitizing(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!STATIC_ASSESSMENT_SPECIFIC_ADVICE.test(text)) return false;
+  return text.split(/[。；;！？!?\n]+/).some((sentence) => {
+    if (!STATIC_ASSESSMENT_SPECIFIC_ADVICE.test(sentence)) return false;
+    // Concrete amounts and frequencies are never repeated in an assessment,
+    // even when the same sentence also contains a disclaimer.
+    if (STATIC_ASSESSMENT_CONCRETE_ADVICE.test(sentence)) return true;
+    const remainder = sentence.replace(STATIC_ASSESSMENT_SAFE_ADVICE_BOUNDARY, "");
+    return STATIC_ASSESSMENT_SPECIFIC_ADVICE.test(remainder);
+  });
+}
+
+function sanitizeStaticAssessmentAdvice(result) {
+  if (!result || typeof result !== "object") return result;
+  (result.dimension_scores || []).forEach((dimension) => {
+    if (dimension && typeof dimension === "object" && staticAssessmentAdviceNeedsSanitizing(dimension.comment)) {
+      dimension.comment = STATIC_ASSESSMENT_COMMENT_BOUNDARY;
+    }
+  });
+  [
+    ["strengths", STATIC_ASSESSMENT_STRENGTH_BOUNDARY],
+    ["improvements", STATIC_ASSESSMENT_IMPROVEMENT_BOUNDARY],
+  ].forEach(([key, fallback]) => {
+    if (Array.isArray(result[key])) {
+      result[key] = result[key].map((item) => (staticAssessmentAdviceNeedsSanitizing(item) ? fallback : item));
+    }
+  });
+  (result.critical_failures || []).forEach((failure) => {
+    if (failure && typeof failure === "object" && staticAssessmentAdviceNeedsSanitizing(failure.reason)) {
+      failure.reason = STATIC_ASSESSMENT_FAILURE_REASON_BOUNDARY;
+    }
+  });
+  if (staticAssessmentAdviceNeedsSanitizing(result.summary)) result.summary = STATIC_ASSESSMENT_SUMMARY_BOUNDARY;
+  return result;
+}
+
 function normalizeStaticAssessment(result, history = [], rubric = {}) {
   const normalized = result && typeof result === "object" ? result : {};
   const specs = rubric.dimensions || [];
@@ -760,7 +1301,9 @@ function normalizeStaticAssessment(result, history = [], rubric = {}) {
     const rawScore = Number(item.score);
     const score = Number.isFinite(rawScore) ? Math.max(0, Math.min(maxScore, Math.round(rawScore))) : 0;
     let evidence = String(item.evidence || "").trim();
-    if (!evidence || staticEvidenceUsesCustomerOnlyText(evidence, history)) evidence = staticFallbackEmployeeEvidence(spec.id, history);
+    if (!evidence || staticEvidenceUsesCustomerOnlyText(evidence, history) || !staticEvidenceIsGroundedInEmployee(evidence, history)) {
+      evidence = staticFallbackEmployeeEvidence(spec.id, history);
+    }
     return { id: spec.id, name: spec.name, score, max_score: maxScore, evidence, comment: String(item.comment || "需要在下一轮对话中补充可验证表现。") };
   });
   const failureSpecs = new Map((rubric.critical_failures || []).map((item) => [item.code, item]));
@@ -777,7 +1320,7 @@ function normalizeStaticAssessment(result, history = [], rubric = {}) {
   let totalScore = dimensionScores.reduce((sum, item) => sum + item.score, 0);
   if (criticalFailures.length) totalScore = Math.min(totalScore, ...criticalFailures.map((item) => Number(item.score_cap)));
   const cleanList = (value, fallback) => Array.isArray(value) && value.filter(Boolean).length ? value.filter(Boolean).slice(0, 4) : fallback;
-  return {
+  return sanitizeStaticAssessmentAdvice({
     total_score: totalScore,
     dimension_scores: dimensionScores,
     critical_failures: criticalFailures,
@@ -785,7 +1328,7 @@ function normalizeStaticAssessment(result, history = [], rubric = {}) {
     improvements: cleanList(normalized.improvements, ["下一轮请围绕顾客原话补齐需求分析、安全边界和可执行下一步。"]),
     next_training_scene: normalized.next_training_scene || "",
     summary: normalized.summary || "评分已按本轮员工实际表达生成。",
-  };
+  });
 }
 
 function normalizeStaticResult(result, mode, action, scenario, history, rubric, message, query = "", route = {}) {
@@ -835,22 +1378,76 @@ async function staticApi(path, body) {
   const turnNumber = dialogue.filter((item) => item.role === "user").length + 1;
   const safety = "不得诊断疾病、承诺治愈或固定效果、推荐药品剂量或停药；遇到红旗症状时优先停止项目并建议医疗评估。";
   const routeContext = staticRouteContext(route);
+  if (mode === "training") {
+    // The customer and coach have intentionally different information
+    // boundaries.  In particular, the coach request is created before and
+    // independently of this turn's customer reply, so feedback used by
+    // "修改这次回答" can never depend on a future disclosure.
+    const customerSystem = `你只扮演情景陪练中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或旧回复。只有员工本轮表达直接命中 information_release_rules 中某一个条件时，才能透露该条对应的一条信息；每轮最多透露一个新事实，不得提前带出后续事实。遇到已知红旗症状且员工给出暂停或就医方向时，必须留在安全处置流程，只表示理解或追问暂停、记录、联系负责人等安排，不得跳回怕疼、价格或项目效果等常规异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"customer_reply":"顾客下一句话"}。`;
+    const coachSystem = `你只是门店员工情景训练教练，不扮演顾客。${safety}\n公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}\n当前是员工第 ${turnNumber} 轮回复。history 中 role=user 是员工，role=assistant 是本轮前顾客已经说出的公开信息。你只能评价这些回合前公开对话和员工最新一句；你不会获得且不得猜测任何未公开的剧情、评分参考或本轮尚未生成的顾客回复。每轮只指出一个最重要问题，feedback 需结合员工本轮原话。suggested_reply 是对员工本轮原话的直接改写，点击“修改这次回答”后应能在同一份回合前历史上直接发送；不得写“您刚补充/您又说”或引用本轮之后才可能出现的信息。对已知服务后疼痛加重，若员工直接说正常、没问题、微损伤自我修复、会变轻或继续加量，level 必须为 critical。对回合前已知麻木等新症状，仅说重视和就医但未暂停、记录上报时为 needs_work；完整停止、不诊断、记录上报和医疗分流才可为 good，危险矛盾表达永远优先。严格输出 JSON：{"feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`;
+    const trainingMessages = [...dialogue, { role: "user", content: message }];
+    const [customerSettled, coachSettled] = await Promise.allSettled([
+      callStaticModel(customerSystem, trainingMessages, model, apiKey, 0.55, 500, 45000),
+      callStaticModel(coachSystem, trainingMessages, model, apiKey, 0.2, 950, 45000),
+    ]);
+    const customerModelResult = customerSettled.status === "fulfilled" ? customerSettled.value : null;
+    const coachModelResult = coachSettled.status === "fulfilled" ? coachSettled.value : null;
+    if (!customerModelResult && !coachModelResult) {
+      throw new Error("模拟顾客与训练教练均未返回可用结果，请稍后重试。");
+    }
+    const localFallback = staticMockProgressive("training", "turn", scenario, history, data.rubric, message);
+    const customerContent = customerModelResult?.content || "";
+    const coachContent = coachModelResult?.content || "";
+    const customerPayload = customerModelResult
+      ? (extractStaticJson(customerContent) || { customer_reply: customerContent })
+      : { customer_reply: localFallback.customer_reply };
+    const coachPayload = coachModelResult
+      ? (extractStaticJson(coachContent) || {})
+      : { feedback: localFallback.feedback };
+    let result = {
+      customer_reply: customerPayload.customer_reply || customerPayload.reply || customerContent,
+      feedback: coachPayload.feedback && typeof coachPayload.feedback === "object" ? coachPayload.feedback : coachPayload,
+    };
+    result = normalizeStaticResult(result, mode, action, scenario, history, data.rubric, message, query, route);
+    const customerUsage = customerModelResult?.meta?.usage || {};
+    const coachUsage = coachModelResult?.meta?.usage || {};
+    const usage = {};
+    new Set([...Object.keys(customerUsage), ...Object.keys(coachUsage)]).forEach((key) => {
+      const customerValue = Number(customerUsage[key]);
+      const coachValue = Number(coachUsage[key]);
+      if (Number.isFinite(customerValue) || Number.isFinite(coachValue)) usage[key] = (Number.isFinite(customerValue) ? customerValue : 0) + (Number.isFinite(coachValue) ? coachValue : 0);
+    });
+    return {
+      ok: true,
+      mode,
+      result,
+      citations: [],
+      retrieved: [],
+      meta: {
+        model: coachModelResult?.meta?.model || customerModelResult?.meta?.model || model,
+        usage,
+        mock: false,
+        calls: 2,
+        roles: ["customer", "coach"],
+        degraded: !customerModelResult || !coachModelResult,
+        fallback_roles: [
+          ...(!customerModelResult ? ["customer"] : []),
+          ...(!coachModelResult ? ["coach"] : []),
+        ],
+      },
+    };
+  }
   let system;
   let messages;
   let temperature = 0.3;
   let maxTokens = 1800;
-  if (mode === "training") {
-    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n顾客可知场景：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。customer_reply 只能使用顾客可知信息；下面的方法路由和专业知识只供 feedback 使用，绝不能写进 customer_reply。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话，并且只能评价员工说话前已经知道的信息，绝不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`;
-    messages = [...dialogue, { role: "user", content: message }];
-    temperature = 0.35;
-    maxTokens = 1200;
-  } else if (mode === "test" && action === "turn") {
+  if (mode === "test" && action === "turn") {
     system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.55;
   } else if (mode === "test" && action === "finish") {
-    system = `你是企业培训考核官，只输出考后评分报告，不再扮演顾客。history 中 role=user 才是员工，role=assistant 是顾客，绝不能混淆。严格按评分表输出恰好 7 个维度；id、name、max_score 必须一致；evidence 只能引用员工原话或写“对话中未体现”；total_score 等于各维度 score 之和，再应用关键失败封顶。每个 evidence 和 comment 不超过 35 个汉字；strengths 与 improvements 各最多 3 条，每条不超过 30 个汉字。${safety}\n严格输出 JSON：{"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"...","comment":"..."}],"critical_failures":[],"strengths":[],"improvements":[],"next_training_scene":"...","summary":"..."}。`;
-    messages = [{ role: "user", content: `评分表：${JSON.stringify(data.rubric)}\n场景：${JSON.stringify(scenario)}\n员工完整对话：${JSON.stringify(cleanStaticHistory(body.history || [], 40))}` }];
+    system = `你是企业培训考核官，只输出考后评分报告，不再扮演顾客。history 中 role=user 才是员工，role=assistant 是顾客，绝不能混淆。严格按评分表输出恰好 7 个维度；id、name、max_score 必须一致；evidence 只能引用员工原话或写“对话中未体现”；total_score 等于各维度 score 之和，再应用关键失败封顶。必须严格按对话时序逐轮评价：一句员工原话只能使用它之前已出现的顾客信息，后来顾客才透露的信息不得追溯扣分。后续的正确补救不能抹去先前已经发生的关键失败；顾客明确说“没有/否认”的症状不得当作已出现。每个 evidence 和 comment 不超过 35 个汉字；strengths 与 improvements 各最多 3 条，每条不超过 30 个汉字。${safety}\n严格输出 JSON：{"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"...","comment":"..."}],"critical_failures":[],"strengths":[],"improvements":[],"next_training_scene":"...","summary":"..."}。`;
+    messages = [{ role: "user", content: `评分表：${JSON.stringify(data.rubric)}\n公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}\n员工完整对话：${JSON.stringify(cleanStaticHistory(body.history || [], 40))}` }];
     temperature = 0.1;
     maxTokens = 1800;
   } else {

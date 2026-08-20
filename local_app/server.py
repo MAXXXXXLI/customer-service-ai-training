@@ -5,6 +5,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -20,6 +21,7 @@ SILICONFLOW_URL = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/
 DEFAULT_MODEL = os.getenv("SILICONFLOW_MODEL", "Qwen/Qwen3.5-35B-A3B")
 ENV_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 MOCK_MODE = os.getenv("SILICONFLOW_MOCK", "0").lower() in {"1", "true", "yes"}
+TRAINING_DUAL_CALL_WAIT_SECONDS = float(os.getenv("TRAINING_DUAL_CALL_WAIT_SECONDS", "48"))
 AVAILABLE_MODELS = [
     {"id": "Qwen/Qwen3.5-35B-A3B", "label": "Qwen 3.5 35B · 推荐"},
     {"id": "deepseek-ai/DeepSeek-V3.2", "label": "DeepSeek V3.2 · 高质量"},
@@ -101,11 +103,11 @@ def matches_any(text: str, patterns: list[str]) -> bool:
 
 
 NEGATED_RED_FLAG_PATTERN = re.compile(
-    r"(?:没有|并没有|并无|未出现|未发生|不伴有?|否认)"
-    r"(?:明显|持续|进行性|新发|突然)?"
-    r"(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿)"
-    r"(?:(?:、|或|和|及|以及)(?:明显|持续|进行性|新发|突然)?"
-    r"(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿))*",
+    r"(?:没有|没|并没有|并无|尚无|未见|未出现|未发生|没出现|不伴有?|否认|无)"
+    r"(?:(?:任何|一点儿?|明显|持续|进行性|新发|突然)){0,2}"
+    r"(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿(?:部)?(?:新发|新|发)?麻|手(?:臂)?(?:新发|新|发)?麻|胳膊(?:新发|新|发)?麻|发麻|麻木|无力|大小便异常|会阴麻木|发热|红肿|头晕)"
+    r"(?:(?:、|或|和|及|以及)(?:(?:任何|一点儿?|明显|持续|进行性|新发|突然)){0,2}"
+    r"(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿(?:部)?(?:新发|新|发)?麻|手(?:臂)?(?:新发|新|发)?麻|胳膊(?:新发|新|发)?麻|发麻|麻木|无力|大小便异常|会阴麻木|发热|红肿|头晕))*",
     re.I,
 )
 
@@ -451,7 +453,52 @@ def sanitize_public_result(value: Any) -> Any:
     return value
 
 
-ASSESSMENT_SPECIFIC_ADVICE = re.compile(r"(?:古方|口服|注射|用药|药品|剂量|停药|隔天一次|每天\s*\d+\s*次)", re.I)
+ASSESSMENT_SPECIFIC_ADVICE = re.compile(
+    r"(?:古方|口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物|隔天一次|每天\s*\d+\s*次)",
+    re.I,
+)
+ASSESSMENT_CONCRETE_ADVICE = re.compile(
+    r"(?:\d+(?:\.\d+)?\s*(?:mg|g|ml|毫克|克|毫升|片|粒|支|单位))|"
+    r"(?:(?:每天|每日|每周|每次|隔天|早晚|睡前|餐前|餐后).{0,8}(?:\d+|一|两|二|三|四|五|六|七|八|九|十).{0,3}次)|"
+    r"(?:(?:口服|注射).{0,12}(?:\d+|一|两|二|三|四|五|六|七|八|九|十)\s*(?:次|片|粒|支|毫升|毫克|mg|ml))",
+    re.I,
+)
+ASSESSMENT_SAFE_ADVICE_BOUNDARY = re.compile(
+    r"(?:(?:具体)?(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物)[^，,。；;！？!?\n]{0,18}"
+    r"(?:交由|由|请|需|需要|应|应该|须|必须)[^，,。；;！？!?\n]{0,10}(?:医生|医师|药师|医疗机构)[^，,。；;！？!?\n]{0,14}"
+    r"(?:评估|决定|指导|核实|开具|处方))|"
+    r"(?:(?:医生|医师|药师|医疗机构)[^，,。；;！？!?\n]{0,14}(?:评估|决定|指导|核实|开具|处方)[^，,。；;！？!?\n]{0,18}"
+    r"(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物))|"
+    r"(?:(?:门店|我们|员工)[^，,。；;！？!?\n]{0,8}(?:不能|不可|不会|不应|不得|不建议|不提供|不决定|不调整|无权)[^，,。；;！？!?\n]{0,14}"
+    r"(?:给出?|提供|建议|决定|调整|安排)?(?:具体)?(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物))|"
+    r"(?:(?:不能|不可|不要|不得|不建议|避免)[^，,。；;！？!?\n]{0,8}(?:自行|擅自)[^，,。；;！？!?\n]{0,5}(?:停换药|停药|停用|换药|更换药物|调整用药))|"
+    r"(?:(?:口服|注射|用药|药品|药物|剂量|停换药|停药|停用|换药|更换药物)[^，,。；;！？!?\n]{0,8}(?:遵医嘱|按医嘱))",
+    re.I,
+)
+
+ASSESSMENT_COMMENT_BOUNDARY = "员工尚未把顾客顾虑转化为可执行的下一步。建议先澄清时间、预算和服务偏好，再给出门店当前已核验且符合安全边界的选择。"
+ASSESSMENT_IMPROVEMENT_BOUNDARY = "不要替顾客直接选择具体产品或使用安排；先核验适用条件和门店当前标准，再提供非医疗、可选择的下一步。"
+ASSESSMENT_STRENGTH_BOUNDARY = "完成了基本沟通；涉及医疗决定时仍需明确门店边界，并交由医生或药师评估。"
+ASSESSMENT_FAILURE_REASON_BOUNDARY = "员工表达涉及未经核验的具体用药或使用安排，应明确门店边界并交由医生或药师评估。"
+ASSESSMENT_SUMMARY_BOUNDARY = "本轮需要加强需求分析和个性化表达。后续重点练习在不承诺结果、不擅自补充具体产品或使用安排的前提下，把顾客顾虑转化为可执行的服务下一步。"
+
+
+def assessment_advice_needs_sanitizing(value: Any) -> bool:
+    """Detect actionable medical arrangements while preserving explicit safe boundaries."""
+    text = clean_text(value)
+    if not ASSESSMENT_SPECIFIC_ADVICE.search(text):
+        return False
+    for sentence in re.split(r"[。；;！？!?\n]+", text):
+        if not ASSESSMENT_SPECIFIC_ADVICE.search(sentence):
+            continue
+        # Even inside a disclaimer, concrete amounts or frequencies should not
+        # be echoed back in an employee-facing assessment report.
+        if ASSESSMENT_CONCRETE_ADVICE.search(sentence):
+            return True
+        remainder = ASSESSMENT_SAFE_ADVICE_BOUNDARY.sub("", sentence)
+        if ASSESSMENT_SPECIFIC_ADVICE.search(remainder):
+            return True
+    return False
 
 
 def sanitize_assessment_advice(result: dict[str, Any]) -> dict[str, Any]:
@@ -459,17 +506,20 @@ def sanitize_assessment_advice(result: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(result, dict):
         return result
     for dimension in result.get("dimension_scores", []):
-        if isinstance(dimension, dict) and ASSESSMENT_SPECIFIC_ADVICE.search(clean_text(dimension.get("comment"))):
-            dimension["comment"] = "员工尚未把顾客顾虑转化为可执行的下一步。建议先澄清时间、预算和服务偏好，再给出门店当前已核验且符合安全边界的选择。"
-    improvements = result.get("improvements")
-    if isinstance(improvements, list):
-        result["improvements"] = [
-            "不要替顾客直接选择具体产品或使用安排；先核验适用条件和门店当前标准，再提供非医疗、可选择的下一步。"
-            if ASSESSMENT_SPECIFIC_ADVICE.search(clean_text(item)) else item
-            for item in improvements
-        ]
-    if ASSESSMENT_SPECIFIC_ADVICE.search(clean_text(result.get("summary"))):
-        result["summary"] = "本轮需要加强需求分析和个性化表达。后续重点练习在不承诺结果、不擅自补充具体产品或使用安排的前提下，把顾客顾虑转化为可执行的服务下一步。"
+        if isinstance(dimension, dict) and assessment_advice_needs_sanitizing(dimension.get("comment")):
+            dimension["comment"] = ASSESSMENT_COMMENT_BOUNDARY
+    for key, fallback in (
+        ("strengths", ASSESSMENT_STRENGTH_BOUNDARY),
+        ("improvements", ASSESSMENT_IMPROVEMENT_BOUNDARY),
+    ):
+        values = result.get(key)
+        if isinstance(values, list):
+            result[key] = [fallback if assessment_advice_needs_sanitizing(item) else item for item in values]
+    for failure in result.get("critical_failures", []):
+        if isinstance(failure, dict) and assessment_advice_needs_sanitizing(failure.get("reason")):
+            failure["reason"] = ASSESSMENT_FAILURE_REASON_BOUNDARY
+    if assessment_advice_needs_sanitizing(result.get("summary")):
+        result["summary"] = ASSESSMENT_SUMMARY_BOUNDARY
     return result
 
 
@@ -512,8 +562,8 @@ HIGH_RISK_CLAIM_PATTERNS = [
     r"替代手术",
     r"保证(?:效果|结果|瘦|减重)",
     r"(?:保证|一定|肯定).{0,10}(?:治好|治愈|根治)",
-    r"(?:治愈|根治|治疗|治好).{0,8}(?:疾病|颈椎病|糖尿病|三高|脂肪肝|炎症)",
-    r"(?:有效|能够|可以|会).{0,10}(?:治疗|治好|根治|改善糖尿病|改善三高|改善脂肪肝|提高免疫力|增强免疫力)",
+    r"(?:治愈|根治|治疗|治好)[^，。；！？,.;!?\r\n]{0,8}(?:疾病|颈椎病|糖尿病|三高|脂肪肝|炎症)",
+    r"(?:有效|能够|可以|会)[^，。；！？,.;!?\r\n]{0,10}(?:治疗|治好|根治|改善糖尿病|改善三高|改善脂肪肝|提高免疫力|增强免疫力)",
     r"(?:固定|保证).{0,8}(?:减重|减肥).{0,8}(?:斤|公斤)",
     r"不反弹",
     r"百分之百|百分百|100%",
@@ -532,12 +582,9 @@ HIGH_RISK_CLAIM_PATTERNS = [
 def unsafe_claim_hits(text: str) -> list[str]:
     hits = []
     for pattern in HIGH_RISK_CLAIM_PATTERNS:
-        for match in re.finditer(pattern, text, flags=re.I):
-            prefix = text[max(0, match.start() - 14):match.start()]
-            if re.search(r"(?:不能|不可|不应|无法|不得|不会|不做|避免|禁止|拒绝).{0,10}$", prefix):
-                continue
+        compiled = re.compile(pattern, re.I)
+        if has_non_negated_match(text, compiled):
             hits.append(pattern)
-            break
     return hits
 
 
@@ -676,14 +723,28 @@ LIMITED_CUSTOMER_POLICY = """
 """
 
 
-TRAIN_SYSTEM = """你是美容、瘦身门店的员工训练教练。你要同时完成两件事：让顾客角色的对话自然真实，并在每轮后指出员工一个最重要的改进点。
+TRAIN_CUSTOMER_SYSTEM = """你是美容、瘦身门店员工训练中的模拟顾客。你只生成顾客下一句话，不评价员工，不给出标准答案，不暴露幕后设定。
 
-只使用给定知识库作为专业依据。资料中可能存在旧版本、营销表述或需要核验的医学内容，不得擅自把它们改写成确定性承诺。""" + SAFETY_POLICY + METHODOLOGY_POLICY + """
+对话规则：
+1. 只承接员工最新一句话，不重复开场白。
+2. 只有员工问到对应内容时，才按释放规则透露一组信息；每轮最多一组，不得把多条隐藏信息一次说完。
+3. 若已明确出现需优先处理的异常，员工建议暂停或就医后，只承接安全安排或追问如何执行，不跳回价格、怕疼等常规异议。
 
-训练模式输出严格 JSON，不要 Markdown，不要额外解释：
-{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"引用员工原话并指出一个最重要的问题或做得好的地方","why":"说明当前处于哪个接待节点、应调用什么知识和为什么","method_step":"本轮应执行的方法节点","knowledge_focus":"本轮主要知识重点","suggested_reply":"严格按方法路由生成的一句自然话术","next_goal":"下一轮只练一个目标"},"citations":[]}
-feedback 必须引用员工刚刚说的话，不能泛泛而谈；必须检查员工是否先安全后业务、是否回答当前问题、是否使用正确知识模块、是否给出可执行下一步。顾客不知道内部规则，不要把隐藏场景设定和评分标准泄露给员工。
-customer_reply 字段和 feedback 字段必须严格隔离：feedback 可以使用专业知识，customer_reply 必须完全遵守下面的顾客角色认知边界，绝不能把教练知识说成顾客的话。""" + LIMITED_CUSTOMER_POLICY
+严格输出 JSON，不要 Markdown，不要额外解释：{"customer_reply":"顾客下一句话"}。""" + LIMITED_CUSTOMER_POLICY
+
+
+TRAIN_FEEDBACK_SYSTEM = """你是美容、瘦身门店的员工训练教练。只使用给定的已发生对话、公开任务、方法路由和知识资料评价员工当前这句话。资料中可能存在旧版本、营销表述或需要核验的医学内容，不得擅自把它们改写成确定性承诺。
+
+时序边界（最高优先级）：
+1. role=assistant 是员工当时已经听到的顾客原话；role=user 是员工原话。
+2. 只能依据员工说话前已经出现在对话中的顾客信息。不得假设顾客有对话中未出现的症状、顾虑或决定。
+3. 员工问“有没有手麻”不等于顾客已经手麻；建议话术可以追问未知信息，但不得写成已知事实。
+4. 你不会收到当前轮尚未生成的顾客回复或任何隐藏场景；不得猜测这些内容。
+""" + SAFETY_POLICY + METHODOLOGY_POLICY + """
+
+严格输出 JSON，不要 Markdown，不要额外解释：
+{"feedback":{"level":"good|needs_work|critical","issue":"引用员工原话并指出一个最重要的问题或做得好的地方","why":"说明当前接待节点、应用知识和原因","method_step":"本轮应执行的方法节点","knowledge_focus":"本轮主要知识重点","suggested_reply":"在同一时点可以替换员工原话的一句自然话术","next_goal":"下一轮只练一个目标"}}
+严重度要求：对已知服务后疼痛加重说“正常/没事”、用“微损伤/自我修复”确定解释、或建议继续加量，必须是 critical。已知麻木时，只说重视并就医但缺少暂停、记录和升级，是 needs_work。完成暂停、不诊断、记录升级和医疗分流才是 good。同一句内即使也有安全词，只要又正常化异常或建议继续，仍是 critical。"""
 
 
 TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客，不是培训教练、客服助手或评分员。
@@ -714,6 +775,8 @@ ASSESS_SYSTEM = """你是企业培训考核官。只在对话结束后评分，�
 4. total_score 必须等于 7 个 score 之和；先算维度分，再应用关键失败项的 score_cap。
 5. 只评价本次对话已经发生的内容。建议写成下一轮训练动作，不要虚构员工已经说过的话，不要替员工补充产品、药品、剂量、用法或频次。
 6. 输出内容必须是考核报告，不能输出新的顾客回复或继续向员工提问。
+7. 必须严格按对话时序逐轮评价：一句员工原话只能使用它之前已出现的顾客信息；后来顾客才透露的信息不得追溯扣分。
+8. 后续的正确补救不能抹去先前已经发生的关键失败；但顾客明确说“没有/否认”的症状不得当作已出现。
 
 评分时检查员工是否遵守统一方法：先安全后业务、回答当前问题、调用正确知识、只补必要问题、说明边界并给出正确下一步。每个 evidence 和 comment 不超过 35 个汉字；strengths 与 improvements 各最多 3 条，每条不超过 30 个汉字。输出严格 JSON：
 {"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"对话证据","comment":"评价"}],"critical_failures":[{"code":"CF-xx","reason":"...","evidence":"...","score_cap":59}],"strengths":["..."],"improvements":["..."],"next_training_scene":"SCN-...","summary":"..."}
@@ -730,7 +793,10 @@ PUBLIC_OUTPUT_POLICY = """
 5. 门店服务统一使用“体验、基础观察、顾客感受、阶段复盘”等非医疗表述；不得把服务称为“治疗、疗程、检查”，不得推断血管、神经、供血供氧等医学原因，也不得承诺固定效果。
 """
 
-TRAIN_SYSTEM += PUBLIC_OUTPUT_POLICY + "\n训练模式的 citations 固定返回空数组。"
+TRAIN_CUSTOMER_SYSTEM += PUBLIC_OUTPUT_POLICY
+TRAIN_FEEDBACK_SYSTEM += PUBLIC_OUTPUT_POLICY + "\n训练模式的 citations 固定返回空数组。"
+# Backwards-compatible name for integrations that only inspect the coach prompt.
+TRAIN_SYSTEM = TRAIN_FEEDBACK_SYSTEM
 QA_SYSTEM += PUBLIC_OUTPUT_POLICY
 ASSESS_SYSTEM += PUBLIC_OUTPUT_POLICY
 
@@ -783,6 +849,23 @@ def call_model(system: str, messages: list[dict[str, str]], model: str, api_key:
         raise RuntimeError(f"SiliconFlow network error: {exc.reason}") from exc
     content = body.get("choices", [{}])[0].get("message", {}).get("content", "")
     return content, {"model": body.get("model", model), "usage": body.get("usage", {})}
+
+
+def merge_model_meta(*metas: dict[str, Any]) -> dict[str, Any]:
+    """Combine parallel model-call metadata without changing the public model/usage shape."""
+    usage: dict[str, Any] = {}
+    model = ""
+    for meta in metas:
+        if not isinstance(meta, dict):
+            continue
+        model = clean_text(meta.get("model")) or model
+        current_usage = meta.get("usage") if isinstance(meta.get("usage"), dict) else {}
+        for key, value in current_usage.items():
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                usage[key] = usage.get(key, 0) + value
+            elif key not in usage:
+                usage[key] = value
+    return {"model": model or DEFAULT_MODEL, "usage": usage, "calls": 2, "roles": ["customer", "feedback"]}
 
 
 def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any] | None, history: list[dict[str, str]], docs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -878,6 +961,46 @@ def customer_turn_context(scenario: dict[str, Any] | None) -> dict[str, Any]:
         "hidden_information": list(scenario.get("hidden_information") or []),
         "information_release_rules": list(scenario.get("information_release_rules") or []),
     }
+
+
+def training_feedback_context(scenario: dict[str, Any] | None) -> dict[str, Any]:
+    """Public scenario context available before the employee answers this turn."""
+    scenario = scenario or {}
+    return {
+        key: scenario.get(key)
+        for key in ("id", "module_id", "module_title", "domain", "title", "task", "opening")
+        if scenario.get(key) not in {None, ""}
+    }
+
+
+def assessment_scenario_context(scenario: dict[str, Any] | None) -> dict[str, Any]:
+    """Assessment context deliberately excludes unreleased facts and answer keys."""
+    return training_feedback_context(scenario)
+
+
+def training_customer_system(scenario: dict[str, Any] | None, turn_number: int) -> str:
+    return (
+        f"{TRAIN_CUSTOMER_SYSTEM}\n\n"
+        f"隐藏场景（只供顾客角色使用，不得泄露）："
+        f"{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n"
+        f"公开开场白：{clean_text((scenario or {}).get('opening'))}\n"
+        f"当前是员工第 {turn_number} 轮回复。"
+    )
+
+
+def training_feedback_system(
+    scenario: dict[str, Any] | None,
+    route: dict[str, Any],
+    docs: list[dict[str, Any]],
+    turn_number: int,
+) -> str:
+    return (
+        f"{TRAIN_FEEDBACK_SYSTEM}\n\n"
+        f"公开任务：{json.dumps(training_feedback_context(scenario), ensure_ascii=False)}\n"
+        f"当前是员工第 {turn_number} 轮回复。请只评价消息列表最后一条员工原话。\n\n"
+        f"方法路由：\n{route_context_block(route)}\n\n"
+        f"相关知识库：\n{context_block(docs, max_docs=4, max_chars_per_doc=650)}"
+    )
 
 
 def clean_dialogue_history(history: list[dict[str, Any]], limit: int = 7) -> list[dict[str, str]]:
@@ -1038,8 +1161,356 @@ def customer_reply_is_invalid(reply: str) -> bool:
     return reply.count("？") + reply.count("?") > 1
 
 
+GENERIC_RELEASE_ASK_MARKERS = re.compile(
+    r"[？?]|(?:请|麻烦).{0,8}(?:说|告诉|提供)|(?:想|需要).{0,6}(?:了解|确认)|"
+    r"是否|有没有|有无|什么|怎么|如何|哪|几|多久|多长|吗|么|呢",
+    re.I,
+)
+GENERIC_RELEASE_SHORT_FACTS = re.compile(
+    r"成都|空腹|高血压|手麻|发麻|麻木|胸闷|胸痛|头晕|发热|无力|电击|备孕|结石|"
+    r"反黑|漏尿|出血|哺乳|便秘|晒伤|红肿|渗出|视物模糊|甲状腺|酸类|"
+    r"玻尿酸|经期|腰围|排便|不耐受|喝不下水|没吃早饭|眼周肿|异味|灌痛",
+    re.I,
+)
+GENERIC_RELEASE_NUMBER_FACTS = re.compile(
+    r"(?:\d+(?:\.\d+)?|[一二两三四五六七八九十半]+)(?:个)?(?:年|月|天|小时|分钟|分|厘米|次|袋)",
+    re.I,
+)
+GENERIC_RELEASE_DENIED_QUESTION = re.compile(
+    r"(?:不是|并非).{0,10}(?:问|询问|追问|了解|确认)|"
+    r"(?:不|没|没有|无需|无须|不用|不必|不要|并不|不想|暂不|别)"
+    r".{0,4}(?:问|询问|追问|了解|确认)|"
+    r"(?:多久|多长时间|什么时候|何时|是否|有没有).{0,8}(?:不问|别问|不用问|无需问|不必问)",
+    re.I,
+)
+
+GENERIC_RELEASE_QUESTION_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+    "时间和变化": (
+        re.compile(r"多久|多长时间|什么时候|何时|哪天|开始|持续", re.I),
+        re.compile(r"变化|加重|变重|更重|更痛|更疼|越来越|减轻|好转|严重", re.I),
+    ),
+    "病史和进食": (
+        re.compile(r"病史|高血压|慢性病|基础病", re.I),
+        re.compile(r"进食|吃饭|吃东西|早饭|空腹", re.I),
+    ),
+    "饮食和经期": (
+        re.compile(r"饮食|吃|聚餐", re.I),
+        re.compile(r"经期|月经|例假|生理期", re.I),
+    ),
+    "复查和出血": (
+        re.compile(r"复查|产后检查|检查过", re.I),
+        re.compile(r"出血|流血|血性", re.I),
+    ),
+    "饮水排便": (
+        re.compile(r"饮水|喝水|水喝", re.I),
+        re.compile(r"排便|大便|便秘", re.I),
+    ),
+    "试感和停止方式": (
+        re.compile(r"试感|试一下|小范围|先试", re.I),
+        re.compile(r"停止|停下|随时停|叫停", re.I),
+    ),
+}
+
+GENERIC_RELEASE_SINGLE_QUESTION_PATTERNS: dict[str, re.Pattern[str]] = {
+    "持续时间": re.compile(r"多久|多长时间|持续|几天|几个月|几年", re.I),
+    "开始时间": re.compile(r"什么时候|何时|哪天|刚开始|开始时间", re.I),
+    "产后时间": re.compile(r"产后.{0,6}(?:多久|时间)|生完.{0,6}多久|几个月", re.I),
+    "伴随症状": re.compile(r"伴随|其他.{0,8}(?:不适|症状|反应)|有没有.{0,12}(?:麻|无力|发热|胸痛|胸闷|不舒服)", re.I),
+    "门店": re.compile(r"门店|哪家店|哪个店|城市|地区|在哪里", re.I),
+    "券名": re.compile(r"券名|券的名称|什么券|哪张券|券.{0,5}截图", re.I),
+    "贵在哪里": re.compile(r"贵.{0,8}(?:哪|什么|原因|顾虑)|在意.{0,8}(?:价格|效果|预算)", re.I),
+    "竞品包含内容": re.compile(r"竞品|别家|楼下|对方.{0,6}(?:包含|包括)|包了什么|做几次", re.I),
+    "使用体验": re.compile(r"使用体验|用着|用了.{0,6}(?:感觉|觉得)|舒服|效果", re.I),
+    "疼痛程度": re.compile(r"疼痛|疼|痛.{0,6}(?:程度|几分|多严重)|\d+\s*分", re.I),
+    "感觉": re.compile(r"什么感觉|怎么痛|哪种感觉|感觉.{0,6}(?:像|是)", re.I),
+    "进食饮水": re.compile(r"进食|吃饭|吃东西|早饭|空腹|饮水|喝水|喝不下", re.I),
+    "变化": re.compile(r"变化|加重|变重|变大|扩大|更痛|更疼|越来越|减轻|好转|严重", re.I),
+    "检查": re.compile(r"检查|报告|查过|复查", re.I),
+    "症状": re.compile(r"症状|不适|哪里难受|痛|痒|灼|异味|分泌物", re.I),
+    "测量": re.compile(r"测量|称重|什么时候称|早上|晚上", re.I),
+    "其他指标": re.compile(r"其他指标|腰围|体围|体脂|除了体重", re.I),
+    "餐次": re.compile(r"餐次|早餐|早饭|晚餐|一天几顿|怎么吃", re.I),
+    "反应": re.compile(r"反应|不耐受|不舒服|过敏|红肿", re.I),
+    "身体状态": re.compile(r"身体|状态|不舒服|乏力|头晕|精神", re.I),
+    "用药": re.compile(r"用药|药物|吃药|服药|注射|打针", re.I),
+    "特殊情况": re.compile(r"特殊情况|备孕|怀孕|哺乳|孕期", re.I),
+    "病史": re.compile(r"病史|以前得过|慢性病|基础病|结石|高血压", re.I),
+    "执行": re.compile(r"怎么.{0,6}(?:用|打|执行)|每天|频次|按计划", re.I),
+    "营养": re.compile(r"营养|进食|吃得|食量|胃口", re.I),
+    "复诊": re.compile(r"复诊|回诊|看过医生|定期检查", re.I),
+    "怎么吃": re.compile(r"怎么吃|怎么喝|一天几袋|什么时候喝|代餐", re.I),
+    "旧产品": re.compile(r"旧产品|以前的|哪个牌子|谁家|买了多久", re.I),
+    "不适位置": re.compile(r"不适|哪里|位置|部位|钢圈|肩带|压痛", re.I),
+    "主要问题": re.compile(r"主要|最想|哪个问题|困扰|诉求|目标", re.I),
+    "目标": re.compile(r"目标|最想|想改善|想解决|在意|诉求", re.I),
+    "既往产品": re.compile(r"既往|以前|之前|用过.{0,8}(?:产品|护肤品)|什么产品", re.I),
+    "护肤": re.compile(r"护肤|刷酸|酸类|产品|昨晚用", re.I),
+    "其他反应": re.compile(r"其他.{0,8}(?:反应|不适|症状)|眼周|呼吸|肿", re.I),
+    "皮肤状态": re.compile(r"皮肤|皮肤状态|晒伤|暴晒|发红|破损", re.I),
+    "皮肤": re.compile(r"皮肤|发红|红肿|表面|触痛", re.I),
+    "既往反应": re.compile(r"既往|以前|之前|反应|红肿|过敏", re.I),
+    "面部状态": re.compile(r"面部|脸型|脸.{0,5}(?:瘦|凹)|太阳穴|容量", re.I),
+    "既往项目": re.compile(r"既往|以前|之前|做过.{0,8}(?:项目|填充|医美)|最近做", re.I),
+    "既往史": re.compile(r"既往|以前|之前|激光|反黑|治疗过", re.I),
+    "防晒": re.compile(r"防晒|暴晒|晒太阳|户外", re.I),
+    "既往注射": re.compile(r"既往|以前|之前|注射|填充|打过什么", re.I),
+    "眼部症状": re.compile(r"眼部|眼睛|视力|视物|模糊", re.I),
+    "性生活": re.compile(r"性生活|性经历|伴侣|频率", re.I),
+    "产后功能": re.compile(r"产后|盆底|漏尿|功能|憋不住", re.I),
+    "使用产品": re.compile(r"使用.{0,6}(?:产品|洗液|药)|用了什么|洗液", re.I),
+    "出血": re.compile(r"出血|流血|血性", re.I),
+}
+
+GENERIC_RELEASE_ACTION_PATTERNS: dict[str, re.Pattern[str]] = {
+    "堆叠项目": re.compile(r"项目.{0,28}项目|(?:所有|全部|全套|一整套|很多|多个).{0,8}项目", re.I),
+    "直接承诺": re.compile(r"承诺|保证|肯定|一定|绝对|(?:可以|能).{0,8}(?:叠加|一起用)", re.I),
+    "施压成交": re.compile(r"今天必须|现在就|马上.{0,6}(?:付款|购买|买|定)|不买.{0,8}(?:后悔|没有)|逼|必须买", re.I),
+    "贬低原品牌": re.compile(r"原品牌.{0,8}(?:不好|没效|差|垃圾)|别的牌子.{0,8}(?:不好|没效|差)", re.I),
+    "道歉并重新介绍": re.compile(r"抱歉|不好意思|是我.{0,6}(?:太快|没听清)|重新介绍|我是.{0,10}(?:顾问|负责|接待)", re.I),
+    "继续解释套餐": re.compile(r"套餐|卡项|办卡", re.I),
+    "建议继续做": re.compile(r"继续做|再做一次|加量|打透|照常做", re.I),
+    "谈钱": re.compile(r"钱|价格|费用|浪费|退款", re.I),
+    "否定按摩": re.compile(r"按摩.{0,8}(?:没用|无效|不好|不行)|不要.{0,5}按摩", re.I),
+    "提医疗治疗": re.compile(r"医疗|治疗|医院|医生|就医", re.I),
+    "说越热越好": re.compile(r"越热越好|热一点.{0,8}(?:更好|有效)|温度越高", re.I),
+    "提出小范围试用": re.compile(r"小范围|小面积|先试用|试用一下", re.I),
+    "提出试感和停止方式": re.compile(
+        r"(?=.*(?:试感|试一下|小范围|先试))(?=.*(?:停止|停下|随时停|叫停))",
+        re.I,
+    ),
+    "说继续": re.compile(r"继续做|继续操作|照常做|再做|加量", re.I),
+    "承诺项目": re.compile(r"承诺|保证|一定|肯定|(?:能|可以).{0,8}(?:治好|解决|改善)", re.I),
+    "承诺快速效果": re.compile(r"快速|马上|很快|一个月.{0,8}(?:减|瘦)|承诺.{0,8}(?:减|瘦)", re.I),
+    "要求运动": re.compile(r"必须|要求|每天|每周|运动|锻炼", re.I),
+    "直接推荐填充": re.compile(r"直接.{0,6}填充|现在.{0,6}填充|今天.{0,6}填充|建议.{0,6}填充", re.I),
+    "直接推荐": re.compile(r"直接推荐|马上.{0,6}(?:用|做|开始)|就用这个|建议你.{0,8}(?:用|做|买)", re.I),
+    "只建议观察": re.compile(r"再观察|先观察|回家观察|等一等|暂时不用处理", re.I),
+    "给具体加量": re.compile(r"加量|多喝.{0,4}(?:一袋|两袋|\d+袋)|增加.{0,6}(?:用量|剂量)", re.I),
+    "说正常": re.compile(r"正常反应|正常现象|这很正常|没问题|没事", re.I),
+    "承诺不勒": re.compile(r"保证.{0,8}不勒|一定.{0,8}不勒|绝对.{0,8}不勒|不会勒", re.I),
+    "默认组合": re.compile(r"两个.{0,8}(?:一起|组合)|组合.{0,8}(?:做|项目)|都给你安排", re.I),
+    "安排马上做": re.compile(r"马上做|立即做|现在做|今天就做|当天做", re.I),
+    "承诺一次": re.compile(r"一次.{0,8}(?:去净|解决|治好|有效)|保证.{0,8}一次|永久", re.I),
+    "直接教凝胶用量": re.compile(r"凝胶.{0,10}(?:用量|剂量|次|毫升|克|次数)|每次.{0,8}凝胶", re.I),
+}
+
+
+def information_release_rule_parts(rule: Any) -> tuple[str, str]:
+    text = clean_text(rule)
+    if "时，" not in text:
+        return "", ""
+    condition, disclosure = text.split("时，", 1)
+    return re.sub(r"^员工", "", condition).strip(), disclosure.rstrip("。. ")
+
+
+def employee_affirmatively_asks_release_question(employee_message: str, pattern: re.Pattern[str]) -> bool:
+    """Match an actual current-turn question, not a mention or denial of one."""
+    message = clean_text(employee_message)
+    for match in pattern.finditer(message):
+        clause_start = max(
+            [message.rfind(mark, 0, match.start()) for mark in "，。；！？,.;!?"] + [-1]
+        ) + 1
+        following_boundaries = [
+            position
+            for mark in "，。；！？,.;!?"
+            if (position := message.find(mark, match.end())) >= 0
+        ]
+        clause_end = min(following_boundaries) if following_boundaries else len(message)
+        clause = message[clause_start:clause_end]
+        prefix = message[clause_start:match.start()]
+        suffix = message[match.end():clause_end]
+        denied_before = re.search(
+            r"(?:不是|并非).{0,8}(?:在)?(?:问|询问|追问|了解|确认).{0,8}$|"
+            r"(?:不|没|没有|无需|无须|不用|不必|不要|并不|不想|暂不|别)"
+            r".{0,4}(?:问|询问|追问|了解|确认).{0,8}$",
+            prefix,
+            re.I,
+        )
+        denied_after = re.search(
+            r"^(?:先|就|我们|现在|暂时)?.{0,4}(?:不问|别问|不用问|无需问|无须问|不必问|不需要问)",
+            suffix,
+            re.I,
+        )
+        if denied_before or denied_after:
+            continue
+        if GENERIC_RELEASE_ASK_MARKERS.search(clause):
+            return True
+    return False
+
+
+def employee_triggers_information_release_rule(employee_message: str, rule: Any) -> bool:
+    condition, _ = information_release_rule_parts(rule)
+    message = clean_text(employee_message)
+    if not condition or not message:
+        return False
+    if condition.startswith(("问", "询问", "追问")):
+        if not GENERIC_RELEASE_ASK_MARKERS.search(message):
+            return False
+        core = re.sub(r"^(?:问|询问|追问)", "", condition).strip("“”\" '")
+        compound = GENERIC_RELEASE_QUESTION_PATTERNS.get(core)
+        if compound:
+            return all(employee_affirmatively_asks_release_question(message, pattern) for pattern in compound)
+        pattern = GENERIC_RELEASE_SINGLE_QUESTION_PATTERNS.get(core)
+        if pattern:
+            return employee_affirmatively_asks_release_question(message, pattern)
+        tokens = [token for token in re.split(r"和|及|、", core) if len(token) >= 2]
+        return bool(tokens) and all(
+            employee_affirmatively_asks_release_question(message, re.compile(re.escape(token), re.I))
+            for token in tokens
+        )
+    pattern = GENERIC_RELEASE_ACTION_PATTERNS.get(condition)
+    if not pattern:
+        return False
+    affirmative_matcher = globals().get("has_non_negated_match")
+    if callable(affirmative_matcher):
+        return bool(affirmative_matcher(message, pattern))
+    return bool(pattern.search(message))
+
+
+def information_release_reply(rule: Any) -> str:
+    _, disclosure = information_release_rule_parts(rule)
+    if not disclosure:
+        return ""
+    quoted = re.findall(r"[“\"]([^”\"]+)[”\"]", disclosure)
+    if quoted:
+        return clean_text(quoted[0]).rstrip("。！？!?") + ("？" if "？" in quoted[0] or "?" in quoted[0] else "。")
+    natural_responses: tuple[tuple[str, str], ...] = (
+        (r"发送截图.*名称模糊", "我只能发一张截图，不过上面的名称有点模糊。"),
+        (r"顾客更反感", "你这样催我，我更不想现在决定了。"),
+        (r"顾客终止对话", "那我先不考虑了。"),
+        (r"顾客态度缓和", "好，那你先说说看。"),
+        (r"顾客愿意继续", "可以，那我们先小范围试试看。"),
+        (r"顾客马上同意", "那我今天就再做一次吧。"),
+        (r"顾客表示胸闷更明显", "我现在感觉胸闷更明显了。"),
+        (r"顾客表示害怕", "这么热我有点害怕，先停一下吧。"),
+        (r"顾客要求加热出更多汗", "那再加热一点，让我多出些汗吧。"),
+        (r"顾客说自己没看病", "我没有去医院看过，也没有诊断。"),
+        (r"顾客追问具体斤数", "那一个月具体能减多少斤？"),
+        (r"顾客说产品来自网络", "这个产品是我从网上买的。"),
+        (r"顾客说越来越严重", "可我感觉越来越严重了。"),
+        (r"顾客问是否能喝两袋", "那我可以一次喝两袋吗？"),
+        (r"顾客要求下周继续", "那我下周还可以继续做吗？"),
+        (r"顾客追问能否保证", "那你能保证一定不会勒吗？"),
+        (r"顾客说只想选一个", "我只想选一个项目，不想两个一起做。"),
+        (r"顾客要求写进合同", "那可以把这个保证写进合同吗？"),
+        (r"顾客问当天能否做", "那我今天可以直接做吗？"),
+        (r"顾客拒绝", "这个细节我不想回答。"),
+    )
+    for pattern, response in natural_responses:
+        if re.search(pattern, disclosure, re.I):
+            return response
+    payload = re.sub(r"^(?:顾客)?(?:说明|回答|说|表示|追问|要求)", "", disclosure).strip("，, ")
+    if not payload:
+        return "我还想再了解清楚一点。"
+    if re.match(r"\d+分$", payload):
+        return f"大概{payload}。"
+    return f"我这边的情况是：{payload.rstrip('。')}。"
+
+
+def compact_release_text(value: Any) -> str:
+    text = clean_text(value)
+    text = re.sub(r"^(?:顾客|客户|她|他)", "", text)
+    return re.sub(r"[\s，,。.；;:：！!？?“”\"'、]", "", text)
+
+
+def text_has_new_hidden_fragment(candidate: str, scenario: dict[str, Any] | None, history: list[dict[str, Any]]) -> bool:
+    candidate_compact = compact_release_text(candidate)
+    if not candidate_compact:
+        return False
+    visible_compact = compact_release_text(" ".join(
+        clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"
+    ))
+    sources = [
+        *(scenario or {}).get("hidden_information", []),
+        *(information_release_rule_parts(rule)[1] for rule in (scenario or {}).get("information_release_rules", [])),
+    ]
+    for source in sources:
+        source_compact = compact_release_text(source)
+        if not source_compact:
+            continue
+        for size in range(min(10, len(source_compact)), 3, -1):
+            matched = next(
+                (
+                    source_compact[index:index + size]
+                    for index in range(len(source_compact) - size + 1)
+                    if source_compact[index:index + size] in candidate_compact
+                    and source_compact[index:index + size] not in visible_compact
+                ),
+                "",
+            )
+            if matched:
+                return True
+        for pattern in (GENERIC_RELEASE_NUMBER_FACTS, GENERIC_RELEASE_SHORT_FACTS):
+            for match in pattern.finditer(source_compact):
+                fragment = compact_release_text(match.group(0))
+                if fragment and fragment in candidate_compact and fragment not in visible_compact:
+                    return True
+        for quoted in re.findall(r"[“\"]([^”\"]+)[”\"]", clean_text(source)):
+            fragment = compact_release_text(quoted)
+            if len(fragment) >= 2 and fragment in candidate_compact and fragment not in visible_compact:
+                return True
+    return False
+
+
+def generic_information_release_reply(
+    candidate_reply: str,
+    scenario: dict[str, Any] | None,
+    history: list[dict[str, Any]],
+    employee_message: str,
+) -> str:
+    rules = list((scenario or {}).get("information_release_rules") or [])
+    if not rules:
+        return ""
+    visible_compact = compact_release_text(" ".join(
+        clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"
+    ))
+    for rule in rules:
+        if not employee_triggers_information_release_rule(employee_message, rule):
+            continue
+        reply = information_release_reply(rule)
+        if reply and compact_release_text(reply) not in visible_compact:
+            return reply
+    # A model-authored customer turn can paraphrase hidden facts too freely for
+    # fragment matching to be a reliable boundary.  Rule-bearing scenarios
+    # therefore never pass the candidate through: an unmatched/repeated rule
+    # gets a deterministic, scenario-safe continuation instead.
+    safety_fallback = training_customer_safety_followup(employee_message, history, scenario)
+    if safety_fallback:
+        return safety_fallback
+    fallback_employee = "" if GENERIC_RELEASE_DENIED_QUESTION.search(clean_text(employee_message)) else employee_message
+    return test_fallback_reply(scenario, history, fallback_employee)
+
+
+def point_wave_release_reply(
+    scenario: dict[str, Any] | None,
+    history: list[dict[str, Any]],
+    employee_message: str,
+    candidate_reply: str,
+) -> str:
+    """Compatibility wrapper; M03 now uses the same structural gate as every scenario."""
+    if (scenario or {}).get("id") != "SCN-CEX-M03-S01":
+        return ""
+    return generic_information_release_reply(candidate_reply, scenario, history, employee_message)
+
+
 def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
     reply = clean_text(reply)
+    if list((scenario or {}).get("information_release_rules") or []):
+        # The structural release gate owns the complete reply for rule-bearing
+        # scenarios.  This ordering also guarantees that an affirmed trigger
+        # wins over every other deterministic fallback.
+        if (scenario or {}).get("id") == "SCN-CEX-M03-S01":
+            return point_wave_release_reply(scenario, history, employee_message, reply)
+        return generic_information_release_reply(reply, scenario, history, employee_message)
+    safety_followup = training_customer_safety_followup(employee_message, history, scenario)
+    if safety_followup:
+        return safety_followup
+    if training_safe_response_state(employee_message, history, scenario) == "critical" and re.search(
+        r"(?:好的|好|明白|可以).{0,16}(?:去检查|就医|先不做|暂停|帮我记录|联系负责人)",
+        reply,
+        re.I,
+    ):
+        return "我还是不放心，你刚才这样说到底是什么意思？"
     if employee_message_needs_customer_clarification(history, employee_message):
         return customer_clarification_reply(scenario, history)
     previous_customer_replies = [clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"]
@@ -1052,31 +1523,344 @@ def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, histo
 
 
 TRAINING_NEW_FACT_MARKERS = ["手麻", "腿麻", "发麻", "麻木", "无力", "胸痛", "呼吸困难", "晕厥", "头晕", "发热", "红肿", "灼热", "设备异常"]
+TRAINING_RED_FLAG_PATTERN = re.compile(
+    r"手(?:臂)?(?:新发|新|发)?麻|胳膊(?:新发|新|发)?麻|腿(?:部)?(?:新发|新|发)?麻|发麻|麻木|无力|胸痛|胸闷|呼吸困难|气短|"
+    r"晕厥|昏厥|突发剧痛|发热|红肿|大小便异常|会阴麻木",
+    re.I,
+)
+TRAINING_DISCOMFORT_PATTERN = re.compile(r"疼|痛|灼热|烫|头晕|不舒服|设备异常|麻|无力", re.I)
+TRAINING_WORSENING_PATTERN = re.compile(r"加重|变重|更痛|更疼|比.{0,8}(?:重|痛|疼)|越来越(?:痛|疼|重)", re.I)
+TRAINING_UNSAFE_NORMALIZATION_PATTERN = re.compile(
+    r"(?:这是|属于|就是|都是)?(?:很)?正常(?:的|现象|反应)?|"
+    r"没(?:啥|什么)?问题|没事|没关系|不要紧|不碍事|"
+    r"微损伤|自我修复|排寒(?:反应)?|排毒(?:反应)?|"
+    r"(?:一定|肯定|会).{0,10}(?:更轻松|好转|缓解|不痛|舒服)",
+    re.I,
+)
+TRAINING_CONTINUE_PATTERN = re.compile(
+    r"越痛越有效|忍一忍|坚持一下|"
+    r"(?:不用|不必|无需|无须)停|没必要暂停|"
+    r"(?:继续|接着|照常|再|马上).{0,8}(?:做|做完|操作|体验|项目|加量|打透)|"
+    r"(?:今天|明天).{0,10}(?:继续(?:做|操作|体验|项目)?|还?可以做|再做|把.{0,4}(?:项目|体验|操作)?做完|加量|打透|安排(?:项目|体验|操作))|"
+    r"做完再说|"
+    r"加量|打透|加大能量",
+    re.I,
+)
 TRAINING_UNVERIFIED_ADVICE_PATTERN = re.compile(
     r"(?:可能是|可能涉及|说明|属于).{0,14}(?:神经|损伤|炎症|病变)|"
     r"(?:不要|立即|马上|建议).{0,10}(?:热敷|冷敷|按摩|服药|停药|换药)|"
     r"(?:热敷|冷敷|按摩).{0,8}(?:手臂|腿|疼痛|发麻)|(?:治疗|治好|治愈|根治)",
     re.I,
 )
+TRAINING_DENIES_SAFETY_PATTERN = re.compile(
+    r"(?:不用|不必|无需|无须|不要|不会|拒绝|别|不需要|没必要).{0,8}"
+    r"(?:暂停|停止|记录|登记|留档|上报|联系负责人|联系店长|就医|去医院|医疗评估|检查)|"
+    r"(?:不|别)(?:建议|需要).{0,8}(?:就医|去医院|医疗评估|检查)",
+    re.I,
+)
+TRAINING_STOP_ACTION_PATTERN = re.compile(
+    r"暂停|停止|先不(?:做|继续|安排)|不继续|不会继续(?:做|操作|安排)?|绝不继续|不要继续|今天不(?:做|安排)|不做",
+    re.I,
+)
+TRAINING_BOUNDARY_ACTION_PATTERN = re.compile(
+    r"不(?:要)?自行判断|无法判断|不能判断|不(?:在店内)?判断原因|"
+    r"不在店内(?:判断|诊断)|不做诊断|不能诊断",
+    re.I,
+)
+TRAINING_RECORD_ACTION_PATTERN = re.compile(r"记录|登记|留档|核对上次", re.I)
+TRAINING_ESCALATE_ACTION_PATTERN = re.compile(r"上报|升级处理|联系.{0,6}(?:负责人|店长)|负责人|店长", re.I)
+TRAINING_REFER_ACTION_PATTERN = re.compile(r"就医|医疗|急救|医院|医生|专业评估|去检查|尽快检查", re.I)
+TRAINING_SERIOUS_ACTION_PATTERN = re.compile(r"重视|关注|需要注意|不能忽视|需要特别关注", re.I)
 
 
-def training_feedback_uses_new_customer_fact(feedback: dict[str, Any], customer_reply: str, history: list[dict[str, Any]], employee_message: str) -> bool:
-    known_before_reply = " ".join([*(clean_text(item.get("content", "")) for item in history), clean_text(employee_message)])
-    critique = f"{clean_text(feedback.get('issue', ''))} {clean_text(feedback.get('why', ''))}"
-    return any(marker in customer_reply and marker not in known_before_reply and marker in critique for marker in TRAINING_NEW_FACT_MARKERS)
+def visible_customer_text(history: list[dict[str, Any]], scenario: dict[str, Any] | None = None) -> str:
+    messages = [clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant"]
+    opening = clean_text((scenario or {}).get("opening"))
+    if opening and not any(opening == message for message in messages):
+        messages.insert(0, opening)
+    return " ".join(message for message in messages if message)
+
+
+def positive_customer_risk_text(history: list[dict[str, Any]], scenario: dict[str, Any] | None = None) -> str:
+    text = NEGATED_RED_FLAG_PATTERN.sub(" ", visible_customer_text(history, scenario))
+    text = re.sub(
+        r"(?:没有|没|并没有|并未|未出现|没出现|不再|不是|否认).{0,8}(?:加重|变重|更痛|更疼)",
+        " ",
+        text,
+        flags=re.I,
+    )
+    return text
+
+
+def has_non_negated_match(text: str, pattern: re.Pattern[str]) -> bool:
+    normalized = clean_text(text)
+    for match in pattern.finditer(normalized):
+        clause_start = max(
+            [normalized.rfind(mark, 0, match.start()) for mark in "，。；！？,.;!?"] + [-1]
+        ) + 1
+        following_boundaries = []
+        for mark in "，。；！？,.;!?":
+            position = normalized.find(mark, match.end())
+            if position >= 0:
+                following_boundaries.append(position + 1 if mark in "！？!?" else position)
+        clause_end = min(following_boundaries) if following_boundaries else len(normalized)
+        clause = normalized[clause_start:clause_end]
+        clause_prefix = normalized[clause_start:match.start()]
+        # A negator in an earlier proposition must not hide a later dangerous
+        # proposition: "不能判断原因但可以继续做" still affirms continuation.
+        semantic_prefix = re.split(
+            r"(?:但是|但|而是|可是|然而|不过|却|仍然?|还是|也|所以|因此|然后|同时)",
+            clause_prefix,
+            flags=re.I,
+        )[-1]
+        negated = re.search(
+            r"(?:不能|不可|不要|不应|不建议|不会|不用|不必|无需|无须|未必|不一定|"
+            r"不代表|不认为|不觉得|不承认|并不|绝不|暂不|先不|停止|避免|拒绝|别)"
+            r"[^，。；！？,.;!?]{0,20}$|"
+            r"(?:不是|并非)(?:要|让|叫|建议)?(?:你|您|我们)?$|"
+            r"不把.{0,12}(?:说成|解释成|当成)$|"
+            r"(?:不|不能|不可)算(?:是)?$|不$",
+            semantic_prefix,
+            re.I,
+        )
+        questioned = bool(
+            re.search(r"[？?]", clause)
+            and re.search(
+                r"难道|是否|是不是|会不会|要不要|能不能|可不可以|有没有|怎么(?:能|会|可以)|为什么|为何",
+                clause,
+                re.I,
+            )
+        )
+        questioned = questioned or bool(
+            re.search(r"(?:是否|是不是|算不算|可否)[^，。；！？,.;!?]{0,8}$", semantic_prefix, re.I)
+        )
+        direct_question_suffix = bool(re.search(r"^[^，。；！,.;!]{0,10}(?:吗|么|呢)[？?]", normalized[match.end():], re.I))
+        if negated or questioned or direct_question_suffix:
+            continue
+        return True
+    return False
+
+
+def training_safe_action_flags(employee_message: str) -> dict[str, bool]:
+    """Return only affirmed safety actions; denied or questioned actions never count."""
+    message = clean_text(employee_message)
+    return {
+        "stopped": has_non_negated_match(message, TRAINING_STOP_ACTION_PATTERN),
+        "keeps_boundary": has_non_negated_match(message, TRAINING_BOUNDARY_ACTION_PATTERN),
+        "records": has_non_negated_match(message, TRAINING_RECORD_ACTION_PATTERN),
+        "escalates": has_non_negated_match(message, TRAINING_ESCALATE_ACTION_PATTERN),
+        "refers": has_non_negated_match(message, TRAINING_REFER_ACTION_PATTERN),
+        "takes_seriously": has_non_negated_match(message, TRAINING_SERIOUS_ACTION_PATTERN),
+    }
+
+
+def training_critical_reason(
+    employee_message: str,
+    history: list[dict[str, Any]],
+    scenario: dict[str, Any] | None = None,
+) -> str:
+    message = clean_text(employee_message)
+    customer_context = positive_customer_risk_text(history, scenario)
+    known_worsening = bool(TRAINING_WORSENING_PATTERN.search(customer_context) and TRAINING_DISCOMFORT_PATTERN.search(customer_context))
+    known_red_flag = bool(TRAINING_RED_FLAG_PATTERN.search(customer_context))
+    known_discomfort = bool(TRAINING_DISCOMFORT_PATTERN.search(customer_context))
+    if unsafe_claim_hits(message):
+        return "员工原话包含医疗化判断或结果承诺"
+    if (known_worsening or known_red_flag) and has_non_negated_match(message, TRAINING_DENIES_SAFETY_PATTERN):
+        return "员工在已知异常时明确拒绝暂停、记录、升级或医疗分流"
+    if (known_worsening or known_red_flag) and has_non_negated_match(message, TRAINING_UNSAFE_NORMALIZATION_PATTERN):
+        return "员工把已知的服务后疼痛加重正常化或作了未核实解释"
+    if known_discomfort and has_non_negated_match(message, TRAINING_CONTINUE_PATTERN):
+        return "员工在已知不适时仍建议继续、忍耐或加量"
+    return ""
+
+
+def training_safe_response_state(
+    employee_message: str,
+    history: list[dict[str, Any]],
+    scenario: dict[str, Any] | None = None,
+) -> str:
+    """Return critical/full/partial/none using only facts visible before this turn."""
+    if training_critical_reason(employee_message, history, scenario):
+        return "critical"
+    message = clean_text(employee_message)
+    customer_context = positive_customer_risk_text(history, scenario)
+    if not TRAINING_RED_FLAG_PATTERN.search(customer_context):
+        return "none"
+    actions = training_safe_action_flags(message)
+    if all(actions[key] for key in ("stopped", "keeps_boundary", "records", "escalates", "refers")):
+        return "full"
+    if any(actions.values()):
+        return "partial"
+    return "none"
+
+
+def training_customer_safety_followup(
+    employee_message: str,
+    history: list[dict[str, Any]],
+    scenario: dict[str, Any] | None = None,
+) -> str:
+    state = training_safe_response_state(employee_message, history, scenario)
+    if state == "full":
+        return "好的，那我今天先不做了。麻烦帮我记录一下，也告诉我怎么联系负责人。"
+    if state == "partial":
+        return "好的，我会尽快去检查。那我今天是不是先不做了？"
+    return ""
+
+
+def training_feedback_claims_unknown_customer_fact(
+    feedback: dict[str, Any],
+    history: list[dict[str, Any]],
+    scenario: dict[str, Any] | None = None,
+) -> bool:
+    """Reject feedback that asserts facts absent before the employee spoke.
+
+    The current customer reply is intentionally not an input.  It belongs to the
+    next turn and must never change this turn's score or explanation.
+    """
+    known_before_reply = NEGATED_RED_FLAG_PATTERN.sub(" ", visible_customer_text(history, scenario))
+    feedback_fields = {
+        key: clean_text(feedback.get(key, ""))
+        for key in ("issue", "why", "method_step", "knowledge_focus", "suggested_reply", "next_goal")
+    }
+    critique = " ".join(feedback_fields.values())
+    for marker in TRAINING_NEW_FACT_MARKERS:
+        if marker in known_before_reply or marker not in critique:
+            continue
+        assertion_pattern = re.compile(
+            rf"(?:顾客|客户).{{0,10}}(?:已经|明确|提到|表示|说|出现|有|伴有).{{0,10}}{re.escape(marker)}|"
+            rf"您(?:现在|已经|出现|有|伴有).{{0,10}}{re.escape(marker)}|"
+            rf"(?:已知|新发|刚补充|出现|伴有|存在|未识别|未处理|未重视|忽略).{{0,16}}{re.escape(marker)}|"
+            rf"{re.escape(marker)}.{{0,12}}(?:已出现|新发|需要处理|这一红旗|红旗信号)",
+            re.I,
+        )
+        if assertion_pattern.search(critique):
+            return True
+    return False
 
 
 def training_message_has_complete_safe_closure(employee_message: str) -> bool:
     message = clean_text(employee_message)
-    stopped = bool(re.search(r"暂停|停止|先不要|不继续|不要继续|不要做|不做", message, re.I))
-    keeps_boundary = bool(re.search(r"不(?:要)?自行判断|无法判断|不能判断|不判断原因|不做诊断", message, re.I))
-    escalates = bool(re.search(r"记录|上报|负责人|就医|医疗|急救|医院|医生", message, re.I))
-    return stopped and keeps_boundary and escalates and not unsafe_claim_hits(message)
+    actions = training_safe_action_flags(message)
+    return (
+        all(actions[key] for key in ("stopped", "keeps_boundary", "records", "escalates", "refers"))
+        and not TRAINING_DENIES_SAFETY_PATTERN.search(message)
+        and not unsafe_claim_hits(message)
+        and not has_non_negated_match(message, TRAINING_UNSAFE_NORMALIZATION_PATTERN)
+        and not has_non_negated_match(message, TRAINING_CONTINUE_PATTERN)
+    )
 
 
 def sanitize_training_suggested_reply(feedback: dict[str, Any]) -> None:
     if TRAINING_UNVERIFIED_ADVICE_PATTERN.search(clean_text(feedback.get("suggested_reply", ""))):
-        feedback["suggested_reply"] = "您刚补充的情况需要优先重视。我们先停止所有项目，不在店内判断原因；我会记录并上报负责人，并建议您尽快由医疗机构评估。"
+        feedback["suggested_reply"] = "您目前描述的不适需要优先重视。我们先停止所有项目，不在店内判断原因；我会记录并上报负责人，并建议您尽快由医疗机构评估。"
+
+
+def deterministic_training_feedback(
+    employee_message: str,
+    history: list[dict[str, Any]],
+    scenario: dict[str, Any] | None,
+) -> dict[str, str] | None:
+    message = clean_text(employee_message)
+    critical_reason = training_critical_reason(message, history, scenario)
+    if critical_reason:
+        medical_claim = "医疗化判断" in critical_reason
+        unsafe_continuation = "继续、忍耐或加量" in critical_reason
+        denies_safety = "明确拒绝暂停" in critical_reason
+        return {
+            "level": "critical",
+            "issue": f"你这句“{message[:72]}”{critical_reason.replace('员工', '')}，需要立即纠正。",
+            "why": (
+                "门店员工不能判断病因、把服务说成治疗，或承诺确定结果。本轮应回到顾客已表达的目标和安全信息，再说明非医疗服务边界。"
+                if medical_claim else
+                "顾客在你回答前已出现需要优先处理的异常。明确拒绝暂停、记录、升级或医疗分流，会让顾客误以为可以继续并延误必要处理。"
+                if denies_safety else
+                "顾客在你回答前已明确表达不适。不能继续、让顾客忍耐或加量；当前尚未出现的伴随症状不作为本轮扣分依据。"
+                if unsafe_continuation else
+                "顾客在你回答前已明确表达服务后疼痛加重。不能直接说正常或用未核实原理解释；当前尚未出现的伴随症状不作为本轮扣分依据。"
+            ),
+            "method_step": "说明非医疗边界并回到必要问询" if medical_claim else "停止服务并完成安全升级" if denies_safety else "承接担心并先做服务后安全问询",
+            "knowledge_focus": "非医疗服务边界、不诊断与不承诺" if medical_claim else "暂停、记录、负责人升级与医疗分流" if denies_safety else "服务后变化、异常边界与必要分流",
+            "suggested_reply": (
+                "我理解您想尽快改善，但门店不能判断病因或承诺治好。我先确认您最想改善的问题、持续时间和必要安全信息，再说明门店可以提供的非医疗体验。"
+                if medical_claim else
+                "您描述的异常需要优先处理。今天先停止所有项目，我们不在店内判断原因；我会记录并上报负责人，建议您尽快由医疗机构评估。"
+                if denies_safety else
+                "我理解您会担心，疼痛比原来加重不能先简单说是正常。今天先暂停后续项目，我们不在店内判断原因；我会记录并联系负责人。我还要确认从什么时候开始、是否还在加重；如有新发麻木、无力或其他异常，建议尽快由医疗机构评估。"
+            ),
+            "next_goal": "下一轮只练习把门店体验与医疗诊断、治疗和结果承诺区分开。" if medical_claim else "先纠正拒绝安全处置的表达，并完整执行暂停、记录、升级和分流。" if denies_safety else "只根据顾客下一轮实际回答决定是否暂停、升级和分流。",
+        }
+    safe_state = training_safe_response_state(message, history, scenario)
+    if safe_state == "full":
+        return {
+            "level": "good",
+            "issue": "你已明确暂停项目、不在店内判断原因，并完成记录升级和医疗分流。",
+            "why": "这些表达形成完整安全闭环，且只处理对话中已知的异常。",
+            "method_step": "停止服务并完成安全升级",
+            "knowledge_focus": "异常记录、负责人升级与医疗分流",
+            "suggested_reply": "现在先停止所有项目，我们不在店内判断原因。我会记录并上报负责人，并建议您尽快由医疗机构评估。",
+            "next_goal": "确认顾客理解安全安排，并完成记录、上报与跟进。",
+        }
+    customer_context = positive_customer_risk_text(history, scenario)
+    known_worsening = bool(TRAINING_WORSENING_PATTERN.search(customer_context) and TRAINING_DISCOMFORT_PATTERN.search(customer_context))
+    acknowledges = bool(re.search(r"理解|担心|重视|抱歉|先不判断|不能先说", message, re.I))
+    pauses = has_non_negated_match(message, TRAINING_STOP_ACTION_PATTERN)
+    asks_change = bool(re.search(r"什么时候|何时|多久|是否.{0,6}加重|是否.{0,8}更重|比.{0,8}(?:重|疼|痛)|变化", message, re.I))
+    asks_companion = bool(re.search(
+        r"伴随|还有.{0,10}(?:不适|症状|反应)|(?:有没有|是否)?其他.{0,8}(?:不适|症状|反应)|"
+        r"有没有.{0,12}(?:麻|无力|发热|红肿|胸痛|不舒服)|是否.{0,12}(?:麻|无力|发热|红肿|胸痛|不舒服)",
+        message,
+        re.I,
+    ))
+    prior_safe_pause = any(
+        has_non_negated_match(clean_text(item.get("content", "")), TRAINING_STOP_ACTION_PATTERN)
+        and not has_non_negated_match(clean_text(item.get("content", "")), TRAINING_CONTINUE_PATTERN)
+        and not has_non_negated_match(clean_text(item.get("content", "")), TRAINING_UNSAFE_NORMALIZATION_PATTERN)
+        and not TRAINING_DENIES_SAFETY_PATTERN.search(clean_text(item.get("content", "")))
+        for item in history
+        if item.get("role") == "user"
+    )
+    if known_worsening and asks_companion:
+        if pauses or prior_safe_pause:
+            return {
+                "level": "good",
+                "issue": "你在暂停后继续追问麻木、无力、发热或红肿等伴随情况，问询顺序正确。",
+                "why": "本轮只筛查尚未确认的伴随情况，没有把它们提前当作顾客已经出现的事实。",
+                "method_step": "在暂停后完成伴随情况筛查",
+                "knowledge_focus": "麻木、无力、发热、红肿等异常变化",
+                "suggested_reply": "除了疼痛加重，还有没有麻木、无力、发热、红肿或其他新出现的不适？",
+                "next_goal": "根据顾客下一轮实际补充的信息，决定记录升级和医疗分流。",
+            }
+        return {
+            "level": "needs_work",
+            "issue": "你已追问伴随情况，但还没有先明确暂停今天的后续项目。",
+            "why": "服务后疼痛加重时应先暂停安排，再筛查时间、变化和伴随情况。",
+            "method_step": "先暂停，再完成伴随情况筛查",
+            "knowledge_focus": "服务后变化与安全问询顺序",
+            "suggested_reply": "疼痛比原来加重需要先重视，今天先暂停后续项目；除了疼痛变化，还有没有麻木、无力、发热、红肿或其他新不适？",
+            "next_goal": "确认暂停后，根据顾客实际回答决定是否升级和分流。",
+        }
+    if known_worsening and acknowledges and pauses and asks_change:
+        return {
+            "level": "good",
+            "issue": "你已经承接顾客的担心、先暂停后续安排，并追问疼痛开始时间和变化。",
+            "why": "本轮只使用顾客已经说出的“服务后更痛”来判断；先暂停、再问变化，符合安全优先的接待顺序。",
+            "method_step": "暂停安排并完成服务后变化问询",
+            "knowledge_focus": "出现时间、变化趋势与伴随情况",
+            "suggested_reply": "我理解您会担心。疼痛比原来加重不能先简单说是正常，今天先暂停后续项目；请告诉我从什么时候开始、现在是否还在加重。",
+            "next_goal": "根据顾客下一轮实际补充的信息，再决定是否需要记录升级和医疗分流。",
+        }
+    if safe_state == "partial":
+        return {
+            "level": "needs_work",
+            "issue": f"你这句“{message[:72]}”已给出重视或就医方向，但还没有完成暂停、记录和负责人升级的闭环。",
+            "why": "对话中已知的新症状或异常需要先中止服务并留痕升级；医疗分流方向正确，所以不应评为危险误判。",
+            "method_step": "补齐安全闭环",
+            "knowledge_focus": "暂停服务、异常记录、负责人升级与医疗分流",
+            "suggested_reply": "您刚才说的新症状需要重视。今天先停止所有项目，我会记录并联系负责人，建议您尽快由医疗机构评估。",
+            "next_goal": "明确顾客今天不再继续，并完成记录和升级联络。",
+        }
+    return None
 
 
 def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> dict[str, Any]:
@@ -1098,8 +1882,9 @@ def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str,
         normalized_feedback[key] = value or fallback
     if normalized_feedback["level"] not in {"good", "needs_work", "critical"}:
         normalized_feedback["level"] = "needs_work"
-    if unsafe_claim_hits(employee_message):
-        normalized_feedback["level"] = "critical"
+    deterministic_feedback = deterministic_training_feedback(employee_message, history, scenario)
+    if deterministic_feedback:
+        normalized_feedback.update(deterministic_feedback)
     elif normalized_feedback["level"] == "critical" and training_message_has_complete_safe_closure(employee_message):
         normalized_feedback.update({
             "level": "good",
@@ -1110,15 +1895,16 @@ def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str,
             "suggested_reply": "现在先停止所有项目，我们不在店内判断原因。我会记录并上报，同时根据情况建议您尽快由医疗机构评估。",
             "next_goal": "确认顾客理解安全安排，并完成记录、上报与跟进。",
         })
-    elif training_feedback_uses_new_customer_fact(normalized_feedback, result["customer_reply"], history, employee_message):
+    elif training_feedback_claims_unknown_customer_fact(normalized_feedback, history, scenario):
+        asked_change = bool(re.search(r"什么时候|多久|是否.{0,5}加重|比.{0,6}重|伴随|有没有|是否还有", employee_message, re.I))
         normalized_feedback.update({
             "level": "needs_work",
-            "issue": "你已承接顾客当前担心并追问变化；下一轮需要优先处理顾客刚刚补充的新情况。",
-            "why": "本轮反馈只评价你说话时已经掌握的信息，不能因为顾客在回复中首次透露的情况倒扣本轮表现。",
-            "method_step": "承接新信息并完成安全确认",
-            "knowledge_focus": "服务后变化、红旗症状与必要分流",
-            "suggested_reply": "您刚刚补充的情况需要优先重视，我们先暂停后续安排，再确认出现时间、范围和是否正在加重。",
-            "next_goal": "下一轮只处理顾客新透露的信息，并给出安全、可执行的下一步。",
+            "issue": "你正在承接顾客已表达的担心并追问必要变化；顾客之后补充的新情况应从下一轮起处理。" if asked_change else f"本轮“{clean_text(employee_message)[:60]}”还需要围绕顾客已表达的问题补一个必要追问。",
+            "why": "本轮反馈只评价你说话前已经出现的对话信息；顾客在你说完之后才透露的信息不作为本轮扣分依据。",
+            "method_step": "承接当前问题并补一个必要信息",
+            "knowledge_focus": "顾客已表达的变化、影响和必要安全信息",
+            "suggested_reply": "我理解您会担心。我先确认这种变化从什么时候开始、是否还在加重，以及有没有其他新出现的不适。",
+            "next_goal": "根据顾客下一轮实际回答处理新信息。",
         })
     sanitize_training_suggested_reply(normalized_feedback)
     result["feedback"] = normalized_feedback
@@ -1134,26 +1920,63 @@ def normalize_test_turn_result(result: dict[str, Any] | None, scenario: dict[str
     return {"reply": reply, "emotion": emotion, "should_continue": result.get("should_continue") is not False}
 
 
+ASSESSMENT_RED_FLAG_PATTERN = re.compile(
+    r"胸痛|胸闷|呼吸困难|气短|晕厥|昏厥|突发剧痛|进行性麻木无力|"
+    r"手(?:臂)?(?:新发|新|发)?麻|胳膊(?:新发|新|发)?麻|腿(?:部)?(?:新发|新|发)?麻|发麻|麻木|无力|发热|红肿|头晕|大小便异常|会阴麻木",
+    re.I,
+)
+ASSESSMENT_CONTINUE_SERVICE_PATTERN = re.compile(
+    r"可以(?:继续)?做|还可以做|安排(?:项目|体验)|先体验|继续(?:做|操作|体验)|"
+    r"接着做(?:完)?|照常(?:做|操作)|把.{0,4}(?:项目|体验|操作)?做完|做完再说|"
+    r"(?:不用|不必|无需|无须)停|没必要暂停|"
+    r"再做一次|加量|打透|忍一忍|坚持一下|正常(?:反应|现象|的)?|"
+    r"没(?:啥|什么)?问题|没事|没关系|不要紧|不碍事",
+    re.I,
+)
+ASSESSMENT_DRUG_ADVICE_PATTERN = re.compile(r"(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)", re.I)
+ASSESSMENT_PRESSURE_PATTERN = re.compile(r"必须|今天就|现在就|一定要|不能拒绝|不买|不做.{0,8}(?:后悔|更严重)|别告诉|隐瞒|瞒着", re.I)
+
+
+def detect_assessment_failure_details(history: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
+    """Detect failures turn by turn so future facts and later repairs cannot rewrite the past."""
+    details: dict[str, dict[str, str]] = {}
+    visible_customer_messages: list[str] = []
+    for item in history:
+        if not isinstance(item, dict):
+            continue
+        content = clean_text(item.get("content", ""))
+        if not content:
+            continue
+        if item.get("role") == "assistant":
+            visible_customer_messages.append(content)
+            continue
+        if item.get("role") != "user":
+            continue
+
+        customer_before = NEGATED_RED_FLAG_PATTERN.sub(" ", " ".join(visible_customer_messages))
+        evidence = f"员工原话：“{content[:180]}”"
+        if unsafe_claim_hits(content) or has_non_negated_match(content, ASSESSMENT_DRUG_ADVICE_PATTERN):
+            details.setdefault("CF-02", {"evidence": evidence})
+
+        red_flag_known = bool(ASSESSMENT_RED_FLAG_PATTERN.search(customer_before))
+        continues_service = has_non_negated_match(content, ASSESSMENT_CONTINUE_SERVICE_PATTERN)
+        if red_flag_known and continues_service:
+            details.setdefault("CF-01", {"evidence": evidence})
+
+        refused = bool(re.search(r"不想|拒绝|不要触碰|不拍照|回家考虑|不愿意|不同意", customer_before, re.I))
+        pressure = has_non_negated_match(content, ASSESSMENT_PRESSURE_PATTERN)
+        if refused and pressure:
+            details.setdefault("CF-03", {"evidence": evidence})
+
+        discomfort_known = bool(re.search(r"疼|痛|灼热|烫|头晕|不舒服|设备异常|麻|无力", customer_before, re.I))
+        if discomfort_known and continues_service:
+            details.setdefault("CF-04", {"evidence": evidence})
+    return details
+
+
 def detect_assessment_failures(history: list[dict[str, Any]]) -> list[str]:
-    employee_text = " ".join(clean_text(item.get("content", "")) for item in history if item.get("role") == "user")
-    customer_text = " ".join(clean_text(item.get("content", "")) for item in history if item.get("role") == "assistant")
-    failures = []
-    if unsafe_claim_hits(employee_text) or re.search(r"(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)", employee_text, re.I):
-        failures.append("CF-02")
-    red_flag = re.search(r"胸痛|呼吸困难|晕厥|突发剧痛|进行性麻木无力|发热红肿|腿麻|头晕", customer_text, re.I)
-    keeps_selling = re.search(r"可以做|安排项目|先体验|继续做|正常现象|没事", employee_text, re.I)
-    safety_stop = re.search(r"暂停|停止|先不|医疗|就医|医院|医生|评估|转介", employee_text, re.I)
-    if red_flag and keeps_selling and not safety_stop:
-        failures.append("CF-01")
-    refused = re.search(r"不想|拒绝|不要触碰|不拍照|回家考虑", customer_text, re.I)
-    pressure = re.search(r"必须|今天就|现在就|不买|不做.{0,6}(?:后悔|更严重)", employee_text, re.I)
-    if refused and pressure:
-        failures.append("CF-03")
-    discomfort = re.search(r"疼|灼热|烫|头晕|不舒服|设备异常", customer_text, re.I)
-    continues = re.search(r"忍一忍|继续做|正常的|没关系|坚持一下", employee_text, re.I)
-    if discomfort and continues and not safety_stop:
-        failures.append("CF-04")
-    return failures
+    details = detect_assessment_failure_details(history)
+    return [code for code in ("CF-01", "CF-02", "CF-03", "CF-04") if code in details]
 
 
 def fallback_employee_evidence(dimension_id: str, history: list[dict[str, Any]]) -> str:
@@ -1186,6 +2009,32 @@ def evidence_uses_customer_only_text(evidence: str, history: list[dict[str, Any]
     return False
 
 
+def evidence_is_grounded_in_employee(evidence: str, history: list[dict[str, Any]]) -> bool:
+    """Require assessment evidence to contain words the employee actually said."""
+    if "对话中未体现" in evidence:
+        return True
+    employee_messages = [
+        clean_text(item.get("content", ""))
+        for item in history
+        if item.get("role") == "user" and clean_text(item.get("content", ""))
+    ]
+    if not employee_messages:
+        return False
+    quoted = [clean_text(value) for value in re.findall(r"[“\"]([^”\"]+)[”\"]", evidence)]
+    if quoted:
+        return any(value and any(value in message for message in employee_messages) for value in quoted)
+    evidence_compact = re.sub(r"[\s，,。.；;:：！!？?“”\"'、]", "", evidence)
+    for message in employee_messages:
+        compact = re.sub(r"[\s，,。.；;:：！!？?“”\"'、]", "", message)
+        if len(compact) < 6:
+            if compact and compact in evidence_compact:
+                return True
+            continue
+        if any(compact[index:index + 6] in evidence_compact for index in range(len(compact) - 5)):
+            return True
+    return False
+
+
 def normalize_assessment_result(result: dict[str, Any] | None, history: list[dict[str, Any]]) -> dict[str, Any]:
     result = result if isinstance(result, dict) else {}
     provided_dimensions = {
@@ -1202,7 +2051,11 @@ def normalize_assessment_result(result: dict[str, Any] | None, history: list[dic
             score = 0
         score = max(0, min(spec["weight"], score))
         evidence = clean_text(provided.get("evidence", ""))
-        if not evidence or evidence_uses_customer_only_text(evidence, history):
+        if (
+            not evidence
+            or evidence_uses_customer_only_text(evidence, history)
+            or not evidence_is_grounded_in_employee(evidence, history)
+        ):
             evidence = fallback_employee_evidence(spec["id"], history)
         dimensions.append({
             "id": spec["id"],
@@ -1219,15 +2072,17 @@ def normalize_assessment_result(result: dict[str, Any] | None, history: list[dic
         for item in result.get("critical_failures", [])
         if isinstance(item, dict) and item.get("code") in failure_specs
     }
-    for code in detect_assessment_failures(history):
-        model_failures.setdefault(code, {"code": code, "evidence": "员工原话触发安全与合规规则。"})
+    failure_details = detect_assessment_failure_details(history)
     critical_failures = []
-    for code, item in model_failures.items():
+    for code in ("CF-01", "CF-02", "CF-03", "CF-04"):
+        if code not in failure_details:
+            continue
+        item = model_failures.get(code, {})
         spec = failure_specs[code]
         critical_failures.append({
             "code": code,
             "reason": clean_text(item.get("reason", "")) or spec["rule"],
-            "evidence": clean_text(item.get("evidence", "")) or "员工原话触发关键失败项。",
+            "evidence": failure_details[code]["evidence"],
             "score_cap": spec["score_cap"],
         })
 
@@ -1327,15 +2182,85 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
 
     if mode == "training":
         turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
-        training_system = f"{TRAIN_SYSTEM}\n\n顾客可知场景（只供 customer_reply 保持角色一致）：{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。must_test 及下面的方法、知识只供 feedback 使用，绝不能写进 customer_reply。feedback 只能评价员工说话前已经知道的信息，绝不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs, max_docs=4, max_chars_per_doc=650)}"
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
             result = normalize_training_result(result, scenario, history, message)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(training_system, [*dialogue_history, {"role": "user", "content": message}], model, api_key, temperature=0.35, max_tokens=1200)
-        result = apply_methodology_result(safety_filter(extract_json(raw) or {"customer_reply": raw, "feedback": {"level": "needs_work", "issue": "模型未按结构化格式返回。", "why": "请检查 Prompt 输出约束。", "suggested_reply": "请继续围绕顾客目标进行追问。", "next_goal": "完成需求分析。"}, "citations": citation_refs}, mode, message, route), mode, route)
+        model_messages = [*dialogue_history, {"role": "user", "content": message}]
+        customer_system = training_customer_system(scenario, turn_number)
+        feedback_system = training_feedback_system(scenario, route, docs, turn_number)
+        # Both role calls share one bounded wait budget. This preserves a
+        # healthy peer that finishes after the other role fails, while also
+        # preventing either provider call from holding the request for its
+        # full network timeout. Any role unfinished at the deadline uses its
+        # deterministic local fallback.
+        from concurrent.futures import wait
+
+        executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="training-turn")
+        futures = {
+            "customer": executor.submit(
+                call_model, customer_system, model_messages, model, api_key, 0.55, 500,
+            ),
+            "feedback": executor.submit(
+                call_model, feedback_system, model_messages, model, api_key, 0.2, 1000,
+            ),
+        }
+        wait_budget = max(0.05, TRAINING_DUAL_CALL_WAIT_SECONDS)
+        done, pending = wait(futures.values(), timeout=wait_budget)
+        for future in pending:
+            future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+        model_results: dict[str, tuple[str, dict[str, Any]]] = {}
+        failed_roles: list[str] = []
+        for role, future in futures.items():
+            if future not in done or future.cancelled():
+                failed_roles.append(role)
+                continue
+            try:
+                model_results[role] = future.result()
+            except Exception:
+                failed_roles.append(role)
+
+        if not model_results:
+            raise RuntimeError("模拟顾客与训练教练均未返回可用结果，请稍后重试。")
+
+        local_fallback = mock_response(mode, action, message, scenario, history, docs)
+        customer_raw, customer_meta = model_results.get("customer", ("", {}))
+        feedback_raw, feedback_meta = model_results.get("feedback", ("", {}))
+        customer_payload = (
+            extract_json(customer_raw) or {"customer_reply": customer_raw}
+            if customer_raw
+            else {"customer_reply": local_fallback.get("customer_reply", "")}
+        )
+        feedback_payload = (
+            extract_json(feedback_raw) or {
+                "feedback": {
+                    "level": "needs_work",
+                    "issue": "模型未按结构化格式返回。",
+                    "why": "请重试并继续围绕顾客当前问题训练。",
+                    "method_step": "承接当前问题",
+                    "knowledge_focus": "顾客已表达的需求和必要安全信息",
+                    "suggested_reply": "我先确认一个关键信息：这种情况从什么时候开始？",
+                    "next_goal": "下一轮只补一个必要信息。",
+                }
+            }
+            if feedback_raw
+            else {"feedback": local_fallback.get("feedback", {})}
+        )
+        feedback = feedback_payload.get("feedback") if isinstance(feedback_payload.get("feedback"), dict) else feedback_payload
+        result = {
+            "customer_reply": clean_text(customer_payload.get("customer_reply") or customer_payload.get("reply") or customer_raw),
+            "feedback": feedback,
+        }
+        result = apply_methodology_result(safety_filter(result, mode, message, route), mode, route)
         result = normalize_training_result(result, scenario, history, message)
-        return response_payload(mode, result, docs, {**meta, "mock": False})
+        return response_payload(mode, result, docs, {
+            **merge_model_meta(customer_meta, feedback_meta),
+            "mock": False,
+            "degraded": bool(failed_roles),
+            "fallback_roles": failed_roles,
+        })
 
     if mode == "test" and action == "turn":
         hidden_context = json.dumps(customer_turn_context(scenario), ensure_ascii=False)
@@ -1352,7 +2277,8 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
         full_dialogue = clean_dialogue_history(history, limit=40)
         dialogue = json.dumps(full_dialogue, ensure_ascii=False)
         rubric_context = json.dumps(RUBRIC, ensure_ascii=False)
-        user_message = f"评分表：\n{rubric_context}\n\n场景：\n{json.dumps(scenario, ensure_ascii=False)}\n\n员工完整对话：\n{dialogue}"
+        public_assessment_context = json.dumps(assessment_scenario_context(scenario), ensure_ascii=False)
+        user_message = f"评分表：\n{rubric_context}\n\n公开任务：\n{public_assessment_context}\n\n已发生的完整对话：\n{dialogue}"
         if MOCK_MODE or not api_key:
             result = {
                 "total_score": 72,
