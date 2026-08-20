@@ -95,6 +95,31 @@ checks = {
             'state.realExamBank?.exams',
         ],
     ),
+    "static_ai_requests_have_timeout_and_retry": contains_all(
+        JS,
+        [
+            "new AbortController()",
+            '在线 AI 响应超时，请稍后重试。',
+            'action === "finish" ? 60000 : 45000',
+        ],
+    ),
+    "static_assessment_covers_all_critical_failures": contains_all(
+        JS,
+        [
+            'add("CF-01", message)',
+            'add("CF-02", message)',
+            'add("CF-03", message)',
+            'add("CF-04", message)',
+            "staticAssessmentFailureMatches(history)",
+        ],
+    ),
+    "training_feedback_uses_only_known_facts": contains_all(
+        JS,
+        [
+            "staticFeedbackUsesNewCustomerFact",
+            "不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现",
+        ],
+    ),
     "simulation_has_dedicated_customer_copy": contains_all(
         JS,
         [

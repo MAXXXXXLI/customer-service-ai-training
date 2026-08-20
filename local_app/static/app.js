@@ -205,6 +205,17 @@ function staticMatchesAny(text, patterns = []) {
   });
 }
 
+const STATIC_NEGATED_RED_FLAG_PATTERN = /(?:没有|并没有|并无|未出现|未发生|不伴有?|否认)(?:明显|持续|进行性|新发|突然)?(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿)(?:(?:、|或|和|及|以及)(?:明显|持续|进行性|新发|突然)?(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿))*/gi;
+
+function staticAffirmedSafetyText(text) {
+  return String(text || "").replace(STATIC_NEGATED_RED_FLAG_PATTERN, " ");
+}
+
+function staticIntentMatches(text, intent) {
+  const candidate = intent?.id === "INTENT-RED-FLAG" ? staticAffirmedSafetyText(text) : text;
+  return staticMatchesAny(candidate, intent?.patterns || []);
+}
+
 function uniqueStaticItems(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -212,7 +223,7 @@ function uniqueStaticItems(values = []) {
 function staticRouteCustomerQuestion(query, methodology = {}) {
   const text = String(query || "").replace(/\s+/g, " ").trim();
   const intents = [...(methodology.intent_routes || [])].sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
-  const matchedIntent = intents.find((item) => staticMatchesAny(text, item.patterns)) || null;
+  const matchedIntent = intents.find((item) => staticIntentMatches(text, item)) || null;
   const topics = (methodology.topic_routes || []).filter((item) => staticMatchesAny(text, item.patterns));
   const fallback = methodology.default_route || {};
   const intent = matchedIntent || (topics.length ? {
@@ -362,20 +373,30 @@ function extractStaticJson(content) {
   }
 }
 
-async function callStaticModel(system, messages, model, apiKey, temperature, maxTokens = 1800) {
+async function callStaticModel(system, messages, model, apiKey, temperature, maxTokens = 1800, timeoutMs = 45000) {
   const payload = {
     model, messages: [{ role: "system", content: system }, ...messages],
     temperature, top_p: 0.7, max_tokens: maxTokens, response_format: { type: "json_object" }, stream: false,
   };
   if (model.startsWith("Qwen/Qwen3") || model.includes("DeepSeek-V3.2") || model.startsWith("Pro/zai-org/GLM-5")) payload.enable_thinking = false;
-  const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(`SiliconFlow API ${response.status}: ${data.error?.message || "请求失败"}`);
-  return { content: data.choices?.[0]?.message?.content || "", meta: { model: data.model || model, usage: data.usage || {} } };
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(`SiliconFlow API ${response.status}: ${data.error?.message || "请求失败"}`);
+    return { content: data.choices?.[0]?.message?.content || "", meta: { model: data.model || model, usage: data.usage || {} } };
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("在线 AI 响应超时，请稍后重试。");
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function staticMock(mode, action, scenario) {
@@ -505,7 +526,15 @@ function normalizeStaticQaResult(result, message, query, route, history = []) {
   return normalized;
 }
 
-function normalizeStaticTrainingFeedback(result, scenario, history, rubric, message) {
+const TRAINING_NEW_FACT_MARKERS = ["手麻", "腿麻", "发麻", "麻木", "无力", "胸痛", "呼吸困难", "晕厥", "头晕", "发热", "红肿", "灼热", "设备异常"];
+
+function staticFeedbackUsesNewCustomerFact(feedback, customerReply, history = [], message = "") {
+  const knownBeforeReply = `${history.map((item) => item?.content || "").join(" ")} ${message}`;
+  const critique = `${feedback.issue || ""} ${feedback.why || ""}`;
+  return TRAINING_NEW_FACT_MARKERS.some((marker) => String(customerReply || "").includes(marker) && !knownBeforeReply.includes(marker) && critique.includes(marker));
+}
+
+function normalizeStaticTrainingFeedback(result, scenario, history, rubric, message, customerReply = "") {
   const fallback = staticMockProgressive("training", "turn", scenario, history, rubric, message).feedback;
   const provided = result?.feedback && typeof result.feedback === "object" ? result.feedback : {};
   const feedback = {};
@@ -515,6 +544,15 @@ function normalizeStaticTrainingFeedback(result, scenario, history, rubric, mess
   });
   if (!new Set(["good", "needs_work", "critical"]).has(feedback.level)) feedback.level = "needs_work";
   if (staticCriticalHits(message).length) feedback.level = "critical";
+  if (!staticCriticalHits(message).length && staticFeedbackUsesNewCustomerFact(feedback, customerReply, history, message)) {
+    feedback.level = "needs_work";
+    feedback.issue = "你已承接顾客当前担心并追问变化；下一轮需要优先处理顾客刚刚补充的新情况。";
+    feedback.why = "本轮反馈只评价你说话时已经掌握的信息，不能因为顾客在回复中首次透露的情况倒扣本轮表现。";
+    feedback.method_step = "承接新信息并完成安全确认";
+    feedback.knowledge_focus = "服务后变化、红旗症状与必要分流";
+    feedback.suggested_reply = "您刚刚补充的情况需要优先重视，我们先暂停后续安排，再确认出现时间、范围和是否正在加重。";
+    feedback.next_goal = "下一轮只处理顾客新透露的信息，并给出安全、可执行的下一步。";
+  }
   return feedback;
 }
 
@@ -627,11 +665,37 @@ function normalizeStaticTestTurn(result, scenario, history = [], employeeMessage
   return { reply, emotion: emotions.has(normalized.emotion) ? normalized.emotion : "neutral", should_continue: normalized.should_continue !== false };
 }
 
+function staticAssessmentFailureMatches(history = []) {
+  const matches = new Map();
+  const add = (code, message) => {
+    if (!matches.has(code)) matches.set(code, `员工原话：“${String(message || "").trim().slice(0, 180)}”`);
+  };
+  const redFlagPattern = /胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|突发剧痛|突然剧痛|进行性麻木|腿麻|手麻|麻木|无力|发热红肿|红肿发热/i;
+  const discomfortPattern = /疼|痛|灼热|烫|头晕|不舒服|设备异常|设备报警/i;
+  const continuePattern = /继续做|继续操作|照常做|再做一次|加量|加大|安排项目|先体验|正常反应|正常现象|没事|不用停|不必停|忍一忍|坚持一下/i;
+  const safetyStopPattern = /暂停|停止|先不|不要继续|不再继续|医疗|就医|医院|医生|评估|转介|急救/i;
+  const refusalPattern = /不想|拒绝|不要触碰|不拍照|不愿意|别问了|回家考虑|和家人商量/i;
+  const pressurePattern = /必须|今天就|现在就|一定要|不能拒绝|不买|不做.{0,8}(?:后悔|更严重)|别告诉|隐瞒/i;
+  let priorCustomerText = "";
+  history.forEach((item) => {
+    const message = String(item?.content || "").trim();
+    if (!message) return;
+    if (item?.role === "assistant") {
+      priorCustomerText += ` ${message}`;
+      return;
+    }
+    if (item?.role !== "user") return;
+    if (staticCriticalHits(message).length || /(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)/i.test(message)) add("CF-02", message);
+    const unsafeContinuation = continuePattern.test(message) && !safetyStopPattern.test(message);
+    if (unsafeContinuation && (redFlagPattern.test(message) || redFlagPattern.test(priorCustomerText))) add("CF-01", message);
+    if (pressurePattern.test(message) && refusalPattern.test(priorCustomerText)) add("CF-03", message);
+    if (unsafeContinuation && (discomfortPattern.test(message) || discomfortPattern.test(priorCustomerText))) add("CF-04", message);
+  });
+  return [...matches].map(([code, evidence]) => ({ code, evidence }));
+}
+
 function detectStaticAssessmentFailures(history = []) {
-  const employeeText = history.filter((item) => item?.role === "user").map((item) => item.content || "").join(" ");
-  const failures = [];
-  if (staticCriticalHits(employeeText).length || /(?:建议|应该|可以).{0,10}(?:停药|换药|剂量|口服|注射)/i.test(employeeText)) failures.push("CF-02");
-  return failures;
+  return staticAssessmentFailureMatches(history).map((item) => item.code);
 }
 
 function staticFallbackEmployeeEvidence(dimensionId, history = []) {
@@ -675,14 +739,15 @@ function normalizeStaticAssessment(result, history = [], rubric = {}) {
     return { id: spec.id, name: spec.name, score, max_score: maxScore, evidence, comment: String(item.comment || "需要在下一轮对话中补充可验证表现。") };
   });
   const failureSpecs = new Map((rubric.critical_failures || []).map((item) => [item.code, item]));
-  const detectedFailureCodes = new Set(detectStaticAssessmentFailures(history));
+  const detectedFailures = new Map(staticAssessmentFailureMatches(history).map((item) => [item.code, item.evidence]));
+  const detectedFailureCodes = new Set(detectedFailures.keys());
   // A model may over-interpret a careful safety refusal as a failure.  Critical
   // caps are accepted only when the employee's own wording matches a local rule.
   const modelFailures = new Map((Array.isArray(normalized.critical_failures) ? normalized.critical_failures : []).filter((item) => failureSpecs.has(item?.code) && detectedFailureCodes.has(item.code)).map((item) => [item.code, item]));
-  detectedFailureCodes.forEach((code) => { if (!modelFailures.has(code)) modelFailures.set(code, { code, evidence: "员工原话触发安全与合规规则。" }); });
+  detectedFailureCodes.forEach((code) => { if (!modelFailures.has(code)) modelFailures.set(code, { code, evidence: detectedFailures.get(code) }); });
   const criticalFailures = [...modelFailures].map(([code, item]) => {
     const spec = failureSpecs.get(code);
-    return { code, reason: item.reason || spec.rule, evidence: item.evidence || "员工原话触发了需要重点改进的规则。", score_cap: spec.score_cap };
+    return { code, reason: item.reason || spec.rule, evidence: detectedFailures.get(code) || item.evidence || "员工原话触发了需要重点改进的规则。", score_cap: spec.score_cap };
   });
   let totalScore = dimensionScores.reduce((sum, item) => sum + item.score, 0);
   if (criticalFailures.length) totalScore = Math.min(totalScore, ...criticalFailures.map((item) => Number(item.score_cap)));
@@ -703,7 +768,7 @@ function normalizeStaticResult(result, mode, action, scenario, history, rubric, 
   if (mode === "training") {
     const fallback = staticMockProgressive(mode, action, scenario, history, rubric, message);
     normalized.customer_reply = normalizeStaticCustomerReply(normalized.customer_reply || fallback.customer_reply, scenario, history, message);
-    normalized.feedback = normalizeStaticTrainingFeedback(normalized, scenario, history, rubric, message);
+    normalized.feedback = normalizeStaticTrainingFeedback(normalized, scenario, history, rubric, message, normalized.customer_reply);
   }
   if (mode === "test" && action === "turn") normalized = normalizeStaticTestTurn(normalized, scenario, history, message);
   if (mode === "test" && action === "finish") normalized = normalizeStaticAssessment(normalized, history, rubric);
@@ -750,7 +815,7 @@ async function staticApi(path, body) {
   let temperature = 0.3;
   let maxTokens = 1800;
   if (mode === "training") {
-    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n顾客可知场景：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。customer_reply 只能使用顾客可知信息；下面的方法路由和专业知识只供 feedback 使用，绝不能写进 customer_reply。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`;
+    system = `你是门店员工情景训练教练，同时维持一个自然、连续的顾客角色。${safety}\n顾客可知场景：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n当前是员工第 ${turnNumber} 轮回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。customer_reply 只能使用顾客可知信息；下面的方法路由和专业知识只供 feedback 使用，绝不能写进 customer_reply。每轮只指出一个最重要问题；feedback 必须引用员工本轮原话，并且只能评价员工说话前已经知道的信息，绝不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现。严格输出 JSON：{"customer_reply":"顾客下一句话","feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.35;
     maxTokens = 1200;
@@ -759,15 +824,16 @@ async function staticApi(path, body) {
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.55;
   } else if (mode === "test" && action === "finish") {
-    system = `你是企业培训考核官，只输出考后评分报告，不再扮演顾客。history 中 role=user 才是员工，role=assistant 是顾客，绝不能混淆。严格按评分表输出恰好 7 个维度；id、name、max_score 必须一致；evidence 只能引用员工原话或写“对话中未体现”；total_score 等于各维度 score 之和，再应用关键失败封顶。${safety}\n严格输出 JSON：{"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"...","comment":"..."}],"critical_failures":[],"strengths":[],"improvements":[],"next_training_scene":"...","summary":"..."}。`;
-    messages = [{ role: "user", content: `评分表：${JSON.stringify(data.rubric)}\n场景：${JSON.stringify(scenario)}\n员工完整对话：${JSON.stringify(cleanStaticHistory(body.history || [], 40))}\n相关知识库：\n${context}` }];
+    system = `你是企业培训考核官，只输出考后评分报告，不再扮演顾客。history 中 role=user 才是员工，role=assistant 是顾客，绝不能混淆。严格按评分表输出恰好 7 个维度；id、name、max_score 必须一致；evidence 只能引用员工原话或写“对话中未体现”；total_score 等于各维度 score 之和，再应用关键失败封顶。每个 evidence 和 comment 不超过 35 个汉字；strengths 与 improvements 各最多 3 条，每条不超过 30 个汉字。${safety}\n严格输出 JSON：{"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"...","comment":"..."}],"critical_failures":[],"strengths":[],"improvements":[],"next_training_scene":"...","summary":"..."}。`;
+    messages = [{ role: "user", content: `评分表：${JSON.stringify(data.rubric)}\n场景：${JSON.stringify(scenario)}\n员工完整对话：${JSON.stringify(cleanStaticHistory(body.history || [], 40))}` }];
     temperature = 0.1;
-    maxTokens = 3200;
+    maxTokens = 1800;
   } else {
     system = `你是企业知识库中的顾客接待助手。只基于给定的方法路由和资料直接回答顾客当前问题。${safety}\n这是连续对话，必须结合最近问题和上一轮回答理解“这个、那、它、怎么办”等指代，但只回答当前这一问，不要机械重复上一轮。先承接问题，只补一个必要信息，再给已核验内容、边界和一个可执行下一步。严格输出 JSON：{"answer":"...","uncertainties":[],"recommended_action":"..."}。`;
     messages = [...dialogue, { role: "user", content: `顾客当前问题：${message}\n方法路由：\n${routeContext}\n相关知识库：\n${context}` }];
   }
-  const modelResult = await callStaticModel(system, messages, model, apiKey, temperature, maxTokens);
+  const timeoutMs = mode === "test" && action === "finish" ? 60000 : 45000;
+  const modelResult = await callStaticModel(system, messages, model, apiKey, temperature, maxTokens, timeoutMs);
   let result = extractStaticJson(modelResult.content) || (mode === "test" && action === "turn" ? { reply: modelResult.content, emotion: "neutral", should_continue: true } : { answer: modelResult.content, uncertainties: [], recommended_action: "" });
   result = normalizeStaticResult(result, mode, action, scenario, history, data.rubric, message, query, route);
   return { ok: true, mode, result, citations: mode === "qa" ? docs.slice(0, 3).map(publicStaticDocument) : [], retrieved: mode === "qa" ? docs.map(publicStaticDocument) : [], meta: { ...modelResult.meta, mock: false } };
@@ -1750,6 +1816,8 @@ async function finishSession() {
   updateTrainingEditActions();
   els.finish.disabled = true;
   els.finish.textContent = "正在生成评分结果…";
+  els.input.disabled = true;
+  els.send.disabled = true;
   const typing = addTyping();
   try {
     const data = await api("/api/chat", {
@@ -1773,6 +1841,8 @@ async function finishSession() {
     if (!isCurrentRequest()) return;
     els.finish.disabled = false;
     els.finish.textContent = conversationCopy().finish;
+    els.input.disabled = false;
+    els.send.disabled = false;
     showToast(error.message, true);
   } finally {
     if (!isCurrentRequest()) return;

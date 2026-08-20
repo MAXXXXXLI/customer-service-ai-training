@@ -84,6 +84,27 @@ def test_natural_customer_reply_is_preserved() -> None:
     assert_customer_like(normalized["reply"])
 
 
+def test_training_feedback_does_not_penalize_future_fact() -> None:
+    scenario = exact_scenario("SCN-CEX-M03-S01")
+    history = [{"role": "assistant", "content": scenario["opening"]}]
+    result = server.normalize_training_result(
+        {
+            "customer_reply": "昨晚开始疼，今天手臂突然有点发麻。",
+            "feedback": {
+                "level": "critical",
+                "issue": "员工未识别顾客手臂发麻这一红旗症状。",
+                "why": "顾客已经表达手臂麻木，员工却只询问疼痛时间。",
+            },
+        },
+        scenario,
+        history,
+        "我理解您会担心。疼痛从什么时候开始，今天比昨晚更重吗？",
+    )
+    assert result["feedback"]["level"] == "needs_work", result
+    assert "本轮反馈只评价" in result["feedback"]["why"], result
+    assert "新情况" in result["feedback"]["issue"], result
+
+
 def test_mock_multiturn_stays_in_role() -> None:
     employee_turns = ["我不太清楚，应该都差不多吧。", "我错了。", "好的。", "你还想了解什么？"]
     for scenario in server.SCENARIOS:
@@ -116,6 +137,7 @@ def test_static_site_has_same_guardrails() -> None:
         "CUSTOMER_ROLE_DRIFT_MARKERS",
         "normalizeStaticCustomerReply",
         "staticCustomerFallback",
+        "staticFeedbackUsesNewCustomerFact",
     ]
     assert all(marker in APP_JS for marker in required)
     assert "隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}" in APP_JS
@@ -127,6 +149,7 @@ if __name__ == "__main__":
         test_scenario_knowledge_boundaries,
         test_role_drift_is_repaired,
         test_natural_customer_reply_is_preserved,
+        test_training_feedback_does_not_penalize_future_fact,
         test_mock_multiturn_stays_in_role,
         test_static_site_has_same_guardrails,
     ]

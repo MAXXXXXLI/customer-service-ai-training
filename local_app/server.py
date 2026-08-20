@@ -100,6 +100,21 @@ def matches_any(text: str, patterns: list[str]) -> bool:
     return any(re.search(pattern, text, flags=re.I) for pattern in patterns)
 
 
+NEGATED_RED_FLAG_PATTERN = re.compile(
+    r"(?:没有|并没有|并无|未出现|未发生|不伴有?|否认)"
+    r"(?:明显|持续|进行性|新发|突然)?"
+    r"(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿)"
+    r"(?:(?:、|或|和|及|以及)(?:明显|持续|进行性|新发|突然)?"
+    r"(?:胸痛|胸闷|气短|呼吸困难|晕厥|昏厥|出冷汗|突发剧痛|突然剧痛|腿麻|手麻|麻木|无力|大小便异常|会阴麻木|发热|红肿))*",
+    re.I,
+)
+
+
+def intent_matches(text: str, intent: dict[str, Any]) -> bool:
+    candidate = NEGATED_RED_FLAG_PATTERN.sub(" ", text) if intent.get("id") == "INTENT-RED-FLAG" else text
+    return matches_any(candidate, intent.get("patterns", []))
+
+
 def unique_items(values: list[str]) -> list[str]:
     seen = set()
     result = []
@@ -114,7 +129,7 @@ def route_customer_question(query: str) -> dict[str, Any]:
     """Deterministically map a customer question to the approved knowledge modules."""
     text = clean_text(query)
     intent_routes = sorted(METHODOLOGY.get("intent_routes", []), key=lambda item: -item.get("priority", 0))
-    intent = next((item for item in intent_routes if matches_any(text, item.get("patterns", []))), None)
+    intent = next((item for item in intent_routes if intent_matches(text, item)), None)
     matched_intent = intent is not None
     topics = [item for item in METHODOLOGY.get("topic_routes", []) if matches_any(text, item.get("patterns", []))]
     default = METHODOLOGY.get("default_route", {})
@@ -496,6 +511,7 @@ HIGH_RISK_CLAIM_PATTERNS = [
     r"自动诊疗",
     r"替代手术",
     r"保证(?:效果|结果|瘦|减重)",
+    r"(?:保证|一定|肯定).{0,10}(?:治好|治愈|根治)",
     r"(?:治愈|根治|治疗|治好).{0,8}(?:疾病|颈椎病|糖尿病|三高|脂肪肝|炎症)",
     r"(?:有效|能够|可以|会).{0,10}(?:治疗|治好|根治|改善糖尿病|改善三高|改善脂肪肝|提高免疫力|增强免疫力)",
     r"(?:固定|保证).{0,8}(?:减重|减肥).{0,8}(?:斤|公斤)",
@@ -699,7 +715,7 @@ ASSESS_SYSTEM = """你是企业培训考核官。只在对话结束后评分，�
 5. 只评价本次对话已经发生的内容。建议写成下一轮训练动作，不要虚构员工已经说过的话，不要替员工补充产品、药品、剂量、用法或频次。
 6. 输出内容必须是考核报告，不能输出新的顾客回复或继续向员工提问。
 
-评分时检查员工是否遵守统一方法：先安全后业务、回答当前问题、调用正确知识、只补必要问题、说明边界并给出正确下一步。输出严格 JSON：
+评分时检查员工是否遵守统一方法：先安全后业务、回答当前问题、调用正确知识、只补必要问题、说明边界并给出正确下一步。每个 evidence 和 comment 不超过 35 个汉字；strengths 与 improvements 各最多 3 条，每条不超过 30 个汉字。输出严格 JSON：
 {"total_score":0,"dimension_scores":[{"id":"D1","name":"...","score":0,"max_score":10,"evidence":"对话证据","comment":"评价"}],"critical_failures":[{"code":"CF-xx","reason":"...","evidence":"...","score_cap":59}],"strengths":["..."],"improvements":["..."],"next_training_scene":"SCN-...","summary":"..."}
 先按各维度评分，再应用关键失败封顶规则；没有关键失败时 critical_failures 必须为空。D3评价是否使用正确课程知识，D4评价是否把顾客问题定位到正确模块并形成个性化下一步，D5评价是否按承接—澄清—回应—选择—确认处理异议。不得替员工补充具体产品、口服/注射方案、剂量、用法或频次；员工没有给出具体方案时，只评价该能力缺失，并建议继续澄清需求、核验门店标准。""" + SAFETY_POLICY + METHODOLOGY_POLICY
 
@@ -1030,6 +1046,15 @@ def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, histo
     return reply
 
 
+TRAINING_NEW_FACT_MARKERS = ["手麻", "腿麻", "发麻", "麻木", "无力", "胸痛", "呼吸困难", "晕厥", "头晕", "发热", "红肿", "灼热", "设备异常"]
+
+
+def training_feedback_uses_new_customer_fact(feedback: dict[str, Any], customer_reply: str, history: list[dict[str, Any]], employee_message: str) -> bool:
+    known_before_reply = " ".join([*(clean_text(item.get("content", "")) for item in history), clean_text(employee_message)])
+    critique = f"{clean_text(feedback.get('issue', ''))} {clean_text(feedback.get('why', ''))}"
+    return any(marker in customer_reply and marker not in known_before_reply and marker in critique for marker in TRAINING_NEW_FACT_MARKERS)
+
+
 def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> dict[str, Any]:
     result = result if isinstance(result, dict) else {}
     result["customer_reply"] = normalized_customer_reply(result.get("customer_reply", ""), scenario, history, employee_message)
@@ -1051,6 +1076,16 @@ def normalize_training_result(result: dict[str, Any] | None, scenario: dict[str,
         normalized_feedback["level"] = "needs_work"
     if unsafe_claim_hits(employee_message):
         normalized_feedback["level"] = "critical"
+    elif training_feedback_uses_new_customer_fact(normalized_feedback, result["customer_reply"], history, employee_message):
+        normalized_feedback.update({
+            "level": "needs_work",
+            "issue": "你已承接顾客当前担心并追问变化；下一轮需要优先处理顾客刚刚补充的新情况。",
+            "why": "本轮反馈只评价你说话时已经掌握的信息，不能因为顾客在回复中首次透露的情况倒扣本轮表现。",
+            "method_step": "承接新信息并完成安全确认",
+            "knowledge_focus": "服务后变化、红旗症状与必要分流",
+            "suggested_reply": "您刚刚补充的情况需要优先重视，我们先暂停后续安排，再确认出现时间、范围和是否正在加重。",
+            "next_goal": "下一轮只处理顾客新透露的信息，并给出安全、可执行的下一步。",
+        })
     result["feedback"] = normalized_feedback
     return result
 
@@ -1257,7 +1292,7 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
 
     if mode == "training":
         turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
-        training_system = f"{TRAIN_SYSTEM}\n\n顾客可知场景（只供 customer_reply 保持角色一致）：{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。must_test 及下面的方法、知识只供 feedback 使用，绝不能写进 customer_reply。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs, max_docs=4, max_chars_per_doc=650)}"
+        training_system = f"{TRAIN_SYSTEM}\n\n顾客可知场景（只供 customer_reply 保持角色一致）：{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n当前是第 {turn_number} 轮员工回复。顾客下一句话必须承接员工最新表达，不得重复开场或忽略历史。must_test 及下面的方法、知识只供 feedback 使用，绝不能写进 customer_reply。feedback 只能评价员工说话前已经知道的信息，绝不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现。\n\n方法路由：\n{route_context_block(route)}\n\n相关知识库：\n{context_block(docs, max_docs=4, max_chars_per_doc=650)}"
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_response(mode, action, message, scenario, history, docs), mode, message, route), mode, route)
             result = normalize_training_result(result, scenario, history, message)
@@ -1282,7 +1317,7 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
         full_dialogue = clean_dialogue_history(history, limit=40)
         dialogue = json.dumps(full_dialogue, ensure_ascii=False)
         rubric_context = json.dumps(RUBRIC, ensure_ascii=False)
-        user_message = f"评分表：\n{rubric_context}\n\n本场景方法路由：\n{route_context_block(route)}\n\n场景：\n{json.dumps(scenario, ensure_ascii=False)}\n\n员工完整对话：\n{dialogue}\n\n相关知识库：\n{context_block(docs)}"
+        user_message = f"评分表：\n{rubric_context}\n\n场景：\n{json.dumps(scenario, ensure_ascii=False)}\n\n员工完整对话：\n{dialogue}"
         if MOCK_MODE or not api_key:
             result = {
                 "total_score": 72,
@@ -1295,7 +1330,7 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
             }
             result = normalize_assessment_result(result, full_dialogue)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(ASSESS_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.1, max_tokens=3200)
+        raw, meta = call_model(ASSESS_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.1, max_tokens=1800)
         result = extract_json(raw) or {"total_score": 0, "dimension_scores": [], "critical_failures": [], "strengths": [], "improvements": [raw], "next_training_scene": SCENARIOS[0].get("id"), "summary": "模型未按结构化格式返回，请检查 Prompt。"}
         result = normalize_assessment_result(result, full_dialogue)
         result = sanitize_assessment_advice(result)

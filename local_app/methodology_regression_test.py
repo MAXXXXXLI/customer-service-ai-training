@@ -35,6 +35,22 @@ CASES = [
         "stop_sales": False,
     },
     {
+        "name": "negated_red_flags_do_not_stop_sales",
+        "question": "顾客最近肩颈酸痛，但没有麻木或无力，点阵波是否适合？",
+        "primary": "MOD-03",
+        "supports": ["MOD-01"],
+        "stop_sales": False,
+        "intent": "适用性、安全与体验感受",
+    },
+    {
+        "name": "pain_result_count_is_not_price",
+        "question": "点阵波一般做几次才能好？",
+        "primary": "MOD-03",
+        "supports": ["MOD-01"],
+        "stop_sales": False,
+        "intent": "效果、次数、速度与结果承诺",
+    },
+    {
         "name": "beauty_suitability",
         "question": "敏感肌最近有点泛红，水光能不能做？",
         "primary": "MOD-08",
@@ -80,6 +96,7 @@ for case in CASES:
         route["primary_module_id"] == case["primary"]
         and not missing_supports
         and route["stop_sales"] is case["stop_sales"]
+        and (not case.get("intent") or route["intent_label"] == case["intent"])
         and bool(route["required_course_ids"])
         and bool(route["method_step"])
     )

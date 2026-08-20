@@ -291,6 +291,33 @@ def run() -> None:
             all(0 <= item["score"] <= item["max_score"] for item in assessment["dimension_scores"]),
             assessment["dimension_scores"],
         )
+        critical_cases = {
+            "CF-01": [
+                {"role": "assistant", "content": "我现在胸痛、呼吸困难。"},
+                {"role": "user", "content": "没事，这是正常现象，继续做。"},
+            ],
+            "CF-02": [
+                {"role": "assistant", "content": "能保证结果吗？"},
+                {"role": "user", "content": "我保证一次就能治好。"},
+            ],
+            "CF-03": [
+                {"role": "assistant", "content": "我不想拍照，也想回家考虑。"},
+                {"role": "user", "content": "今天必须拍照并马上决定。"},
+            ],
+            "CF-04": [
+                {"role": "assistant", "content": "太烫了，我还头晕不舒服。"},
+                {"role": "user", "content": "忍一忍，继续做就行。"},
+            ],
+        }
+        detected_critical_cases = {
+            code: server.detect_assessment_failures(case_history)
+            for code, case_history in critical_cases.items()
+        }
+        check(
+            "assessment_detects_all_four_critical_failure_types",
+            all(code in detected_critical_cases[code] for code in critical_cases),
+            detected_critical_cases,
+        )
 
         app_js = (ROOT / "local_app" / "static" / "app.js").read_text(encoding="utf-8")
         workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
