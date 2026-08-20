@@ -38,7 +38,7 @@ vm.runInContext(
     + "staticAffirmedCustomerText, staticCriticalHits, staticTrainingMessageHasUnsafeContradiction, "
     + "staticTrainingMessageHasSafeDirection, staticTrainingMessageHasCompleteSafeClosure, "
     + "staticTrainingSafetyDecision, staticAssessmentFailureMatches, staticAssessmentAdviceNeedsSanitizing, "
-    + "sanitizeStaticAssessmentAdvice, staticEvidenceIsGroundedInEmployee, normalizeStaticAssessment};",
+    + "sanitizeStaticAssessmentAdvice, staticEvidenceIsGroundedInEmployee, normalizeStaticAssessment, normalizeStaticQaResult};",
   context,
   { filename: appPath },
 );
@@ -221,6 +221,17 @@ if (/注射三次|5mg|隔天一次/.test(JSON.stringify(normalizedAssessment))) 
 }
 if (!normalizedAssessment.dimension_scores[0].evidence.includes("我先了解一下您的情况")) {
   throw new Error(`虚构的员工证据未回退到真实原话：${JSON.stringify(normalizedAssessment)}`);
+}
+
+const contextualDiseaseAnswer = helpers.normalizeStaticQaResult(
+  {},
+  "这个项目可以治疗糖尿病吗？",
+  "点阵波能替代手术吗？ 这个项目可以治疗糖尿病吗？",
+  { stop_sales: true },
+  [{ role: "user", content: "点阵波能替代手术吗？" }],
+);
+if (/您还提到明确疾病或麻木症状/.test(contextualDiseaseAnswer.answer || "")) {
+  throw new Error(`跨轮 QA 不应凭空属性症状：${contextualDiseaseAnswer.answer}`);
 }
 
 console.log(JSON.stringify({

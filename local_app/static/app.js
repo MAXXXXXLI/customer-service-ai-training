@@ -486,7 +486,7 @@ function normalizeStaticQaResult(result, message, query, route, history = []) {
     const surgeryQuestion = /替代手术/i.test(context);
     const numbnessBoundary = /腰椎间盘突出|颈椎病|腿麻|手麻|麻木|无力/i.test(context);
     normalized.answer = surgeryQuestion
-      ? "点阵波不能替代手术、医疗诊断或医生制定的治疗方案。您还提到明确疾病或麻木症状，今天应先停止项目与销售推进，并由医疗机构评估；若麻木或无力持续、加重，或伴随大小便异常、会阴麻木等情况，请及时就医或联系急救。"
+      ? `点阵波不能替代手术、医疗诊断或医生制定的治疗方案。${numbnessBoundary ? "你已提到麻木或无力等症状，今天应先停止项目与销售推进，并由医疗机构评估；若症状持续、加重或伴随大小便异常、会阴麻木等情况，请及时就医或联系急救。" : "如果同时已有相关诊断，或出现麻木、无力等异常，应先由医疗机构评估，不要用项目体验替代医疗评估。"}`
       : numbnessBoundary
         ? "您提到持续不适并出现手麻、腿麻、麻木或无力，这需要先由医疗机构评估；今天先不要体验项目，也不要继续销售沟通。门店不能判断病因，也不能用项目体验替代医疗诊断或评估；症状持续或加重时请及时就医。"
       : followUp
