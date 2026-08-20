@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from server import route_customer_question
+from server import qa_context_query, route_customer_question
 
 
 CASES = [
@@ -109,6 +109,28 @@ for case in CASES:
         "intent": route["intent_label"],
         "courses": route["required_courses"],
     })
+
+follow_up_query = qa_context_query(
+    "她追问一般做几次才能好，该怎么回答？",
+    [
+        {"role": "user", "content": "顾客最近肩颈酸痛，但没有麻木或无力，点阵波是否适合？"},
+        {"role": "assistant", "content": "需要先完成安全确认。"},
+    ],
+)
+follow_up_route = route_customer_question(follow_up_query)
+results.append({
+    "name": "natural_follow_up_keeps_previous_topic",
+    "passed": (
+        follow_up_route["intent_label"] == "效果、次数、速度与结果承诺"
+        and follow_up_route["primary_module_id"] == "MOD-03"
+        and not follow_up_route["stop_sales"]
+    ),
+    "actual_primary": follow_up_route["primary_module_id"],
+    "actual_supports": follow_up_route["support_module_ids"],
+    "actual_stop_sales": follow_up_route["stop_sales"],
+    "intent": follow_up_route["intent_label"],
+    "courses": follow_up_route["required_courses"],
+})
 
 report = {"status": "passed" if all(item["passed"] for item in results) else "failed", "cases": results}
 print(json.dumps(report, ensure_ascii=False))

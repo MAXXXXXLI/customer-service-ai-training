@@ -316,7 +316,7 @@ function staticRouteContext(route = {}) {
 
 function staticQaQuery(message, history = []) {
   const current = String(message || "").replace(/\s+/g, " ").trim();
-  const contextual = /^(?:那|这个|这种|它|刚才|如果|那么|可是|但是)/.test(current)
+  const contextual = /^(?:那|这个|这种|它|刚才|如果|那么|可是|但是|她追问|他追问|顾客(?:又)?问|顾客追问|对方(?:又)?问|对方追问)/.test(current)
     || /^(?:那我|我)?(?:现在|接下来)?(?:应该|该)?(?:怎么办|做什么)(?:呢)?[？?]?$/.test(current)
     || /^(?:可以吗|为什么|多少钱|多少|多久|呢)[？?]?$/.test(current);
   if (!contextual) return current;

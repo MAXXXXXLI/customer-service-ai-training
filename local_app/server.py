@@ -895,7 +895,12 @@ def qa_context_query(message: str, history: list[dict[str, str]]) -> str:
     """Use prior customer questions only when the latest QA turn depends on context."""
     message = clean_text(message)
     contextual = bool(
-        re.search(r"^(?:那|这个|这种|它|刚才|如果|那么|可是|但是)", message, re.I)
+        re.search(
+            r"^(?:那|这个|这种|它|刚才|如果|那么|可是|但是|"
+            r"她追问|他追问|顾客(?:又)?问|顾客追问|对方(?:又)?问|对方追问)",
+            message,
+            re.I,
+        )
         or re.fullmatch(r"(?:那我|我)?(?:现在|接下来)?(?:应该|该)?(?:怎么办|做什么)(?:呢)?[？?]?", message, re.I)
         or re.fullmatch(r"(?:可以吗|为什么|多少钱|多少|多久|呢)[？?]?", message, re.I)
     )

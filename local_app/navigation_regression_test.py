@@ -120,6 +120,10 @@ checks = {
             "不能因为 customer_reply 本轮首次透露的新情况倒扣员工本轮表现",
         ],
     ),
+    "qa_natural_follow_up_keeps_context": contains_all(
+        JS,
+        ["她追问", "顾客(?:又)?问", "staticQaQuery(message, history = [])"],
+    ),
     "simulation_has_dedicated_customer_copy": contains_all(
         JS,
         [
