@@ -599,8 +599,11 @@ function normalizeStaticAssessment(result, history = [], rubric = {}) {
     return { id: spec.id, name: spec.name, score, max_score: maxScore, evidence, comment: String(item.comment || "需要在下一轮对话中补充可验证表现。") };
   });
   const failureSpecs = new Map((rubric.critical_failures || []).map((item) => [item.code, item]));
-  const modelFailures = new Map((Array.isArray(normalized.critical_failures) ? normalized.critical_failures : []).filter((item) => failureSpecs.has(item?.code)).map((item) => [item.code, item]));
-  detectStaticAssessmentFailures(history).forEach((code) => { if (!modelFailures.has(code)) modelFailures.set(code, { code, evidence: "员工原话触发安全与合规规则。" }); });
+  const detectedFailureCodes = new Set(detectStaticAssessmentFailures(history));
+  // A model may over-interpret a careful safety refusal as a failure.  Critical
+  // caps are accepted only when the employee's own wording matches a local rule.
+  const modelFailures = new Map((Array.isArray(normalized.critical_failures) ? normalized.critical_failures : []).filter((item) => failureSpecs.has(item?.code) && detectedFailureCodes.has(item.code)).map((item) => [item.code, item]));
+  detectedFailureCodes.forEach((code) => { if (!modelFailures.has(code)) modelFailures.set(code, { code, evidence: "员工原话触发安全与合规规则。" }); });
   const criticalFailures = [...modelFailures].map(([code, item]) => {
     const spec = failureSpecs.get(code);
     return { code, reason: item.reason || spec.rule, evidence: item.evidence || "员工原话触发关键失败项。", score_cap: spec.score_cap };
