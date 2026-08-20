@@ -45,7 +45,7 @@ checks = {
             "function routePath(",
             "function parseRouteHash(",
             "raw.startsWith(`${route}/`)",
-            "exactModuleById(moduleId)",
+            "routeItemById(activity, moduleId)",
             "window.addEventListener(\"hashchange\"",
             "window.addEventListener(\"popstate\"",
         ],
@@ -85,6 +85,15 @@ checks = {
     "conversation_is_hidden_on_objective_exam": (
         'const showConversation = state.route === "qa" || ((state.route === "learning/practice" || state.route === "exam/simulation") && workspace);'
         in JS
+    ),
+    "conversation_is_hidden_before_boot": 'class="conversation-stage hidden" id="conversation-stage"' in HTML,
+    "real_exams_are_grouped_below_modules": contains_all(
+        JS,
+        [
+            'class="module-route-group real-exam-group"',
+            '按原试卷完成正式答题',
+            'state.realExamBank?.exams',
+        ],
     ),
     "simulation_has_dedicated_customer_copy": contains_all(
         JS,

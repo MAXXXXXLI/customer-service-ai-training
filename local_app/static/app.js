@@ -33,6 +33,7 @@ const state = {
   revising: false,
   knowledge: {},
   examBank: null,
+  realExamBank: null,
   objectiveAnswersByModule: {},
   objectiveScoresByModule: {},
   simulationScoresByModule: {},
@@ -806,6 +807,20 @@ function exactModuleById(moduleId) {
   return state.modules.find((module) => module.id === moduleId) || null;
 }
 
+function realExamById(examId) {
+  return state.realExamBank?.exams?.find((exam) => exam.id === examId) || null;
+}
+
+function routeItemById(route, itemId) {
+  if (!itemId) return null;
+  if (route === "exam/objective") return exactModuleById(itemId) || realExamById(itemId);
+  return exactModuleById(itemId);
+}
+
+function isRealExam(exam) {
+  return Boolean(exam && Array.isArray(exam.questions));
+}
+
 function activeModuleId() {
   if (state.route === "learning/course") return state.learningModuleId;
   if (state.route === "learning/practice") return state.practiceModuleId;
@@ -921,7 +936,7 @@ function parseRouteHash(hash = window.location.hash) {
     .find((route) => raw.startsWith(`${route}/`));
   if (!activity) return { route: "learning", moduleId: null, invalid: true };
   const moduleId = raw.slice(activity.length + 1);
-  if (!exactModuleById(moduleId)) return { route: activity, moduleId: null, invalid: true };
+  if (!routeItemById(activity, moduleId)) return { route: activity, moduleId: null, invalid: true };
   return { route: activity, moduleId, invalid: false };
 }
 
@@ -930,8 +945,8 @@ function activityModuleStats(route, module) {
     return `${moduleGroups(module.id).length} 个章节 · ${moduleCourses(module.id).length} 节课程`;
   }
   if (route === "exam/objective") {
-    const exam = state.examBank?.modules?.find((item) => item.id === module.id);
-    return `${(exam?.fill_blanks || []).length + (exam?.choices || []).length} 道题`;
+    const exam = objectiveExamById(module.id);
+    return `${examQuestions(exam).length} 道题${isRealExam(exam) ? ` · 满分 ${examTotalPoints(exam)} 分` : ""}`;
   }
   return `${moduleScenarios(module.id).length} 个顾客场景`;
 }
@@ -942,13 +957,37 @@ function renderModuleGateway() {
   els.gatewayTitle.textContent = config.gatewayTitle || `选择${config.title}模块`;
   els.gatewayDescription.textContent = config.description;
   els.gatewayBack.dataset.route = config.parent;
-  els.moduleRouteGrid.innerHTML = state.modules.map((module) => `
+  const moduleCards = state.modules.map((module) => `
     <button class="module-route-card" data-module-id="${escapeHtml(module.id)}">
       <span>模块 ${String(module.order).padStart(2, "0")}</span>
       <h3>${escapeHtml(module.title)}</h3>
       <p>${escapeHtml(activityModuleStats(state.route, module))}</p>
       <b>${escapeHtml(config.action)} →</b>
     </button>`).join("");
+  const realExams = state.route === "exam/objective" ? state.realExamBank?.exams || [] : [];
+  if (!realExams.length) {
+    els.moduleRouteGrid.classList.remove("grouped");
+    els.moduleRouteGrid.innerHTML = moduleCards;
+    return;
+  }
+  const realExamCards = realExams.map((exam, index) => `
+    <button class="module-route-card real-exam-card" data-module-id="${escapeHtml(exam.id)}">
+      <span>真实考试 ${String(index + 1).padStart(2, "0")}</span>
+      <h3>${escapeHtml(exam.title)}</h3>
+      <p>${examQuestions(exam).length} 道题 · 满分 ${examTotalPoints(exam)} 分</p>
+      <b>进入考试 →</b>
+    </button>`).join("");
+  els.moduleRouteGrid.classList.add("grouped");
+  els.moduleRouteGrid.innerHTML = `
+    <section class="module-route-group">
+      <div class="module-route-group-head"><div><span>知识模块测试</span><h3>按知识模块巩固学习成果</h3></div><b>${state.modules.length} 个模块</b></div>
+      <div class="module-route-list">${moduleCards}</div>
+    </section>
+    <section class="module-route-group real-exam-group">
+      <div class="module-route-group-head"><div><span>真实考试</span><h3>按原试卷完成正式答题</h3></div><b>${realExams.length} 套试卷</b></div>
+      <p class="real-exam-note">填空题由系统判分；问答题提交后显示原卷答案，由监考人按题目分值录入得分。</p>
+      <div class="module-route-list">${realExamCards}</div>
+    </section>`;
 }
 
 function conversationCopy() {
@@ -975,11 +1014,15 @@ function renderRoute() {
   const config = ROUTE_CONFIG[state.route] || ROUTE_CONFIG.learning;
   const workspace = config.screen === "workspace" || (config.screen === "activity" && Boolean(state.routeModuleId));
   const gateway = config.screen === "activity" && !state.routeModuleId;
+  const routeItem = workspace && state.routeModuleId ? routeItemById(state.route, state.routeModuleId) : null;
+  const realObjectiveExam = state.route === "exam/objective" && isRealExam(routeItem);
   state.mode = config.mode;
   els.modeButtons.forEach((button) => button.classList.toggle("active", button.dataset.route === config.area));
   els.modeBreadcrumb.textContent = config.nav;
-  els.pageTitle.textContent = workspace && state.routeModuleId ? exactModuleById(state.routeModuleId)?.title || config.title : config.title;
-  els.pageDescription.textContent = workspace && state.routeModuleId ? config.workspaceDescription || config.description : config.pageDescription || config.description;
+  els.pageTitle.textContent = routeItem?.title || config.title;
+  els.pageDescription.textContent = realObjectiveExam
+    ? `完成 ${examQuestions(routeItem).length} 道正式试题，提交后按原卷答案批阅并查看成绩。`
+    : workspace && state.routeModuleId ? config.workspaceDescription || config.description : config.pageDescription || config.description;
   els.learningHubPage.classList.toggle("hidden", state.route !== "learning");
   els.assessmentHubPage.classList.toggle("hidden", state.route !== "exam");
   els.moduleGatewayPage.classList.toggle("hidden", !gateway);
@@ -1000,10 +1043,14 @@ function renderRoute() {
   if (!state.ended) els.finish.textContent = conversation.finish;
   if (gateway) renderModuleGateway();
   if (state.route === "exam/objective" && workspace) {
+    const exam = activeExamModule();
+    const realExam = isRealExam(exam);
     els.testRouteBack.dataset.route = "exam/objective";
-    els.testRouteTag.textContent = "知识考试";
-    els.testRouteTitle.textContent = "模块知识考试";
-    els.testRouteDescription.textContent = "完成全部 14 题后交卷，即可查看成绩、答案和解析。";
+    els.testRouteTag.textContent = realExam ? "真实考试" : "知识考试";
+    els.testRouteTitle.textContent = realExam ? exam.title : "模块知识考试";
+    els.testRouteDescription.textContent = realExam
+      ? `完成全部 ${examQuestions(exam).length} 题后提交；填空题自动判分，问答题按原卷答案批阅。`
+      : "完成全部 14 题后交卷，即可查看成绩、答案和解析。";
   } else if (state.route === "exam/simulation" && workspace) {
     els.testRouteBack.dataset.route = "exam/simulation";
     els.testRouteTag.textContent = "实战对话";
@@ -1121,11 +1168,108 @@ function selectScenario() {
 }
 
 function activeExamModule() {
-  return state.examBank?.modules?.find((item) => item.id === state.objectiveModuleId) || null;
+  return objectiveExamById(state.objectiveModuleId);
+}
+
+function objectiveExamById(examId) {
+  return state.examBank?.modules?.find((item) => item.id === examId) || realExamById(examId);
 }
 
 function objectiveAnswerKey(question) {
   return question.id;
+}
+
+function examQuestions(exam) {
+  if (!exam) return [];
+  if (isRealExam(exam)) return exam.questions.map((question) => ({
+    ...question,
+    type: question.type === "subjective" ? "short_answer" : question.type,
+    points: Number(question.points || 0),
+  }));
+  return [
+    ...(exam.fill_blanks || []).map((question) => ({
+      ...question,
+      type: "fill_blank",
+      section: "填空题",
+      points: 2,
+      answer_parts: [{ answer: question.answers?.[0] || "", aliases: question.answers?.slice(1) || [] }],
+      reference_answer: (question.answers || []).join(" / "),
+    })),
+    ...(exam.choices || []).map((question) => ({
+      ...question,
+      type: question.kind === "multiple" ? "multiple" : "single",
+      section: "选择题",
+      points: 4,
+      reference_answer: (question.answers || []).join("、"),
+    })),
+  ];
+}
+
+function examTotalPoints(exam) {
+  return examQuestions(exam).reduce((total, question) => total + Number(question.points || 0), 0);
+}
+
+function formatPoints(value) {
+  const number = Math.round(Number(value || 0) * 100) / 100;
+  return Number.isInteger(number) ? String(number) : String(number.toFixed(2)).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function normalizedAnswerParts(question) {
+  return (question.answer_parts || []).map((part, index) => {
+    if (typeof part === "string") return { index: index + 1, answer: part, aliases: [] };
+    if (Array.isArray(part)) return { index: index + 1, answer: part[0] || "", aliases: part.slice(1) };
+    return { index: part.index || index + 1, answer: part.answer || "", aliases: part.aliases || [] };
+  });
+}
+
+function normalizedExamText(value) {
+  const text = String(value || "").normalize("NFKC").trim();
+  const numericLike = /^[\d一二三四五六七八九十百千万半点.\-—–－~～至到\/\s]+$/.test(text);
+  if (numericLike) {
+    return text.replace(/\s/g, "").replace(/[—–－~～至]/g, "-").toLowerCase();
+  }
+  return text.replace(/[，、；。,.!?！？：:\s（）()《》“”"'‘’\-—_\/]/g, "").toLowerCase();
+}
+
+function answerMatches(actual, answer, aliases = []) {
+  const normalized = normalizedExamText(actual);
+  return [answer, ...aliases].some((candidate) => normalized === normalizedExamText(candidate));
+}
+
+function questionReferenceAnswer(question) {
+  if (question.reference_answer) return question.reference_answer;
+  if (question.type === "fill_blank") return normalizedAnswerParts(question).map((part) => part.answer).join("；");
+  return (question.answers || []).join("、");
+}
+
+function questionAnswerText(question, value) {
+  if (question.type === "fill_blank") return (Array.isArray(value) ? value : [value]).map((item) => String(item || "").trim()).filter(Boolean).join("；");
+  if (["single", "multiple"].includes(question.type)) return (Array.isArray(value) ? value : [value]).filter(Boolean).join("、");
+  return String(value || "").trim();
+}
+
+function questionIsAnswered(question, value) {
+  if (question.type === "fill_blank") {
+    const parts = normalizedAnswerParts(question);
+    const values = Array.isArray(value) ? value : [value];
+    return parts.length > 0 && parts.every((part, index) => String(values[index] || "").trim());
+  }
+  if (["single", "multiple"].includes(question.type)) return Array.isArray(value) && value.length > 0;
+  return Boolean(String(value || "").trim());
+}
+
+function examSectionGroups(questions) {
+  const groups = [];
+  questions.forEach((question) => {
+    const title = question.section || (question.type === "short_answer" ? "问答题" : "考试题");
+    let group = groups.find((item) => item.title === title);
+    if (!group) {
+      group = { title, questions: [] };
+      groups.push(group);
+    }
+    group.questions.push(question);
+  });
+  return groups;
 }
 
 function objectiveAnswers(moduleId = state.objectiveModuleId) {
@@ -1144,77 +1288,194 @@ function simulationScores(moduleId = state.simulationModuleId) {
   return state.simulationScoresByModule[moduleId];
 }
 
+function renderObjectiveQuestion(question, index, answers, score) {
+  const key = objectiveAnswerKey(question);
+  const result = score?.results?.[key];
+  const value = answers[key];
+  const reviewedClass = typeof result?.correct === "boolean" ? (result.correct ? "is-correct" : "is-wrong") : "";
+  let control = "";
+  if (question.type === "fill_blank") {
+    const parts = normalizedAnswerParts(question);
+    const values = Array.isArray(value) ? value : [value];
+    control = `<div class="fill-answer-grid">${parts.map((part, partIndex) => `
+      <label class="fill-answer-part"><span>${parts.length > 1 ? `第 ${partIndex + 1} 空` : "你的答案"}</span><input type="text" data-exam-fill="${escapeHtml(key)}" data-part-index="${partIndex}" value="${escapeHtml(values[partIndex] || "")}" placeholder="请输入答案" ${score ? "disabled" : ""}></label>`).join("")}</div>`;
+  } else if (["single", "multiple"].includes(question.type)) {
+    const selected = new Set(Array.isArray(value) ? value : []);
+    control = `<div class="exam-options">${(question.options || []).map((option) => `<label class="exam-option"><input type="${question.type === "multiple" ? "checkbox" : "radio"}" name="${escapeHtml(key)}" value="${escapeHtml(option.key)}" data-exam-choice="${escapeHtml(key)}" ${selected.has(option.key) ? "checked" : ""} ${score ? "disabled" : ""}><b>${escapeHtml(option.key)}</b>${escapeHtml(option.text)}</label>`).join("")}</div>`;
+  } else {
+    control = `<textarea class="exam-short-answer" data-exam-short="${escapeHtml(key)}" rows="5" placeholder="请写下完整回答" ${score ? "disabled" : ""}>${escapeHtml(value || "")}</textarea>`;
+  }
+
+  let review = "";
+  if (score) {
+    const answerLabel = question.type === "short_answer" ? "原卷参考答案" : "正确答案";
+    const explanation = question.explanation ? `<p class="answer-explanation"><b>解析</b>${escapeHtml(question.explanation)}</p>` : "";
+    const manualValue = score.manualScores?.[key];
+    const manualScore = question.type === "short_answer" ? `
+      <label class="manual-score"><span>本题得分</span><span><input type="number" min="0" max="${Number(question.points || 0)}" step="0.5" data-manual-score="${escapeHtml(key)}" value="${manualValue ?? ""}" ${score.stage === "complete" ? "disabled" : ""}> / ${formatPoints(question.points)} 分</span></label>` : `<span class="auto-score">自动得分：${formatPoints(result?.earned || 0)} / ${formatPoints(question.points)} 分</span>`;
+    review = `<div class="answer-review"><span>你的回答：${escapeHtml(result?.actual || "未作答")}</span><em><b>${answerLabel}</b>${escapeHtml(questionReferenceAnswer(question))}</em>${explanation}${manualScore}</div>`;
+  }
+
+  const typeLabel = question.type === "short_answer" ? "问答" : question.type === "multiple" ? "多选" : question.type === "single" ? "单选" : "填空";
+  return `<article class="exam-question ${reviewedClass}" data-question-id="${escapeHtml(key)}"><div class="exam-question-title"><span>${index + 1}. ${escapeHtml(question.prompt)}</span><small>${typeLabel} · ${formatPoints(question.points)} 分</small></div>${control}${review}</article>`;
+}
+
 function renderObjectiveExam() {
   const exam = activeExamModule();
   if (!exam) return "";
   const answers = objectiveAnswers();
   const score = objectiveScore();
-  const blanks = exam.fill_blanks.map((item, index) => {
-    const key = objectiveAnswerKey(item);
-    const result = score?.results?.[item.id];
-    const review = score ? `<div class="answer-review"><span>你的答案：${escapeHtml(result?.actual || "未作答")}</span><em>正确答案：${escapeHtml(item.answers.join(" / "))}${item.explanation ? `。${escapeHtml(item.explanation)}` : ""}</em></div>` : "";
-    return `<label class="exam-question fill-question ${result ? (result.correct ? "is-correct" : "is-wrong") : ""}"><span>${index + 1}. ${escapeHtml(item.prompt)}</span><input data-exam-answer="${key}" value="${escapeHtml(answers[key] || "")}" placeholder="请输入答案" ${score ? "disabled" : ""}>${review}</label>`;
+  const questions = examQuestions(exam);
+  const totalPoints = examTotalPoints(exam);
+  const manualQuestions = questions.filter((question) => question.type === "short_answer");
+  let questionNumber = 0;
+  const sections = examSectionGroups(questions).map((group) => {
+    const sectionPoints = group.questions.reduce((sum, question) => sum + Number(question.points || 0), 0);
+    const content = group.questions.map((question) => renderObjectiveQuestion(question, questionNumber++, answers, score)).join("");
+    return `<details open><summary>${escapeHtml(group.title)}（${group.questions.length} 题，共 ${formatPoints(sectionPoints)} 分）</summary><div class="exam-question-list">${content}</div></details>`;
   }).join("");
-  const choices = exam.choices.map((item, index) => {
-    const key = objectiveAnswerKey(item);
-    const selected = new Set(answers[key] || []);
-    const result = score?.results?.[item.id];
-    const review = score ? `<div class="answer-review"><span>你的答案：${escapeHtml(result?.actual || "未作答")}</span><em>正确答案：${escapeHtml(item.answers.join("、"))}。${escapeHtml(item.explanation || "请复习对应知识点。")}</em></div>` : "";
-    return `<fieldset class="exam-question ${result ? (result.correct ? "is-correct" : "is-wrong") : ""}"><legend>${index + 1}. ${escapeHtml(item.prompt)} <small>${item.kind === "multiple" ? "多选" : "单选"}</small></legend>${item.options.map((option) => `<label class="exam-option"><input type="${item.kind === "multiple" ? "checkbox" : "radio"}" name="${key}" value="${option.key}" data-exam-choice="${key}" ${selected.has(option.key) ? "checked" : ""} ${score ? "disabled" : ""}><b>${option.key}</b>${escapeHtml(option.text)}</label>`).join("")}${review}</fieldset>`;
-  }).join("");
-  const reveal = score ? `<div class="exam-result" tabindex="-1"><strong>本次得分：${score.score}/44（${Math.round((score.score / 44) * 100)}%）</strong><p>答对 ${score.correct}/14 题。下方已标出你的答案、正确答案和解析。</p></div>` : "";
-  const action = score ? `<button class="exam-restart" data-reset-objective>再考一次</button>` : `<button class="exam-submit" data-submit-objective>交卷并查看成绩</button>`;
-  return `<section class="objective-exam"><div class="exam-section-head"><span>共 14 题 · 满分 44 分</span><h3>开始答题</h3><p>完成所有题目后交卷，即可查看成绩和详细解析。</p></div><details open><summary>填空题（6 题，共 12 分）</summary><div class="exam-question-list">${blanks}</div></details><details open><summary>选择题（8 题，共 32 分）</summary><div class="exam-question-list">${choices}</div></details>${action}${reveal}</section>`;
+  const realExam = isRealExam(exam);
+  const sourceNote = realExam ? `<div class="real-exam-source-note"><strong>真实考试说明</strong><p>${escapeHtml(exam.score_note || "题目、答案和分值按原卷录入。")} 问答题提交后显示原卷答案，由监考或培训人员录入本题得分。</p>${state.realExamBank?.notice ? `<p>${escapeHtml(state.realExamBank.notice)}</p>` : ""}</div>` : "";
+  let reveal = "";
+  if (score?.stage === "review") {
+    reveal = `<div class="exam-result exam-review-pending" tabindex="-1"><strong>答题已提交，进入批阅</strong><p>请对照每道问答题的原卷答案，在“本题得分”中录入 0 至该题满分；全部录入后即可查看总成绩。</p></div>`;
+  } else if (score?.stage === "complete") {
+    const percentage = totalPoints ? Math.round((score.score / totalPoints) * 100) : 0;
+    const detail = manualQuestions.length
+      ? `填空或选择题自动得分 ${formatPoints(score.autoScore)} 分，问答题批阅得分 ${formatPoints(score.manualScore)} 分。`
+      : `答对 ${score.correct}/${questions.length} 题。下方已标出你的答案、正确答案和解析。`;
+    reveal = `<div class="exam-result" tabindex="-1"><strong>本次得分：${formatPoints(score.score)}/${formatPoints(totalPoints)}（${percentage}%）</strong><p>${detail}</p></div>`;
+  }
+  const action = !score
+    ? `<button class="exam-submit" data-submit-objective>${manualQuestions.length ? "提交答卷并开始批阅" : "交卷并查看成绩"}</button>`
+    : score.stage === "review"
+      ? `<button class="exam-submit" data-finalize-objective>完成批阅并查看成绩</button>`
+      : `<button class="exam-restart" data-reset-objective>再考一次</button>`;
+  return `<section class="objective-exam ${realExam ? "real-objective-exam" : ""}"><div class="exam-section-head"><span>共 ${questions.length} 题 · 满分 ${formatPoints(totalPoints)} 分</span><h3>${realExam ? escapeHtml(exam.title) : "开始答题"}</h3><p>${manualQuestions.length ? "请独立完成全部题目；提交前不会显示标准答案。" : "完成所有题目后交卷，即可查看成绩和详细解析。"}</p></div>${sourceNote}${sections}${action}${reveal}</section>`;
 }
 
 function scoreObjectiveExam() {
   const exam = activeExamModule();
   if (!exam) return;
   const answers = objectiveAnswers();
-  let score = 0;
+  let autoScore = 0;
   let correct = 0;
-  const all = [...exam.fill_blanks, ...exam.choices];
-  const unanswered = all.filter((question) => {
-    const answer = answers[objectiveAnswerKey(question)];
-    return Array.isArray(answer) ? answer.length === 0 : !String(answer || "").trim();
-  });
+  const all = examQuestions(exam);
+  const unanswered = all.filter((question) => !questionIsAnswered(question, answers[objectiveAnswerKey(question)]));
   if (unanswered.length) {
     showToast(`还有 ${unanswered.length} 题未作答，完成后再交卷。`, true);
     const firstKey = objectiveAnswerKey(unanswered[0]);
-    els.testScenario.querySelector(`[data-exam-answer="${firstKey}"], [data-exam-choice="${firstKey}"]`)?.focus();
+    els.testScenario.querySelector(`[data-exam-fill="${firstKey}"], [data-exam-choice="${firstKey}"], [data-exam-short="${firstKey}"]`)?.focus();
     return;
   }
   const results = {};
   all.forEach((question) => {
     const key = objectiveAnswerKey(question);
-    const expected = question.answers.map((item) => String(item).replace(/[，、；。\s]/g, "").toLowerCase());
     const actualAnswer = answers[key];
-    const actual = Array.isArray(actualAnswer) ? actualAnswer.join("") : String(actualAnswer || "");
-    const normalized = actual.replace(/[，、；。\s]/g, "").toLowerCase();
-    const isCorrect = question.kind === "multiple"
-      ? expected.every((item) => normalized.includes(item)) && expected.length === (actualAnswer || []).length
-      : expected.some((item) => normalized === item);
-    if (isCorrect) { score += question.kind ? 4 : 2; correct += 1; }
-    results[question.id] = { correct: isCorrect, actual: Array.isArray(actualAnswer) ? actualAnswer.join("、") : String(actualAnswer || "") };
+    if (question.type === "short_answer") {
+      results[key] = { correct: null, earned: null, actual: questionAnswerText(question, actualAnswer) };
+      return;
+    }
+    let earned = 0;
+    let isCorrect = false;
+    if (question.type === "fill_blank") {
+      const parts = normalizedAnswerParts(question);
+      const values = Array.isArray(actualAnswer) ? actualAnswer : [actualAnswer];
+      let correctParts = 0;
+      if (question.order_sensitive === false) {
+        const unmatched = [...values];
+        parts.forEach((part) => {
+          const matchedIndex = unmatched.findIndex((value) => answerMatches(value, part.answer, part.aliases));
+          if (matchedIndex >= 0) {
+            correctParts += 1;
+            unmatched.splice(matchedIndex, 1);
+          }
+        });
+      } else {
+        correctParts = parts.filter((part, index) => answerMatches(values[index], part.answer, part.aliases)).length;
+      }
+      earned = parts.length ? Number(question.points || 0) * (correctParts / parts.length) : 0;
+      isCorrect = correctParts === parts.length;
+    } else {
+      const expected = new Set((question.answers || []).map((item) => String(item)));
+      const actual = new Set(Array.isArray(actualAnswer) ? actualAnswer.map((item) => String(item)) : []);
+      isCorrect = expected.size === actual.size && [...expected].every((item) => actual.has(item));
+      earned = isCorrect ? Number(question.points || 0) : 0;
+    }
+    earned = Math.round(earned * 100) / 100;
+    autoScore += earned;
+    if (isCorrect) correct += 1;
+    results[key] = { correct: isCorrect, earned, actual: questionAnswerText(question, actualAnswer) };
   });
-  state.objectiveScoresByModule[state.objectiveModuleId] = { score, correct, results };
+  const hasManual = all.some((question) => question.type === "short_answer");
+  state.objectiveScoresByModule[state.objectiveModuleId] = {
+    stage: hasManual ? "review" : "complete",
+    score: hasManual ? null : autoScore,
+    autoScore,
+    manualScore: 0,
+    correct,
+    results,
+    manualScores: {},
+  };
+  renderScenarioFrame();
+  els.testScenario.querySelector(".exam-result")?.focus();
+}
+
+function finalizeObjectiveReview() {
+  const exam = activeExamModule();
+  const score = objectiveScore();
+  if (!exam || score?.stage !== "review") return;
+  const manualQuestions = examQuestions(exam).filter((question) => question.type === "short_answer");
+  const missing = manualQuestions.filter((question) => !Object.prototype.hasOwnProperty.call(score.manualScores || {}, question.id));
+  if (missing.length) {
+    showToast(`还有 ${missing.length} 道问答题未录入得分。`, true);
+    els.testScenario.querySelector(`[data-manual-score="${missing[0].id}"]`)?.focus();
+    return;
+  }
+  const invalid = manualQuestions.find((question) => {
+    const value = Number(score.manualScores[question.id]);
+    return !Number.isFinite(value) || value < 0 || value > Number(question.points || 0);
+  });
+  if (invalid) {
+    showToast(`“${invalid.prompt}”的得分应在 0 到 ${formatPoints(invalid.points)} 分之间。`, true);
+    els.testScenario.querySelector(`[data-manual-score="${invalid.id}"]`)?.focus();
+    return;
+  }
+  score.manualScore = Math.round(manualQuestions.reduce((sum, question) => sum + Number(score.manualScores[question.id]), 0) * 100) / 100;
+  score.score = Math.round((score.autoScore + score.manualScore) * 100) / 100;
+  score.stage = "complete";
   renderScenarioFrame();
   els.testScenario.querySelector(".exam-result")?.focus();
 }
 
 function bindObjectiveExam(root) {
-  root.querySelectorAll("[data-exam-answer]").forEach((input) => input.addEventListener("input", () => { objectiveAnswers()[input.dataset.examAnswer] = input.value; }));
+  root.querySelectorAll("[data-exam-fill]").forEach((input) => input.addEventListener("input", () => {
+    const key = input.dataset.examFill;
+    const values = Array.isArray(objectiveAnswers()[key]) ? [...objectiveAnswers()[key]] : [];
+    values[Number(input.dataset.partIndex || 0)] = input.value;
+    objectiveAnswers()[key] = values;
+  }));
+  root.querySelectorAll("[data-exam-short]").forEach((input) => input.addEventListener("input", () => { objectiveAnswers()[input.dataset.examShort] = input.value; }));
   root.querySelectorAll("[data-exam-choice]").forEach((input) => input.addEventListener("change", () => {
     const key = input.dataset.examChoice;
     const checked = [...root.querySelectorAll(`[data-exam-choice="${key}"]:checked`)].map((item) => item.value);
     objectiveAnswers()[key] = checked;
   }));
+  root.querySelectorAll("[data-manual-score]").forEach((input) => input.addEventListener("input", () => {
+    const score = objectiveScore();
+    if (!score || input.value === "") {
+      if (score) delete score.manualScores[input.dataset.manualScore];
+      return;
+    }
+    score.manualScores[input.dataset.manualScore] = Number(input.value);
+  }));
   root.querySelector("[data-submit-objective]")?.addEventListener("click", scoreObjectiveExam);
+  root.querySelector("[data-finalize-objective]")?.addEventListener("click", finalizeObjectiveReview);
   root.querySelector("[data-reset-objective]")?.addEventListener("click", () => {
     delete state.objectiveAnswersByModule[state.objectiveModuleId];
     delete state.objectiveScoresByModule[state.objectiveModuleId];
     renderScenarioFrame();
-    els.testScenario.querySelector("input")?.focus();
+    els.testScenario.querySelector("input, textarea")?.focus();
   });
 }
 
@@ -1635,7 +1896,7 @@ function navigateRoute(route, moduleId = null, options = {}) {
   const { updateHistory = true, replace = false, focus = true } = options;
   const config = ROUTE_CONFIG[route];
   if (!config) return navigateRoute("learning", null, { updateHistory, replace, focus });
-  const validModuleId = config.screen === "activity" && moduleId && exactModuleById(moduleId) ? moduleId : null;
+  const validModuleId = config.screen === "activity" && moduleId && routeItemById(route, moduleId) ? moduleId : null;
   const nextPath = routePath(route, validModuleId);
   const previousContext = requestContextKey();
   state.requestSerial += 1;
@@ -1689,12 +1950,13 @@ function syncRouteFromLocation(focus = true) {
 
 async function boot() {
   try {
-    const [bootstrap, moduleData, catalogData, health, examBank] = await Promise.all([
+    const [bootstrap, moduleData, catalogData, health, examBank, realExamBank] = await Promise.all([
       api("/api/bootstrap"),
       fetch(staticAsset("learning_modules.json")).then((response) => response.json()),
       fetch(staticAsset("learning_catalog.json")).then((response) => response.json()),
       api("/api/health"),
       fetch(staticAsset("data/comprehensive_exam_bank.json")).then((response) => response.json()),
+      fetch(staticAsset("data/real_exam_bank.json")).then((response) => response.json()),
     ]);
     state.scenarios = bootstrap.scenarios || [];
     state.modules = moduleData.modules || [];
@@ -1702,6 +1964,7 @@ async function boot() {
     state.catalogIndex = catalogData.module_index || [];
     state.knowledge = bootstrap.knowledge || {};
     state.examBank = examBank;
+    state.realExamBank = realExamBank;
     state.models = bootstrap.models?.length ? bootstrap.models : AVAILABLE_MODELS;
     renderModelOptions();
     els.healthNumber.textContent = state.knowledge.rag_documents || 172;

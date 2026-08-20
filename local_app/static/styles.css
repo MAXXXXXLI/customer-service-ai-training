@@ -390,6 +390,17 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .module-route-card h3 { margin: 6px 0 4px; font-size: 16px; line-height: 1.45; }
 .module-route-card p { font-size: var(--font-small); line-height: 1.5; }
 .module-route-card b { margin-top: 12px; font-size: var(--font-small); }
+.module-route-grid.grouped { grid-template-columns: 1fr; gap: 26px; }
+.module-route-group { display: grid; gap: 13px; }
+.module-route-group-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 0 2px 9px; border-bottom: 1px solid var(--line); }
+.module-route-group-head span { color: var(--blue); font-size: var(--font-caption); font-weight: 850; letter-spacing: 0.08em; }
+.module-route-group-head h3 { margin: 4px 0 0; font-size: 18px; }
+.module-route-group-head > b { color: var(--faint); font-size: var(--font-small); font-weight: 700; }
+.module-route-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 13px; }
+.real-exam-group { padding: 20px; border: 1px solid rgba(140, 99, 21, 0.2); border-radius: 16px; background: linear-gradient(135deg, rgba(251, 212, 148, 0.14), rgba(255, 255, 255, 0.78)); }
+.real-exam-note { margin: -2px 2px 2px; color: var(--muted); font-size: var(--font-small); line-height: 1.65; }
+.real-exam-card { border-color: rgba(140, 99, 21, 0.22); background: rgba(255, 255, 255, 0.97); }
+.real-exam-card:hover { border-color: rgba(140, 99, 21, 0.48); }
 
 .feature-card { padding: 22px; border-radius: 16px; }
 .compact-heading { padding-bottom: 16px; }
@@ -434,10 +445,34 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .exam-section-head p { margin: 5px 0 0; font-size: 14px; }
 .objective-exam summary { font-size: 15px; }
 .exam-question { gap: 9px; padding: 13px; color: var(--text); font-size: 14px; }
+.exam-question-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; font-weight: 750; }
+.exam-question-title > span { min-width: 0; }
+.exam-question-title small { flex: 0 0 auto; color: var(--faint); font-size: var(--font-caption); font-weight: 650; white-space: nowrap; }
+.fill-answer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 9px; }
+.fill-answer-part { display: grid; gap: 5px; }
+.fill-answer-part > span { color: var(--faint); font-size: var(--font-caption); font-weight: 700; }
+.fill-answer-part input, .exam-short-answer { width: 100%; min-height: 44px; padding: 10px 11px; color: var(--text); border: 1px solid var(--line); border-radius: 8px; outline: 0; background: #fff; font: inherit; }
+.fill-answer-part input:focus, .exam-short-answer:focus, .manual-score input:focus { border-color: rgba(37, 90, 223, 0.48); box-shadow: 0 0 0 3px rgba(37, 90, 223, 0.08); }
+.exam-short-answer { min-height: 128px; resize: vertical; line-height: 1.65; }
+.exam-question input:disabled, .exam-question textarea:disabled { color: var(--text); opacity: 1; background: #f7f9fd; }
 .fill-question input { min-height: 44px; padding: 10px 11px; }
 .exam-option { min-height: 44px; align-items: center; padding: 6px 4px; }
 .exam-option input { flex: 0 0 auto; width: 18px; height: 18px; }
 .exam-question em, .answer-review span { font-size: var(--font-small); }
+.answer-review em { display: grid; gap: 5px; color: #176c43; white-space: pre-wrap; }
+.answer-review em b { color: #0f5f3a; font-size: var(--font-caption); }
+.answer-explanation { display: grid; gap: 5px; margin: 2px 0 0; padding: 10px 11px; border-radius: 8px; color: var(--muted); background: rgba(37, 90, 223, 0.045); font-size: var(--font-small); line-height: 1.65; }
+.answer-explanation b { color: var(--blue); font-size: var(--font-caption); }
+.auto-score { color: var(--blue) !important; font-weight: 750; }
+.manual-score { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 4px; padding: 10px 11px; border: 1px solid rgba(37, 90, 223, 0.15); border-radius: 9px; background: rgba(37, 90, 223, 0.045); }
+.manual-score > span:first-child { color: var(--text); font-weight: 750; }
+.manual-score > span:last-child { display: flex; align-items: center; gap: 7px; color: var(--muted); }
+.manual-score input { width: 84px; min-height: 44px; padding: 8px 9px; color: var(--text); border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; text-align: right; }
+.real-exam-source-note { margin-top: 14px; padding: 12px 14px; border: 1px solid rgba(140, 99, 21, 0.2); border-radius: 10px; background: rgba(251, 212, 148, 0.12); }
+.real-exam-source-note strong { color: var(--sand-text); font-size: var(--font-small); }
+.real-exam-source-note p { margin: 4px 0 0; color: var(--muted); font-size: var(--font-small); line-height: 1.65; }
+.real-exam-source-note p + p { padding-top: 7px; border-top: 1px solid rgba(140, 99, 21, 0.14); }
+.exam-review-pending { background: rgba(140, 99, 21, 0.09); }
 .exam-submit, .exam-restart { min-height: 44px; font-size: 14px; }
 .exam-result, .exam-total { color: var(--text); font-size: 14px; }
 
@@ -506,6 +541,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 
 @media (min-width: 1000px) {
   .exam-question-list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .real-objective-exam .exam-question-list { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -544,6 +580,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   .portal-grid { grid-template-columns: 1fr; }
   .portal-card { min-height: 160px; }
   .module-route-grid { grid-template-columns: 1fr; }
+  .module-route-list { grid-template-columns: 1fr; }
   .section-heading { display: grid; }
   .module-picker { width: 100%; }
   .selected-module-summary { align-items: flex-start; }
@@ -556,7 +593,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 }
 
 @media (min-width: 640px) and (max-width: 900px) {
-  .portal-grid, .module-route-grid, .chapter-courses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portal-grid, .module-route-grid, .module-route-list, .chapter-courses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chapter-courses { padding-left: 12px; }
 }
 
