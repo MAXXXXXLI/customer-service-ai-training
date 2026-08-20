@@ -82,13 +82,14 @@ const els = {
   healthNumber: $("health-number"),
   courseModalContent: $("course-modal-content"),
   toast: $("toast"),
+  clearChat: $("clear-chat"),
 };
 
 const modeCopy = {
   learning: {
     nav: "学习与陪练 / 课程学习",
     title: "课程学习",
-    description: "学习标准课程与服务知识。",
+    description: "按章节学习项目知识、服务流程和接待表达。",
     kicker: "",
     conversation: "",
     hint: "",
@@ -96,57 +97,61 @@ const modeCopy = {
   training: {
     nav: "学习与陪练 / 情景陪练",
     title: "情景陪练",
-    description: "模拟顾客对话，即时纠正表达。",
+    description: "接待模拟顾客，及时发现并改进表达。",
     kicker: "情景陪练",
-    conversation: "与 AI 顾客练习",
-    hint: "每轮回答后提供一个关键改进点",
+    conversation: "接待模拟顾客",
+    hint: "发送后即可查看本轮反馈和参考表达",
   },
   test: {
     nav: "实战考核",
     title: "实战考核",
-    description: "完成无提示对话，查看考核评分。",
+    description: "独立完成模拟接待，查看能力评分和改进建议。",
     kicker: "实战考核",
-    conversation: "无提示顾客对话",
-    hint: "考核过程中不会出现任何提示",
+    conversation: "独立接待模拟顾客",
+    hint: "请按真实接待方式独立完成对话",
   },
   qa: {
     nav: "智能接待",
     title: "智能接待",
-    description: "基于企业知识库回答顾客问题。",
-    kicker: "AI 顾客接待",
-    conversation: "请问您想了解什么？",
-    hint: "回答后可打开参考课程继续学习",
+    description: "根据企业知识库，为你提供专业接待建议。",
+    kicker: "接待问答助手",
+    conversation: "输入顾客的问题",
+    hint: "回答会附上相关课程，方便继续学习",
   },
 };
 
 const ROUTE_CONFIG = {
   learning: {
     area: "learning", mode: "learning", screen: "hub",
-    nav: "学习与陪练", title: "学习与陪练", description: "先选择学习或陪练，再选择知识模块。",
+    nav: "学习与陪练", title: "学习与陪练", description: "学知识、练接待，让每一次服务更专业。",
   },
   "learning/course": {
     area: "learning", mode: "learning", screen: "activity", parent: "learning",
-    tag: "COURSE", nav: "学习与陪练 / 课程学习", title: "课程学习", description: "选择一个模块，再进入课程内容。", action: "开始学习",
+    tag: "课程学习", nav: "学习与陪练 / 课程学习", title: "课程学习", gatewayTitle: "选择课程模块",
+    pageDescription: "系统学习项目知识、服务流程和标准表达。", description: "从一个模块开始，按章节学习相关课程。", workspaceDescription: "按章节学习本模块的课程与服务要点。", action: "查看课程",
   },
   "learning/practice": {
     area: "learning", mode: "training", screen: "activity", parent: "learning",
-    tag: "PRACTICE", nav: "学习与陪练 / 情景陪练", title: "情景陪练", description: "选择一个模块，再与模拟顾客练习。", action: "开始陪练",
+    tag: "情景陪练", nav: "学习与陪练 / 情景陪练", title: "情景陪练", gatewayTitle: "选择陪练主题",
+    pageDescription: "在真实顾客情景中练习接待，获得即时反馈。", description: "选择想练习的主题，马上开始接待模拟顾客。", workspaceDescription: "选择顾客场景，练习接待并获得即时反馈。", action: "开始陪练",
   },
   exam: {
     area: "exam", mode: "test", screen: "hub",
-    nav: "实战考核", title: "实战考核", description: "选择一种考核方式，再进入对应模块。",
+    nav: "实战考核", title: "实战考核", description: "通过答题与模拟接待，检验知识掌握和实际应用能力。",
   },
   "exam/objective": {
     area: "exam", mode: "test", screen: "activity", parent: "exam",
-    tag: "OBJECTIVE", nav: "实战考核 / 客观题考试", title: "客观题考试", description: "选择模块后完成填空与选择题，提交即可查看分数和答案。", action: "开始答题",
+    tag: "知识考试", nav: "实战考核 / 客观题考试", title: "客观题考试", gatewayTitle: "选择考试模块",
+    pageDescription: "完成知识测试，巩固关键业务要点。", description: "选择一个知识模块，完成本模块的 14 道题。", workspaceDescription: "完成本模块 14 道题，交卷后查看成绩和解析。", action: "开始答题",
   },
   "exam/simulation": {
     area: "exam", mode: "test", screen: "activity", parent: "exam",
-    tag: "SIMULATION", nav: "实战考核 / 模拟顾客考核", title: "模拟顾客考核", description: "选择模块后与 AI 模拟顾客完成多轮主观题考核。", action: "开始考核",
+    tag: "模拟接待", nav: "实战考核 / 模拟顾客考核", title: "模拟顾客考核", gatewayTitle: "选择考核主题",
+    pageDescription: "独立完成模拟接待，检验沟通与风险意识。", description: "选择一个接待主题，完成模拟顾客对话。", workspaceDescription: "完成至少 4 轮接待对话，结束后查看实战评分。", action: "开始考核",
   },
   qa: {
     area: "qa", mode: "qa", screen: "workspace",
-    nav: "智能接待", title: "智能接待", description: "基于企业知识库回答顾客问题。",
+    nav: "智能接待", title: "智能接待", description: "根据企业知识库，为你提供专业接待建议。",
   },
 };
 
@@ -676,7 +681,7 @@ function normalizeStaticAssessment(result, history = [], rubric = {}) {
   detectedFailureCodes.forEach((code) => { if (!modelFailures.has(code)) modelFailures.set(code, { code, evidence: "员工原话触发安全与合规规则。" }); });
   const criticalFailures = [...modelFailures].map(([code, item]) => {
     const spec = failureSpecs.get(code);
-    return { code, reason: item.reason || spec.rule, evidence: item.evidence || "员工原话触发关键失败项。", score_cap: spec.score_cap };
+    return { code, reason: item.reason || spec.rule, evidence: item.evidence || "员工原话触发了需要重点改进的规则。", score_cap: spec.score_cap };
   });
   let totalScore = dimensionScores.reduce((sum, item) => sum + item.score, 0);
   if (criticalFailures.length) totalScore = Math.min(totalScore, ...criticalFailures.map((item) => Number(item.score_cap)));
@@ -926,15 +931,15 @@ function activityModuleStats(route, module) {
   }
   if (route === "exam/objective") {
     const exam = state.examBank?.modules?.find((item) => item.id === module.id);
-    return `${(exam?.fill_blanks || []).length + (exam?.choices || []).length} 道客观题`;
+    return `${(exam?.fill_blanks || []).length + (exam?.choices || []).length} 道题`;
   }
-  return `${moduleScenarios(module.id).length} 个模拟场景`;
+  return `${moduleScenarios(module.id).length} 个顾客场景`;
 }
 
 function renderModuleGateway() {
   const config = ROUTE_CONFIG[state.route];
   els.gatewayTag.textContent = config.tag;
-  els.gatewayTitle.textContent = `选择${config.title}模块`;
+  els.gatewayTitle.textContent = config.gatewayTitle || `选择${config.title}模块`;
   els.gatewayDescription.textContent = config.description;
   els.gatewayBack.dataset.route = config.parent;
   els.moduleRouteGrid.innerHTML = state.modules.map((module) => `
@@ -950,10 +955,10 @@ function conversationCopy() {
   if (state.route === "exam/simulation") {
     return {
       kicker: "模拟顾客考核",
-      conversation: "与模拟顾客对话",
+      conversation: "独立接待模拟顾客",
       hint: "至少完成 4 轮对话后可结束考核",
-      placeholder: "输入你会对模拟顾客说的话…",
-      finish: "结束考核并查看评分",
+      placeholder: "输入你准备对顾客说的话…",
+      finish: "完成考核并查看结果",
     };
   }
   const copy = modeCopy[state.mode];
@@ -961,8 +966,8 @@ function conversationCopy() {
     kicker: copy.kicker,
     conversation: copy.conversation,
     hint: copy.hint,
-    placeholder: state.mode === "qa" ? "以顾客身份输入你的问题…" : "输入你会对顾客说的话…",
-    finish: "结束并查看报告",
+    placeholder: state.mode === "qa" ? "输入顾客的问题，例如：做一次就一定有效吗？" : "输入你准备对顾客说的话…",
+    finish: "结束陪练并查看报告",
   };
 }
 
@@ -974,7 +979,7 @@ function renderRoute() {
   els.modeButtons.forEach((button) => button.classList.toggle("active", button.dataset.route === config.area));
   els.modeBreadcrumb.textContent = config.nav;
   els.pageTitle.textContent = workspace && state.routeModuleId ? exactModuleById(state.routeModuleId)?.title || config.title : config.title;
-  els.pageDescription.textContent = config.description;
+  els.pageDescription.textContent = workspace && state.routeModuleId ? config.workspaceDescription || config.description : config.pageDescription || config.description;
   els.learningHubPage.classList.toggle("hidden", state.route !== "learning");
   els.assessmentHubPage.classList.toggle("hidden", state.route !== "exam");
   els.moduleGatewayPage.classList.toggle("hidden", !gateway);
@@ -991,18 +996,19 @@ function renderRoute() {
   els.conversationTitle.textContent = conversation.conversation;
   els.composerHint.textContent = conversation.hint;
   els.input.placeholder = conversation.placeholder;
+  if (els.clearChat) els.clearChat.textContent = state.route === "qa" ? "新对话" : state.route === "exam/simulation" ? "重新考核" : "重新练习";
   if (!state.ended) els.finish.textContent = conversation.finish;
   if (gateway) renderModuleGateway();
   if (state.route === "exam/objective" && workspace) {
     els.testRouteBack.dataset.route = "exam/objective";
-    els.testRouteTag.textContent = "客观题考试";
-    els.testRouteTitle.textContent = "核心知识测试";
-    els.testRouteDescription.textContent = "完成全部 14 题后提交，查看分数、本人答案、标准答案与解析。";
+    els.testRouteTag.textContent = "知识考试";
+    els.testRouteTitle.textContent = "模块知识考试";
+    els.testRouteDescription.textContent = "完成全部 14 题后交卷，即可查看成绩、答案和解析。";
   } else if (state.route === "exam/simulation" && workspace) {
     els.testRouteBack.dataset.route = "exam/simulation";
-    els.testRouteTag.textContent = "主观题 · AI 多轮对话";
+    els.testRouteTag.textContent = "实战对话";
     els.testRouteTitle.textContent = "模拟顾客考核";
-    els.testRouteDescription.textContent = "与模拟顾客至少完成 4 轮对话，结束后查看证据评分。";
+    els.testRouteDescription.textContent = "请像真实接待一样完成至少 4 轮对话，结束后查看评分和改进建议。";
   }
 }
 
@@ -1020,7 +1026,7 @@ function renderCourseSummary(summary) {
   const items = String(summary || "").split(/[；;]\s*/).map((item) => item.trim()).filter(Boolean);
   return items.length > 1
     ? `<ul class="course-summary-points">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
-    : `<p>${escapeHtml(items[0] || "按当前课程内容学习并核验生效版本。")}</p>`;
+    : `<p>${escapeHtml(items[0] || "请根据当前课程内容学习，并以最新标准为准。")}</p>`;
 }
 
 function renderLearning() {
@@ -1028,19 +1034,21 @@ function renderLearning() {
   if (!module) return;
   const groups = moduleGroups(module.id);
   const courses = moduleCourses(module.id);
+  const moduleDescription = String(module.description || "").trim();
   els.learningSummary.innerHTML = `
-    <div><span>当前学习模块</span><h3>${escapeHtml(module.title)}</h3><p>${escapeHtml(module.description)}</p></div>
+    <div><span>正在学习</span><h3>${escapeHtml(module.title)}</h3>${moduleDescription && moduleDescription !== module.title ? `<p>${escapeHtml(moduleDescription)}</p>` : ""}</div>
     <div class="summary-count"><strong>${groups.length}</strong><span>个章节</span><strong>${courses.length}</strong><span>节课程</span></div>`;
   els.learningChapters.innerHTML = groups.map((group, index) => {
     // Prefer the stable group id, but fall back to the catalog's explicit course_ids.
     // This keeps the learning page usable when a refreshed catalog changes group labels.
     const groupCourseIds = new Set(Array.isArray(group.course_ids) ? group.course_ids : []);
     const groupCourses = courses.filter((course) => course.group_id === group.group_id || groupCourseIds.has(course.id));
+    const groupDescription = String(group.description || "").trim();
     return `<article class="chapter-card">
-      <div class="chapter-head"><div class="chapter-number">${String(index + 1).padStart(2, "0")}</div><div><h3>${escapeHtml(group.title)}</h3><p>${escapeHtml(group.description)}</p></div><span>${groupCourses.length} 节</span></div>
+      <div class="chapter-head"><div class="chapter-number">${String(index + 1).padStart(2, "0")}</div><div><h3>${escapeHtml(group.title)}</h3>${groupDescription && groupDescription !== group.title ? `<p>${escapeHtml(groupDescription)}</p>` : ""}</div><span>${groupCourses.length} 节</span></div>
       <div class="chapter-courses">${groupCourses.map((course) => `
         <button class="course-preview" data-course-id="${escapeHtml(course.id)}" data-course-title="${escapeHtml(course.title)}">
-          <span class="course-type">${course.kind === "objection" ? "话术案例" : "标准课程"} · ${course.estimated_minutes} 分钟</span>
+          <span class="course-type">${course.kind === "objection" ? "接待案例" : "专业课程"} · ${course.estimated_minutes} 分钟</span>
           <strong>${escapeHtml(course.title)}</strong>${renderCourseSummary(course.summary)}<i>打开课程 →</i>
         </button>`).join("")}</div>
     </article>`;
@@ -1079,14 +1087,14 @@ function resetCourseModalScroll() {
 function openCourse(courseId, title) {
   const course = resolveReferenceCourse({ course_id: courseId, title });
   if (!course) {
-    showToast("这条依据暂时没有对应的独立课程。", true);
+    showToast("暂未找到对应课程，可先参考当前回答。", true);
     return;
   }
   resetCourseModalScroll();
   const module = moduleById(course.module_id);
   els.courseModalContent.innerHTML = `
     <div class="course-modal-breadcrumb">${escapeHtml(module?.title || "学习模块")} <span>›</span> ${escapeHtml(course.group_title || "课程")}</div>
-    <div class="course-modal-header"><span>${course.kind === "objection" ? "话术案例" : "标准课程"} · 约 ${course.estimated_minutes} 分钟</span><h2 id="course-modal-title">${escapeHtml(course.title)}</h2><p>${escapeHtml(course.summary)}</p></div>
+    <div class="course-modal-header"><span>${course.kind === "objection" ? "接待案例" : "专业课程"} · 约 ${course.estimated_minutes} 分钟</span><h2 id="course-modal-title">${escapeHtml(course.title)}</h2><p>${escapeHtml(course.summary)}</p></div>
     <div class="course-sections">${course.sections.map((section) => `<section class="course-section"><h3>${escapeHtml(section.title)}</h3>${renderLearningValue(section.content)}</section>`).join("")}</div>`;
   openModal("course-modal");
   resetCourseModalScroll();
@@ -1144,19 +1152,19 @@ function renderObjectiveExam() {
   const blanks = exam.fill_blanks.map((item, index) => {
     const key = objectiveAnswerKey(item);
     const result = score?.results?.[item.id];
-    const review = score ? `<div class="answer-review"><span>你的答案：${escapeHtml(result?.actual || "未作答")}</span><em>标准答案：${escapeHtml(item.answers.join(" / "))}${item.explanation ? `。${escapeHtml(item.explanation)}` : ""}</em></div>` : "";
-    return `<label class="exam-question fill-question ${result ? (result.correct ? "is-correct" : "is-wrong") : ""}"><span>${index + 1}. ${escapeHtml(item.prompt)}</span><input data-exam-answer="${key}" value="${escapeHtml(answers[key] || "")}" placeholder="填写答案" ${score ? "disabled" : ""}>${review}</label>`;
+    const review = score ? `<div class="answer-review"><span>你的答案：${escapeHtml(result?.actual || "未作答")}</span><em>正确答案：${escapeHtml(item.answers.join(" / "))}${item.explanation ? `。${escapeHtml(item.explanation)}` : ""}</em></div>` : "";
+    return `<label class="exam-question fill-question ${result ? (result.correct ? "is-correct" : "is-wrong") : ""}"><span>${index + 1}. ${escapeHtml(item.prompt)}</span><input data-exam-answer="${key}" value="${escapeHtml(answers[key] || "")}" placeholder="请输入答案" ${score ? "disabled" : ""}>${review}</label>`;
   }).join("");
   const choices = exam.choices.map((item, index) => {
     const key = objectiveAnswerKey(item);
     const selected = new Set(answers[key] || []);
     const result = score?.results?.[item.id];
-    const review = score ? `<div class="answer-review"><span>你的答案：${escapeHtml(result?.actual || "未作答")}</span><em>标准答案：${escapeHtml(item.answers.join("、"))}。${escapeHtml(item.explanation || "请复习对应知识点。")}</em></div>` : "";
+    const review = score ? `<div class="answer-review"><span>你的答案：${escapeHtml(result?.actual || "未作答")}</span><em>正确答案：${escapeHtml(item.answers.join("、"))}。${escapeHtml(item.explanation || "请复习对应知识点。")}</em></div>` : "";
     return `<fieldset class="exam-question ${result ? (result.correct ? "is-correct" : "is-wrong") : ""}"><legend>${index + 1}. ${escapeHtml(item.prompt)} <small>${item.kind === "multiple" ? "多选" : "单选"}</small></legend>${item.options.map((option) => `<label class="exam-option"><input type="${item.kind === "multiple" ? "checkbox" : "radio"}" name="${key}" value="${option.key}" data-exam-choice="${key}" ${selected.has(option.key) ? "checked" : ""} ${score ? "disabled" : ""}><b>${option.key}</b>${escapeHtml(option.text)}</label>`).join("")}${review}</fieldset>`;
   }).join("");
-  const reveal = score ? `<div class="exam-result" tabindex="-1"><strong>客观题得分：${score.score}/44（${Math.round((score.score / 44) * 100)}%）</strong><p>${score.correct}/14 题正确。每题的本人答案、标准答案与解析已显示。</p></div>` : "";
-  const action = score ? `<button class="exam-restart" data-reset-objective>重新考试</button>` : `<button class="exam-submit" data-submit-objective>提交并查看分数与答案</button>`;
-  return `<section class="objective-exam"><div class="exam-section-head"><span>客观题 · 44 分</span><h3>核心知识测试</h3><p>请完成全部 6 道填空和 8 道选择题；提交后即可查看分数、答案与解析。</p></div><details open><summary>填空题 · 12 分</summary><div class="exam-question-list">${blanks}</div></details><details open><summary>选择题 · 32 分</summary><div class="exam-question-list">${choices}</div></details>${action}${reveal}</section>`;
+  const reveal = score ? `<div class="exam-result" tabindex="-1"><strong>本次得分：${score.score}/44（${Math.round((score.score / 44) * 100)}%）</strong><p>答对 ${score.correct}/14 题。下方已标出你的答案、正确答案和解析。</p></div>` : "";
+  const action = score ? `<button class="exam-restart" data-reset-objective>再考一次</button>` : `<button class="exam-submit" data-submit-objective>交卷并查看成绩</button>`;
+  return `<section class="objective-exam"><div class="exam-section-head"><span>共 14 题 · 满分 44 分</span><h3>开始答题</h3><p>完成所有题目后交卷，即可查看成绩和详细解析。</p></div><details open><summary>填空题（6 题，共 12 分）</summary><div class="exam-question-list">${blanks}</div></details><details open><summary>选择题（8 题，共 32 分）</summary><div class="exam-question-list">${choices}</div></details>${action}${reveal}</section>`;
 }
 
 function scoreObjectiveExam() {
@@ -1171,7 +1179,7 @@ function scoreObjectiveExam() {
     return Array.isArray(answer) ? answer.length === 0 : !String(answer || "").trim();
   });
   if (unanswered.length) {
-    showToast(`还有 ${unanswered.length} 题未完成，请全部作答后提交。`, true);
+    showToast(`还有 ${unanswered.length} 题未作答，完成后再交卷。`, true);
     const firstKey = objectiveAnswerKey(unanswered[0]);
     els.testScenario.querySelector(`[data-exam-answer="${firstKey}"], [data-exam-choice="${firstKey}"]`)?.focus();
     return;
@@ -1223,21 +1231,21 @@ function renderScenarioFrame() {
   const target = state.mode === "test" ? els.testScenario : els.trainingScenario;
   target.classList.remove("objective-only");
   if (!module || !scenario) {
-    target.innerHTML = `<div class="scenario-empty">当前模块暂未配置场景。</div>`;
+    target.innerHTML = `<div class="scenario-empty">这个模块暂时没有可用场景，请先选择其他模块。</div>`;
     return;
   }
   const isSimulation = state.route === "exam/simulation";
   const scores = isSimulation ? simulationScores() : {};
   const scenarioChoices = moduleScenarios();
   const scenarioNumber = Math.max(1, scenarioChoices.findIndex((item) => item.id === scenario.id) + 1);
-  const scenarioAction = isSimulation ? `下一道模拟顾客题 · ${scenarioNumber}/${scenarioChoices.length}` : "换一个场景";
-  const focusLabel = isSimulation ? "考核重点" : "本轮练习重点";
-  const scenarioStatus = isSimulation ? `<div class="exam-ai-status">模拟顾客 · 已完成 ${Object.keys(scores).length}/${moduleScenarios().length} 个场景${scores[scenario.id] != null ? ` · 本场 ${scores[scenario.id]}/100` : ""}</div>` : "";
+  const scenarioAction = isSimulation ? `下一个场景 · ${scenarioNumber}/${scenarioChoices.length}` : "换个场景";
+  const focusLabel = isSimulation ? "接待重点" : "练习重点";
+  const scenarioStatus = isSimulation ? `<div class="exam-ai-status">考核进度：已完成 ${Object.keys(scores).length}/${moduleScenarios().length} 个场景${scores[scenario.id] != null ? ` · 本场得分：${scores[scenario.id]}/100` : ""}</div>` : "";
   target.innerHTML = `
     <div class="scenario-main">
-      <div class="scenario-title-row"><div><span>${isSimulation ? "模拟顾客考核场景" : "陪练场景"}</span><h3>${escapeHtml(scenario.title || scenario.goal || module.title)}</h3></div><button class="change-scenario" data-random-scenario>${scenarioAction} ↗</button></div>
+      <div class="scenario-title-row"><div><span>${isSimulation ? "考核场景" : "陪练场景"}</span><h3>${escapeHtml(scenario.title || scenario.goal || module.title)}</h3></div><button class="change-scenario" data-random-scenario>${scenarioAction} ↗</button></div>
       <div class="scenario-opening"><span>顾客开场</span><p>“${escapeHtml(scenario.opening)}”</p></div>
-      ${isSimulation && scenario.task ? `<p class="scenario-task"><b>作答任务：</b>${escapeHtml(scenario.task)}</p>` : ""}${scenarioStatus}
+      ${isSimulation && scenario.task ? `<p class="scenario-task"><b>你的任务：</b>${escapeHtml(scenario.task)}</p>` : ""}${scenarioStatus}
     </div>
     <div class="scenario-focus"><span>${focusLabel}</span><ul>${module.objectives.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`;
   target.querySelector("[data-random-scenario]")?.addEventListener("click", randomScenario);
@@ -1252,7 +1260,7 @@ function randomScenario() {
   const choices = moduleScenarios();
   if (!choices.length) return;
   const hasUnfinishedWork = state.history.some((item) => item.role === "user") && !state.ended;
-  if (hasUnfinishedWork && !window.confirm("切换场景会清空当前对话，确定继续吗？")) return;
+  if (hasUnfinishedWork && !window.confirm("切换后将清空当前对话，是否继续？")) return;
   state.scenarioIndex = (state.scenarioIndex + 1) % choices.length;
   selectScenario();
   renderScenarioFrame();
@@ -1273,7 +1281,7 @@ function resetSession() {
   els.finish.textContent = conversationCopy().finish;
   els.turnCount.textContent = "0 轮对话";
   if (state.mode === "qa") {
-    els.messages.innerHTML = `<div class="empty-state"><div class="empty-symbol">问</div><h3>请像顾客一样开始提问</h3><p>AI 会依据企业知识库进行回答，并在回答后提供可继续学习的参考课程。</p></div>`;
+    els.messages.innerHTML = `<div class="empty-state"><div class="empty-symbol">问</div><h3>输入一个顾客问题</h3><p>接待助手会提供参考回答，并推荐相关课程供你继续学习。</p></div>`;
     return;
   }
   const opening = state.scenario?.opening || "您好，我想先了解一下你们的项目。";
@@ -1295,17 +1303,17 @@ function addMessage(role, text, label, coach = null) {
 
 function renderCoach(coach) {
   const level = coach.level || "needs_work";
-  const label = level === "good" ? "这一轮做得好" : level === "critical" ? "需要立即纠正" : "这一轮可以更好";
-  const methodology = coach.method_step || coach.knowledge_focus ? `<div class="coach-method"><div><span>本轮方法节点</span><strong>${escapeHtml(coach.method_step || "按接待流程继续")}</strong></div><div><span>调用知识重点</span><strong>${escapeHtml(coach.knowledge_focus || "围绕顾客当前问题回答")}</strong></div></div>` : "";
-  return `<div class="coach-card ${level}"><div class="coach-title">${label}</div>${methodology}<p><b>问题：</b>${escapeHtml(coach.issue || "")}</p><p><b>判断：</b>${escapeHtml(coach.why || "")}</p><div class="coach-suggestion"><span>推荐下一句</span>${escapeHtml(coach.suggested_reply || "")}</div><div class="coach-next">下一步：${escapeHtml(coach.next_goal || "继续完成需求分析")}</div><div class="coach-actions"><button type="button" class="revise-turn-button" aria-label="修改本轮员工回复">↺ 修改本轮回复</button></div></div>`;
+  const label = level === "good" ? "本轮表现不错" : level === "critical" ? "需要立即调整" : "再优化一下";
+  const methodology = coach.method_step || coach.knowledge_focus ? `<div class="coach-method"><div><span>接待步骤</span><strong>${escapeHtml(coach.method_step || "按接待流程继续")}</strong></div><div><span>需要用到的知识</span><strong>${escapeHtml(coach.knowledge_focus || "围绕顾客当前问题回答")}</strong></div></div>` : "";
+  return `<div class="coach-card ${level}"><div class="coach-title">${label}</div>${methodology}<p><b>可改进之处：</b>${escapeHtml(coach.issue || "")}</p><p><b>为什么：</b>${escapeHtml(coach.why || "")}</p><div class="coach-suggestion"><span>可以这样说</span>${escapeHtml(coach.suggested_reply || "")}</div><div class="coach-next">下一步：${escapeHtml(coach.next_goal || "继续完成需求分析")}</div><div class="coach-actions"><button type="button" class="revise-turn-button" aria-label="修改这次回答">↺ 修改这次回答</button></div></div>`;
 }
 
 function setRevisionState(active, turnNumber = 0) {
   state.revising = Boolean(active);
   document.querySelector(".composer-wrap")?.classList.toggle("is-revising", state.revising);
   if (state.revising) {
-    els.composerHint.textContent = `正在修改第 ${turnNumber || 1} 轮 · 发送后重新评价`;
-    els.input.placeholder = "修改你的回复，发送后 AI 将重新评价…";
+    els.composerHint.textContent = `正在修改第 ${turnNumber || 1} 轮，重新发送后将更新反馈`;
+    els.input.placeholder = "修改你的回复，发送后将更新本轮反馈…";
   } else if (modeCopy[state.mode]) {
     const copy = conversationCopy();
     els.composerHint.textContent = copy.hint;
@@ -1349,7 +1357,8 @@ function reviseLastTrainingTurn() {
 function addTyping() {
   const row = document.createElement("div");
   row.className = "message-row typing-row";
-  row.innerHTML = `<div class="avatar">${state.mode === "qa" ? "AI" : "客"}</div><div class="bubble-wrap"><div class="speaker">AI 正在思考</div><div class="bubble typing"><i></i><i></i><i></i></div></div>`;
+  const status = state.mode === "qa" ? "接待助手正在查找回答…" : "模拟顾客正在回复…";
+  row.innerHTML = `<div class="avatar">${state.mode === "qa" ? "AI" : "客"}</div><div class="bubble-wrap"><div class="speaker">${status}</div><div class="bubble typing"><i></i><i></i><i></i></div></div>`;
   els.messages.appendChild(row);
   els.messages.scrollTop = els.messages.scrollHeight;
   return row;
@@ -1380,7 +1389,7 @@ async function sendMessage() {
   els.send.disabled = true;
   els.input.value = "";
   const priorHistory = requestHistory(modeSnapshot, moduleSnapshot);
-  const userRow = addMessage("user", message, modeSnapshot === "qa" ? "你（顾客）" : "员工");
+  const userRow = addMessage("user", message, modeSnapshot === "qa" ? "顾客问题" : "我（员工）");
   state.history.push({ role: "user", content: message });
   if (wasRevising) els.composerHint.textContent = `正在重新评价第 ${revisedTurnNumber} 轮…`;
   updateTrainingEditActions();
@@ -1437,10 +1446,10 @@ function renderQAAnswer(result, retrieved, citations) {
   const supportingModules = Array.isArray(route.supporting_modules) ? route.supporting_modules : [];
   const routeModules = [route.primary_module, ...supportingModules].filter(Boolean);
   if (route.intent || routeModules.length) {
-    row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-method"><div class="answer-method-head"><span>本轮问题定位</span><strong>${escapeHtml(route.intent || "一般需求咨询")}</strong></div><div class="answer-method-route"><span>主要调用</span><p>${escapeHtml(routeModules.join(" · ") || "新客接待与需求洞察")}</p></div>${route.method_step ? `<div class="answer-method-step"><span>回答顺序</span><p>${escapeHtml(route.method_step)}</p></div>` : ""}</div>`);
+    row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-method"><div class="answer-method-head"><span>顾客关注</span><strong>${escapeHtml(route.intent || "一般需求咨询")}</strong></div><div class="answer-method-route"><span>参考模块</span><p>${escapeHtml(routeModules.join(" · ") || "新客接待与需求洞察")}</p></div>${route.method_step ? `<div class="answer-method-step"><span>建议回应步骤</span><p>${escapeHtml(route.method_step)}</p></div>` : ""}</div>`);
   }
   if (result.recommended_action) {
-    row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-next-action"><span>建议下一步</span><p>${escapeHtml(result.recommended_action)}</p></div>`);
+    row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-next-action"><span>接待建议</span><p>${escapeHtml(result.recommended_action)}</p></div>`);
   }
   const references = retrieved.length ? retrieved : citations.map((item) => ({ course_id: item.course_id, title: item.label, module: item.module, chapter: item.chapter }));
   const resolvedReferences = references.map((item) => ({ item, course: resolveReferenceCourse(item) }));
@@ -1454,11 +1463,11 @@ function renderQAAnswer(result, retrieved, citations) {
     const moduleLabel = module?.short_name || module?.title || item.module || "知识模块";
     const chapter = course?.group_title || item.chapter || "";
     if (!course) {
-      return `<div class="answer-reference answer-reference-unavailable"><span>${escapeHtml(moduleLabel)}${chapter ? ` · ${escapeHtml(chapter)}` : ""}</span><strong>${escapeHtml(title)}</strong><i>知识依据</i></div>`;
+      return `<div class="answer-reference answer-reference-unavailable"><span>${escapeHtml(moduleLabel)}${chapter ? ` · ${escapeHtml(chapter)}` : ""}</span><strong>${escapeHtml(title)}</strong><i>参考资料</i></div>`;
     }
     return `<button class="answer-reference" data-course-id="${escapeHtml(course.id)}" data-course-title="${escapeHtml(course.title)}"><span>${escapeHtml(moduleLabel)}${chapter ? ` · ${escapeHtml(chapter)}` : ""}</span><strong>${escapeHtml(course.title)}</strong><i>查看课程 →</i></button>`;
-  }).join("") : `<div class="reference-empty">本轮主要依据安全与接待通用规则。</div>`;
-  row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-basis"><div class="answer-basis-title"><span>本轮回答依据</span><small>点击继续学习</small></div><div class="answer-reference-list">${referenceHtml}</div></div>`);
+  }).join("") : `<div class="reference-empty">本次回答参考了通用接待与安全规范。</div>`;
+  row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-basis"><div class="answer-basis-title"><span>相关知识与课程</span><small>打开课程查看详情</small></div><div class="answer-reference-list">${referenceHtml}</div></div>`);
   bindCourseButtons(row);
 }
 
@@ -1467,7 +1476,7 @@ async function finishSession() {
   const minimumTurns = state.route === "exam/simulation" ? 4 : 1;
   if (state.mode === "qa" || state.busy || state.ended) return;
   if (userTurns < minimumTurns) {
-    showToast(`至少完成 ${minimumTurns} 轮对话后才能结束。`, true);
+    showToast(`再完成 ${minimumTurns - userTurns} 轮对话，即可查看结果。`, true);
     return;
   }
   const modeSnapshot = state.mode;
@@ -1479,7 +1488,7 @@ async function finishSession() {
   state.busy = true;
   updateTrainingEditActions();
   els.finish.disabled = true;
-  els.finish.textContent = "正在生成报告…";
+  els.finish.textContent = "正在生成评分结果…";
   const typing = addTyping();
   try {
     const data = await api("/api/chat", {
@@ -1497,7 +1506,7 @@ async function finishSession() {
     state.ended = true;
     els.input.disabled = true;
     els.send.disabled = true;
-    els.finish.textContent = "报告已生成";
+    els.finish.textContent = "评分完成";
   } catch (error) {
     typing.remove();
     if (!isCurrentRequest()) return;
@@ -1518,12 +1527,12 @@ function renderAssessment(result) {
   }
   const card = document.createElement("div");
   card.className = "assessment-card";
-  const dimensions = (result.dimension_scores || []).map((item) => `<div class="score-row"><div class="score-row-head"><span>${escapeHtml(item.name)}</span><strong>${escapeHtml(item.score)}<i>/${escapeHtml(item.max_score)}</i></strong></div><small><b>对话证据</b>${escapeHtml(item.evidence || "对话中未体现")}<br><b>评分判断</b>${escapeHtml(item.comment || "")}</small></div>`).join("");
+  const dimensions = (result.dimension_scores || []).map((item) => `<div class="score-row"><div class="score-row-head"><span>${escapeHtml(item.name)}</span><strong>${escapeHtml(item.score)}<i>/${escapeHtml(item.max_score)}</i></strong></div><small><b>评分依据</b>${escapeHtml(item.evidence || "对话中未体现")}<br><b>表现说明</b>${escapeHtml(item.comment || "")}</small></div>`).join("");
   const critical = (result.critical_failures || []).map((item) => `<div><b>${escapeHtml(item.code)}</b> ${escapeHtml(item.reason)}${item.evidence ? `<br><small>${escapeHtml(item.evidence)}</small>` : ""}</div>`).join("");
   const scenario = state.scenario || {};
-  const standardAnswer = state.route === "exam/simulation" && scenario.reference_answer ? `<div class="report-block standard-answer"><label>本场标准答案与必答点</label><p>${escapeHtml(scenario.reference_answer)}</p><ul>${(scenario.must_test || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : "";
-  const reportTitle = state.mode === "training" ? "陪练结束报告" : "模拟顾客考核报告";
-  card.innerHTML = `<div class="assessment-header"><div><span>${reportTitle}</span><p>${escapeHtml(result.summary || "本轮已完成评分。")}</p></div><strong>${escapeHtml(result.total_score ?? 0)}<i>/100</i></strong></div><div class="score-rows">${dimensions}</div>${critical ? `<div class="critical-block"><b>关键失败项</b><br>${critical}</div>` : ""}<div class="report-columns"><div class="report-block"><label>做得好的地方</label><p>${escapeHtml((result.strengths || []).join("；") || "继续保持完整沟通。")}</p></div><div class="report-block improve"><label>下一轮重点改进</label><p>${escapeHtml((result.improvements || []).join("；") || "继续练习需求分析和异议处理。")}</p></div>${standardAnswer}</div>`;
+  const standardAnswer = state.route === "exam/simulation" && scenario.reference_answer ? `<div class="report-block standard-answer"><label>参考回答与关键要点</label><p>${escapeHtml(scenario.reference_answer)}</p><ul>${(scenario.must_test || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : "";
+  const reportTitle = state.mode === "training" ? "本次陪练报告" : "模拟接待考核结果";
+  card.innerHTML = `<div class="assessment-header"><div><span>${reportTitle}</span><p>${escapeHtml(result.summary || "本次对话评分已完成。")}</p></div><strong>${escapeHtml(result.total_score ?? 0)}<i>/100</i></strong></div><div class="score-rows">${dimensions}</div>${critical ? `<div class="critical-block"><b>需要重点改进</b><br>${critical}</div>` : ""}<div class="report-columns"><div class="report-block"><label>做得好的地方</label><p>${escapeHtml((result.strengths || []).join("；") || "继续保持完整沟通。")}</p></div><div class="report-block improve"><label>下次重点练习</label><p>${escapeHtml((result.improvements || []).join("；") || "继续练习需求分析和异议处理。")}</p></div>${standardAnswer}</div>`;
   els.messages.appendChild(card);
   els.messages.scrollTop = els.messages.scrollHeight;
 }
@@ -1532,7 +1541,7 @@ function updateApiStatus(meta = {}, health = null) {
   if (meta.mock === false) state.apiVerified = true;
   if (!state.apiKey) state.apiVerified = false;
   const connected = state.apiVerified || Boolean(health?.api_configured);
-  els.apiStatus.textContent = connected ? "SiliconFlow 已连接" : state.apiKey ? "API Key 待验证" : "演示模式";
+  els.apiStatus.textContent = connected ? "在线 AI 已就绪" : state.apiKey ? "在线 AI 待连接" : "演示模式";
 }
 
 function openModal(id) {
@@ -1588,12 +1597,12 @@ async function saveSettings() {
     localStorage.setItem("kbai_model", state.model);
     updateApiStatus({ mock: true });
     closeModal("settings-modal");
-    showToast("已切换为本地演示模式。");
+    showToast("已进入演示模式。");
     return;
   }
   saveButton.disabled = true;
-  saveButton.textContent = "正在验证…";
-  els.apiStatus.textContent = "正在验证 API Key";
+  saveButton.textContent = "正在连接…";
+  els.apiStatus.textContent = "正在连接在线 AI";
   try {
     const validation = await api("/api/chat", {
       mode: "qa",
@@ -1611,14 +1620,14 @@ async function saveSettings() {
     localStorage.setItem("kbai_model", state.model);
     updateApiStatus(validation.meta);
     closeModal("settings-modal");
-    showToast("API Key 验证成功，模型设置已保存。");
+    showToast("在线 AI 已连接，设置已保存。");
   } catch (error) {
     state.apiVerified = false;
-    els.apiStatus.textContent = state.apiKey ? "API Key 待验证" : "演示模式";
-    showToast(`API Key 验证失败：${error.message}`, true);
+    els.apiStatus.textContent = state.apiKey ? "在线 AI 待连接" : "演示模式";
+    showToast(`在线 AI 连接失败，请检查 API Key 或稍后重试。${error.message ? `（${error.message}）` : ""}`, true);
   } finally {
     saveButton.disabled = false;
-    saveButton.textContent = "保存设置";
+    saveButton.textContent = "保存并验证";
   }
 }
 
@@ -1675,7 +1684,7 @@ function syncRouteFromLocation(focus = true) {
   const parsed = parseRouteHash();
   if (parsed.route === state.route && parsed.moduleId === state.routeModuleId && !parsed.invalid) return;
   navigateRoute(parsed.route, parsed.moduleId, { updateHistory: false, focus });
-  if (parsed.invalid) showToast("该链接无效，已返回可选择的页面。", true);
+  if (parsed.invalid) showToast("这个链接无法打开，已返回可选择的页面。", true);
 }
 
 async function boot() {
@@ -1695,14 +1704,14 @@ async function boot() {
     state.examBank = examBank;
     state.models = bootstrap.models?.length ? bootstrap.models : AVAILABLE_MODELS;
     renderModelOptions();
-    els.healthNumber.textContent = state.knowledge.rag_documents || 175;
+    els.healthNumber.textContent = state.knowledge.rag_documents || 172;
     renderModuleOptions();
     const requested = parseRouteHash();
     navigateRoute(requested.route, requested.moduleId, { updateHistory: false, focus: false });
-    if (requested.invalid) showToast("该链接无效，已返回可选择的页面。", true);
+    if (requested.invalid) showToast("这个链接无法打开，已返回可选择的页面。", true);
     updateApiStatus({}, health);
   } catch (error) {
-    showToast(`本地服务初始化失败：${error.message}`, true);
+    showToast(`页面数据加载失败，请刷新后重试。${error.message ? `（${error.message}）` : ""}`, true);
   }
 }
 

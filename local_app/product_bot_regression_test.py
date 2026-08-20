@@ -314,8 +314,8 @@ def run() -> None:
             all(marker in app_js for marker in [
                 "reviseLastTrainingTurn",
                 'state.history.splice(-2, 2)',
-                "修改本轮回复",
-                "发送后重新评价",
+                "setRevisionState(true, turnNumber)",
+                "employeeTurn.content",
             ])
             and ".revise-turn-button" in styles,
         )

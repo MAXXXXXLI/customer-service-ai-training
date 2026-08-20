@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#002FA7" />
-    <title>秀域 AI 训练中心 · 门店员工成长平台</title>
+    <title>秀域 AI 训练中心 · 门店学习与实战训练</title>
     <link rel="canonical" href="https://maxxxxxli.github.io/customer-service-ai-training/" />
     <script>
       if (window.location.hostname.endsWith(".github.io") && window.location.search) {
         window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
       }
     </script>
-    <link rel="stylesheet" href="./styles.css?v=20260820-5" />
+    <link rel="stylesheet" href="./styles.css?v=20260820-6" />
   </head>
   <body>
     <div class="app-shell">
@@ -19,20 +19,20 @@
         <div class="brand-lockup" aria-label="秀域智能健康 AI 训练中心">
           <img class="brand-logo" src="./showyu-logo.png" alt="秀域智能健康" />
           <span class="brand-divider" aria-hidden="true"></span>
-          <div class="brand-product"><strong>AI 训练中心</strong><small>门店员工成长平台</small></div>
+          <div class="brand-product"><strong>AI 训练中心</strong><small>门店学习与实战训练</small></div>
         </div>
-        <div class="nav-label">核心功能</div>
+        <div class="nav-label">学习中心</div>
         <nav class="mode-nav" aria-label="核心功能">
-          <button class="mode-button active" data-route="learning"><span class="mode-index">01</span><span><strong>学习与陪练</strong><small>课程学习与模拟练习</small></span></button>
-          <button class="mode-button" data-route="exam"><span class="mode-index">02</span><span><strong>实战考核</strong><small>客观题与模拟顾客考核</small></span></button>
-          <button class="mode-button" data-route="qa"><span class="mode-index">03</span><span><strong>智能接待</strong><small>AI 基于知识库回答顾客</small></span></button>
+          <button class="mode-button active" data-route="learning"><span class="mode-index">01</span><span><strong>学习与陪练</strong><small>学知识，练接待</small></span></button>
+          <button class="mode-button" data-route="exam"><span class="mode-index">02</span><span><strong>实战考核</strong><small>知识考试与模拟接待</small></span></button>
+          <button class="mode-button" data-route="qa"><span class="mode-index">03</span><span><strong>智能接待</strong><small>快速获取专业接待建议</small></span></button>
         </nav>
         <div class="sidebar-spacer"></div>
         <div class="kb-health hidden" aria-hidden="true">
-          <div class="health-ring"><span id="health-number">175</span></div>
-          <div><strong>知识库已就绪</strong><small>38 节课程 · 7 个模块</small></div>
+          <div class="health-ring"><span id="health-number">172</span></div>
+          <div><strong>课程资料已更新</strong><small>43 节课程 · 10 个模块</small></div>
         </div>
-        <button class="settings-button" id="open-settings"><span>模型与 API</span><span>›</span></button>
+        <button class="settings-button" id="open-settings"><span>AI 服务设置</span><span>›</span></button>
       </aside>
 
       <main class="main-content">
@@ -40,36 +40,36 @@
           <div>
             <div class="breadcrumb">秀域 AI / <span id="mode-breadcrumb">学习与陪练</span></div>
             <h1 id="page-title">学习与陪练</h1>
-            <p id="page-description">先选择学习方式，再进入对应模块。</p>
+            <p id="page-description">学知识、练接待，让每一次服务更专业。</p>
           </div>
-          <div class="api-pill"><i></i><span id="api-status">SiliconFlow 已连接</span></div>
+          <div class="api-pill"><i></i><span id="api-status">演示模式</span></div>
         </header>
 
         <section class="product-page portal-page" id="learning-hub-page">
-          <div class="portal-intro"><span class="step-tag">LEARN & PRACTICE</span><h2>今天想完成什么？</h2><p>先选择学习方式，下一步再选择知识模块。页面只展示当前任务需要的内容。</p></div>
+          <div class="portal-intro"><span class="step-tag">学习与陪练</span><h2>今天想从哪里开始？</h2><p>学习专业知识，或进入顾客情景练习接待表达。</p></div>
           <div class="portal-grid">
-            <button class="portal-card" data-route="learning/course"><span class="portal-number">01</span><div><h3>课程学习</h3><p>按模块阅读课程、章节与知识要点。</p><b>选择学习模块 →</b></div></button>
-            <button class="portal-card" data-route="learning/practice"><span class="portal-number">02</span><div><h3>情景陪练</h3><p>和模拟顾客对话，每轮获得即时纠正。</p><b>选择陪练模块 →</b></div></button>
+            <button class="portal-card" data-route="learning/course"><span class="portal-number">01</span><div><h3>课程学习</h3><p>系统学习项目知识、服务流程和标准表达。</p><span class="portal-benefits">知识要点 · 服务流程 · 标准表达</span><b>查看课程模块 →</b></div></button>
+            <button class="portal-card" data-route="learning/practice"><span class="portal-number">02</span><div><h3>情景陪练</h3><p>接待模拟顾客，每轮获得针对性的改进建议。</p><span class="portal-benefits">模拟对话 · 即时反馈 · 参考表达</span><b>开始情景陪练 →</b></div></button>
           </div>
         </section>
 
         <section class="product-page portal-page hidden" id="assessment-hub-page">
-          <div class="portal-intro"><span class="step-tag">ASSESSMENT</span><h2>选择考试方式</h2><p>客观题与模拟顾客考试独立进入，避免题目和对话内容同时堆叠。</p></div>
+          <div class="portal-intro"><span class="step-tag">实战考核</span><h2>选择你的考核方式</h2><p>通过知识答题或模拟接待，检验学习成果和实战能力。</p></div>
           <div class="portal-grid">
-            <button class="portal-card" data-route="exam/objective"><span class="portal-number">A</span><div><h3>客观题考试</h3><p>每模块 6 道填空与 8 道选择，提交后查看分数和答案。</p><b>选择考试模块 →</b></div></button>
-            <button class="portal-card" data-route="exam/simulation"><span class="portal-number">B</span><div><h3>模拟顾客考核</h3><p>主观题 · AI 扮演顾客进行多轮对话，结束后按证据评分。</p><b>选择考核模块 →</b></div></button>
+            <button class="portal-card" data-route="exam/objective"><span class="portal-number">A</span><div><h3>客观题考试</h3><p>完成填空与选择题，交卷后查看成绩和详细解析。</p><span class="portal-benefits">填空题 · 选择题 · 答案解析</span><b>开始知识考试 →</b></div></button>
+            <button class="portal-card" data-route="exam/simulation"><span class="portal-number">B</span><div><h3>模拟顾客考核</h3><p>接待 AI 模拟顾客，完成多轮对话后查看实战评分。</p><span class="portal-benefits">多轮接待 · 能力评分 · 改进建议</span><b>开始模拟接待 →</b></div></button>
           </div>
         </section>
 
         <section class="product-page portal-page hidden" id="module-gateway-page">
-          <div class="gateway-head"><button class="route-back" id="gateway-back">← 返回</button><span class="step-tag" id="gateway-tag">MODULE</span><h2 id="gateway-title">选择模块</h2><p id="gateway-description">选择后进入对应页面。</p></div>
+          <div class="gateway-head"><button class="route-back" id="gateway-back">← 返回上一级</button><span class="step-tag" id="gateway-tag">选择模块</span><h2 id="gateway-title">选择模块</h2><p id="gateway-description">选择一个模块开始。</p></div>
           <div class="module-route-grid" id="module-route-grid"></div>
         </section>
 
         <section class="product-page hidden" id="learning-page">
           <article class="feature-card learning-zone">
             <div class="section-heading compact-heading">
-              <div><button class="route-back" data-route="learning/course">← 返回模块选择</button><span class="step-tag">课程学习</span><h2>模块课程</h2><p>查看章节与完整课程内容。</p></div>
+              <div><button class="route-back" data-route="learning/course">← 返回模块选择</button><span class="step-tag">课程学习</span><h2>课程目录</h2><p>选择一节课程，查看完整内容与关键要点。</p></div>
               <select class="hidden" id="learning-module-select" aria-label="选择学习模块"></select>
             </div>
             <div class="selected-module-summary" id="learning-module-summary"></div>
@@ -80,7 +80,7 @@
         <section class="product-page hidden" id="training-page">
           <article class="feature-card coaching-zone">
             <div class="section-heading compact-heading">
-              <div><button class="route-back" data-route="learning/practice">← 返回模块选择</button><span class="step-tag">情景陪练</span><h2>模拟顾客练习</h2><p>进入顾客情景，获得即时纠正与推荐表达。</p></div>
+              <div><button class="route-back" data-route="learning/practice">← 返回模块选择</button><span class="step-tag">情景陪练</span><h2>顾客接待练习</h2><p>在真实接待情景中练习，每轮都能获得改进建议和参考表达。</p></div>
               <select class="hidden" id="practice-module-select" aria-label="选择陪练模块"></select>
             </div>
             <div class="scenario-frame" id="training-scenario-frame"></div>
@@ -99,13 +99,13 @@
 
         <section class="product-page hidden" id="qa-page">
           <article class="qa-welcome">
-            <span class="step-tag">AI 顾客接待</span>
-            <h2>向 AI 提问</h2>
-            <p>询问项目、流程、顾虑或注意事项，AI 将依据企业知识库回答。</p>
+            <span class="step-tag">接待问答助手</span>
+            <h2>顾客这样问，该怎么回答？</h2>
+            <p>输入顾客的问题，快速获得参考回答、接待步骤和相关课程。</p>
             <div class="qa-examples">
-              <button data-question="这个项目做一次是不是一定有效？">做一次一定有效吗？</button>
-              <button data-question="体验之前，你们需要先了解我哪些情况？">体验前需要问什么？</button>
-              <button data-question="如果体验中觉得不舒服，应该怎么办？">不舒服时怎么办？</button>
+              <button data-question="这个项目做一次是不是一定有效？">做一次就一定有效吗？</button>
+              <button data-question="体验之前，你们需要先了解我哪些情况？">体验前需要了解哪些情况？</button>
+              <button data-question="如果体验中觉得不舒服，应该怎么办？">体验中不舒服怎么办？</button>
             </div>
           </article>
         </section>
@@ -117,11 +117,11 @@
               <div><span id="conversation-kicker">情景陪练</span><h3 id="conversation-title">AI 顾客对话</h3></div>
             </div>
             <div class="conversation-actions">
-              <button class="subtle-button" id="clear-chat">重新开始</button>
+              <button class="subtle-button" id="clear-chat">重新练习</button>
               <button class="finish-button" id="finish-session" disabled>结束并查看报告</button>
             </div>
           </div>
-          <div class="messages" id="messages"></div>
+          <div class="messages" id="messages" aria-live="polite" aria-label="对话内容"></div>
           <div class="composer-wrap">
             <div class="composer"><textarea id="message-input" rows="2" aria-label="输入对话" placeholder="输入你会对顾客说的话…"></textarea><button class="send-button" id="send-button"><span>发送</span><b>↗</b></button></div>
             <div class="composer-foot"><span id="composer-hint">每轮回答后提供一个关键改进点</span><span id="turn-count">0 轮对话</span></div>
@@ -137,16 +137,16 @@
       </div>
     </div>
     <div class="modal-backdrop hidden" id="settings-modal">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
         <button class="modal-close" data-close="settings-modal" aria-label="关闭">×</button>
-        <span class="step-tag">MODEL & API</span><h2>模型与 API</h2>
-        <p class="modal-copy">Key 只保存在当前浏览器并直接发送给 SiliconFlow，不写入项目或知识库。每位使用者请填写自己的 Key。</p>
-        <label>API Key<input id="api-key" type="password" placeholder="sk-…" autocomplete="off" /></label>
-        <label>模型名称<select id="model-name" aria-label="选择 SiliconFlow 模型"></select></label>
-        <div class="modal-actions"><button class="secondary-button" id="demo-mode">演示模式</button><button class="primary-button" id="save-settings">保存设置</button></div>
+        <span class="step-tag">AI 服务</span><h2 id="settings-modal-title">AI 服务设置</h2>
+        <p class="modal-copy">填写 SiliconFlow API Key 后即可使用在线 AI。密钥仅保存在当前浏览器；也可以选择演示模式体验基础功能。</p>
+        <label>SiliconFlow API Key<input id="api-key" type="password" placeholder="sk-…" autocomplete="off" /></label>
+        <label>AI 模型<select id="model-name" aria-label="选择 SiliconFlow 模型"></select></label>
+        <div class="modal-actions"><button class="secondary-button" id="demo-mode">使用演示模式</button><button class="primary-button" id="save-settings">保存并验证</button></div>
       </div>
     </div>
-    <div class="toast hidden" id="toast"></div>
-    <script src="./app.js?v=20260820-5"></script>
+    <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js?v=20260820-6"></script>
   </body>
 </html>
