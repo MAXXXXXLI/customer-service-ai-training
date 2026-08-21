@@ -766,6 +766,8 @@ TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客�
 8. 员工在解释数据或效果时，先用普通顾客口吻回应这段解释，再提出一个与当前主题直接相关的顾虑；不要直接复读泛泛的“我主要担心效果”。
 9. 如果员工没有提出新问题，只给出说明或安排，顾客应针对这段说明确认理解、提出一个相关追问或说明仍未解决的原始顾虑；不得凭空开启新的异议。
 10. 每轮回复前做一次自检：回复中至少有一个短语能对应员工最新问题或动作；若没有，改写为“我还没听明白，您刚才问的是……对吗？”这类澄清，而不是输出无关内容。
+11. 真人反应优先：员工给出具体方案、时间、记录方式或下一步安排时，先回应这个安排（接受、犹豫、确认一个细节或提出一个具体疑问），不能跳回旧顾虑，也不能自顾自开启新的异议。
+12. 员工已经解释清楚并提出可执行安排时，不要只说“这些专业的我不懂”；如果确实听不懂，要指出具体不懂的是时间、记录方法还是判断标准。
 
 严格输出 JSON，不要 Markdown：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + LIMITED_CUSTOMER_POLICY
 
@@ -1129,6 +1131,11 @@ def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str,
         return f"主要就是{goal}，其他地方我暂时没太留意。"
     if re.search(r"不能直接说明|不能保证|连续趋势|测量条件|数据记录|再判断|再评估", employee_message):
         return "我明白，单次体重上涨不一定代表没有效果。那我们记录多久、达到什么变化时再一起判断呢？"
+    if (
+        "MOD-05" in str(scenario.get("module_id", ""))
+        and re.search(r"复测|记录|饮食|睡眠|运动|三到七天|一周后|相近时间|跟进", employee_message)
+    ):
+        return "好，那我先按相近时间复测，也把饮食、睡眠和运动记下来。到时候如果还是不降，我们再一起看看，可以吗？"
     if employee_message_needs_customer_clarification(history, employee_message):
         return customer_clarification_reply(scenario, history)
     objections = list((scenario or {}).get("hidden_objections") or [])

@@ -241,6 +241,18 @@ def test_weight_change_conversation_stays_on_question() -> None:
     assert "担心担心" not in third, third
     assert "医疗评估" not in third and "方法路由" not in third, third
 
+    history.extend([{"role": "user", "content": "单次体重上涨不能直接说明方案没有效果，我们先看连续趋势和测量条件。"}, {"role": "assistant", "content": third}])
+    fourth = server.handle_chat({
+        "mode": "test",
+        "action": "turn",
+        "scenario_id": scenario["id"],
+        "message": "那我们先约定三到七天后在相近时间复测，我也会把这几天的饮食、睡眠和运动简单记下来。",
+        "history": history,
+        "api_key": "",
+    })["result"]["reply"]
+    assert "复测" in fourth and "记录" in fourth, fourth
+    assert "这些专业的我不太懂" not in fourth, fourth
+
 
 if __name__ == "__main__":
     tests = [
