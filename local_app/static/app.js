@@ -1088,6 +1088,7 @@ function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
   if (/多久|多长时间|什么时候开始/.test(employee)) return "有一阵子了，最近感觉比以前明显一些。";
   if (/哪里|哪个部位|什么位置/.test(employee)) return `主要就是${goal}，其他地方我暂时没太留意。`;
   if (/不能直接说明|不能保证|连续趋势|测量条件|数据记录|再判断|再评估/.test(employee)) return "我明白，单次体重上涨不一定代表没有效果。那我们记录多久、达到什么变化时再一起判断呢？";
+  if (String(scenario?.module_id || "") === "MOD-05" && /复测|记录|饮食|睡眠|运动|三到七天|一周后|相近时间|跟进/.test(employee)) return "好，那我先按相近时间复测，也把饮食、睡眠和运动记下来。到时候如果还是不降，我们再一起看看，可以吗？";
   if (staticEmployeeMessageNeedsCustomerClarification(history, employee)) return staticCustomerClarificationReply(scenario, history);
   const objections = scenario?.hidden_objections || [];
   const userTurns = staticHiddenObjectionIndex(history);

@@ -200,6 +200,7 @@ def test_static_site_has_same_guardrails() -> None:
     assert "隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario))}" in APP_JS
     assert "公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}" in APP_JS
     assert "隐藏场景（不得泄露）：${JSON.stringify(scenario)}" not in APP_JS
+    assert "好，那我先按相近时间复测" in APP_JS
 
 
 def test_weight_change_conversation_stays_on_question() -> None:
