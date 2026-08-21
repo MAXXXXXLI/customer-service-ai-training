@@ -190,6 +190,8 @@ def test_static_site_has_same_guardrails() -> None:
         "staticTrainingMessageHasCompleteSafeClosure",
         "sanitizeStaticTrainingFutureClaims",
         "sanitizeStaticTrainingSuggestedReply",
+        "回答相关性契约",
+        "逐项回应",
         "customerSystem",
         "coachSystem",
         "Promise.all",
@@ -198,6 +200,46 @@ def test_static_site_has_same_guardrails() -> None:
     assert "隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario))}" in APP_JS
     assert "公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}" in APP_JS
     assert "隐藏场景（不得泄露）：${JSON.stringify(scenario)}" not in APP_JS
+
+
+def test_weight_change_conversation_stays_on_question() -> None:
+    scenario = exact_scenario("SCN-CEX-M05-S01")
+    history = [{"role": "assistant", "content": scenario["opening"]}]
+
+    first = server.handle_chat({
+        "mode": "test",
+        "action": "turn",
+        "scenario_id": scenario["id"],
+        "message": "两次体重测量的时间和条件是否一致？",
+        "history": history,
+        "api_key": "",
+    })["result"]["reply"]
+    assert "上周早上" in first and "这次晚上" in first, first
+    history.extend([{"role": "user", "content": "两次体重测量的时间和条件是否一致？"}, {"role": "assistant", "content": first}])
+
+    second = server.handle_chat({
+        "mode": "test",
+        "action": "turn",
+        "scenario_id": scenario["id"],
+        "message": "除了体重之外，最近腰围、体脂或身体围度有没有变化？这几次体重测量的时间和条件是否一致？",
+        "history": history,
+        "api_key": "",
+    })["result"]["reply"]
+    assert "腰围" in second and "1厘米" in second, second
+    assert "价格" not in second and "设备" not in second, second
+
+    history.extend([{"role": "user", "content": "除了体重之外，最近腰围、体脂或身体围度有没有变化？这几次体重测量的时间和条件是否一致？"}, {"role": "assistant", "content": second}])
+    third = server.handle_chat({
+        "mode": "test",
+        "action": "turn",
+        "scenario_id": scenario["id"],
+        "message": "单次体重上涨不能直接说明方案没有效果，我们先看连续趋势和测量条件。",
+        "history": history,
+        "api_key": "",
+    })["result"]["reply"]
+    assert "效果" in third or "体重" in third, third
+    assert "担心担心" not in third, third
+    assert "医疗评估" not in third and "方法路由" not in third, third
 
 
 if __name__ == "__main__":

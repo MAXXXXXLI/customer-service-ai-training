@@ -1087,6 +1087,7 @@ function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
   if (/不能做|做不了|没什么不同|没区别|都一样|不适合/.test(employee)) return `那我有点没听明白，我主要是${goal}，想知道还有没有别的办法。`;
   if (/多久|多长时间|什么时候开始/.test(employee)) return "有一阵子了，最近感觉比以前明显一些。";
   if (/哪里|哪个部位|什么位置/.test(employee)) return `主要就是${goal}，其他地方我暂时没太留意。`;
+  if (/不能直接说明|不能保证|连续趋势|测量条件|数据记录|再判断|再评估/.test(employee)) return "我明白，单次体重上涨不一定代表没有效果。那我们记录多久、达到什么变化时再一起判断呢？";
   if (staticEmployeeMessageNeedsCustomerClarification(history, employee)) return staticCustomerClarificationReply(scenario, history);
   const objections = scenario?.hidden_objections || [];
   const userTurns = staticHiddenObjectionIndex(history);
@@ -1124,7 +1125,11 @@ function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
     "设备真伪": "我也分不清设备有什么区别，怕花冤枉钱。",
     "服务差异": "我看不出你们和别家到底差在哪里。",
   };
-  return templates[objection] || `我现在主要还是担心${objection}，其他专业的我也不太懂。`;
+  const naturalObjection = String(objection || "").trim();
+  const fallbackObjection = /^(?:担心|害怕|想|不想|在意|觉得|担忧)/.test(naturalObjection)
+    ? `我现在主要还是${naturalObjection}`
+    : `我现在主要还是担心${naturalObjection}`;
+  return templates[objection] || `${fallbackObjection}，其他专业的我也不太懂。`;
 }
 
 function invalidStaticCustomerReply(reply) {
@@ -1442,7 +1447,7 @@ async function staticApi(path, body) {
   let temperature = 0.3;
   let maxTokens = 1800;
   if (mode === "test" && action === "turn") {
-    system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
+    system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。\n回答相关性契约（优先于普通顾虑推进）：先判断员工是在提问、解释、确认还是安排下一步；第一句话必须承接同一个主题，不能突然跳到价格、项目原理或另一个顾虑。员工一句话中有多个明确问题时，按原顺序逐项回应；已回答的事实不重复，尚未掌握的内容明确说“我没留意/不太清楚”，不能只回答一个问题后换话题。员工解释数据或效果时，先回应这段解释，再提出一个与当前主题直接相关的顾虑；没有新问题时，不得凭空开启新的异议。每轮自检：回复中至少有一个短语对应员工最新问题或动作；否则改写为“我还没听明白，您刚才问的是……对吗？”这类澄清。\n严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.55;
   } else if (mode === "test" && action === "finish") {

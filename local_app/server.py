@@ -760,6 +760,13 @@ TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客�
 4. 如果员工答非所问，继续以顾客身份追问原问题；如果员工给出危险承诺，以顾客身份表示疑惑或不放心，但不要替员工说出标准答案。
 5. 不得出现“考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该”等幕后词语。
 
+回答相关性契约（优先于普通顾虑推进）：
+6. 先识别员工最新一句是在提问、解释、确认还是安排下一步；回复的第一句话必须承接同一个主题，不能突然跳到价格、项目原理或另一个顾虑。
+7. 员工一句话中有多个明确问题时，按原顺序逐项回应；已经在前面回答过的事实不要重复，尚未掌握的内容明确说“我没留意/不太清楚”，不能用另一个隐藏事实代替，也不能只挑一个问题后换话题。
+8. 员工在解释数据或效果时，先用普通顾客口吻回应这段解释，再提出一个与当前主题直接相关的顾虑；不要直接复读泛泛的“我主要担心效果”。
+9. 如果员工没有提出新问题，只给出说明或安排，顾客应针对这段说明确认理解、提出一个相关追问或说明仍未解决的原始顾虑；不得凭空开启新的异议。
+10. 每轮回复前做一次自检：回复中至少有一个短语能对应员工最新问题或动作；若没有，改写为“我还没听明白，您刚才问的是……对吗？”这类澄清，而不是输出无关内容。
+
 严格输出 JSON，不要 Markdown：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + LIMITED_CUSTOMER_POLICY
 
 
@@ -1097,6 +1104,16 @@ def hidden_objection_index(history: list[dict[str, Any]]) -> int:
     return max(0, user_turns - held_turns)
 
 
+def customer_objection_reply(objection: str) -> str:
+    """Keep fallback顾客话术 natural when the objection already contains a verb."""
+    objection = clean_text(objection)
+    if not objection:
+        return "我还有点没放心，想再听你说明白一点。"
+    if re.match(r"^(?:担心|害怕|想|不想|在意|觉得|担忧)", objection):
+        return f"我现在主要还是{objection}，其他专业的我也不太懂。"
+    return f"我现在主要还是担心{objection}，其他专业的我也不太懂。"
+
+
 def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
     scenario = scenario or {}
     persona = scenario.get("persona") if isinstance(scenario.get("persona"), dict) else {}
@@ -1110,6 +1127,8 @@ def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str,
         return "有一阵子了，最近感觉比以前明显一些。"
     if re.search(r"哪里|哪个部位|什么位置", employee_message):
         return f"主要就是{goal}，其他地方我暂时没太留意。"
+    if re.search(r"不能直接说明|不能保证|连续趋势|测量条件|数据记录|再判断|再评估", employee_message):
+        return "我明白，单次体重上涨不一定代表没有效果。那我们记录多久、达到什么变化时再一起判断呢？"
     if employee_message_needs_customer_clarification(history, employee_message):
         return customer_clarification_reply(scenario, history)
     objections = list((scenario or {}).get("hidden_objections") or [])
@@ -1156,7 +1175,7 @@ def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str,
         "设备真伪": "我也分不清设备有什么区别，怕花冤枉钱。",
         "服务差异": "我看不出你们和别家到底差在哪里。",
     }
-    return templates.get(objection, f"我现在主要还是担心{objection}，其他专业的我也不太懂。")
+    return templates.get(objection, customer_objection_reply(objection))
 
 
 def customer_reply_is_invalid(reply: str) -> bool:
