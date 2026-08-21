@@ -1087,6 +1087,7 @@ function staticCustomerFallback(scenario, history = [], employeeMessage = "") {
   if (/不能做|做不了|没什么不同|没区别|都一样|不适合/.test(employee)) return `那我有点没听明白，我主要是${goal}，想知道还有没有别的办法。`;
   if (/多久|多长时间|什么时候开始/.test(employee)) return "有一阵子了，最近感觉比以前明显一些。";
   if (/哪里|哪个部位|什么位置/.test(employee)) return `主要就是${goal}，其他地方我暂时没太留意。`;
+  if (/测量时间.{0,12}(?:不一样|不同)|结果.{0,10}(?:不一样|不同)|同一(?:时间|条件)/.test(employee)) return "明白了，那我之后尽量在相近时间、相近条件下测量。这样记录几天后再一起判断效果呢？";
   if (/不能直接说明|不能保证|连续趋势|测量条件|数据记录|再判断|再评估/.test(employee)) return "我明白，单次体重上涨不一定代表没有效果。那我们记录多久、达到什么变化时再一起判断呢？";
   if (String(scenario?.module_id || "") === "MOD-05" && /复测|记录|饮食|睡眠|运动|三到七天|一周后|相近时间|跟进/.test(employee)) return "好，那我先按相近时间复测，也把饮食、睡眠和运动记下来。到时候如果还是不降，我们再一起看看，可以吗？";
   if (staticEmployeeMessageNeedsCustomerClarification(history, employee)) return staticCustomerClarificationReply(scenario, history);
@@ -1138,6 +1139,17 @@ function invalidStaticCustomerReply(reply) {
   return !reply || reply.length > 100 || TEST_INTERNAL_MARKERS.test(reply) || CUSTOMER_ROLE_DRIFT_MARKERS.test(reply) || questionCount > 1;
 }
 
+function staticCustomerReplyNeedsContextRepair(reply, employeeMessage) {
+  const text = String(reply || "").trim();
+  const employee = String(employeeMessage || "").trim();
+  if (!text || !employee) return false;
+  const planOrExplanation = /测量时间.{0,16}(?:不一样|不同)|结果.{0,12}(?:不一样|不同)|同一(?:时间|条件)|相近时间|复测|记录.{0,12}(?:饮食|睡眠|运动|数据)|连续趋势|三到七天|一周后|先把.{0,10}记录|再一起判断/.test(employee);
+  if (!planOrExplanation) return false;
+  if (/(?:这些专业的我不太懂|主要还是(?:想|担心|希望)|先听懂再决定|还没完全放心)/.test(text)) return true;
+  const acknowledgment = /明白|好的|好，那|原来|我会|我先|听起来|可以|接受|理解/.test(text);
+  return /[？?]/.test(text) && !acknowledgment && text.length <= 48;
+}
+
 function normalizeStaticCustomerReply(reply, scenario, history = [], employeeMessage = "") {
   let normalized = String(reply || "").trim();
   if ((scenario?.information_release_rules || []).length) {
@@ -1156,6 +1168,7 @@ function normalizeStaticCustomerReply(reply, scenario, history = [], employeeMes
   const previous = history.filter((item) => item?.role === "assistant").map((item) => String(item.content || "").trim());
   const repeated = previous.some((item) => normalized === item || (normalized.length >= 18 && item.length >= 18 && normalized.slice(0, 18) === item.slice(0, 18)));
   if (repeated || invalidStaticCustomerReply(normalized) || normalized === String(scenario?.opening || "").trim()) normalized = staticCustomerFallback(scenario, history, employeeMessage);
+  if (staticCustomerReplyNeedsContextRepair(normalized, employeeMessage)) normalized = staticCustomerFallback(scenario, history, employeeMessage);
   return normalized;
 }
 
@@ -1448,7 +1461,7 @@ async function staticApi(path, body) {
   let temperature = 0.3;
   let maxTokens = 1800;
   if (mode === "test" && action === "turn") {
-    system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。\n回答相关性契约（优先于普通顾虑推进）：先判断员工是在提问、解释、确认还是安排下一步；第一句话必须承接同一个主题，不能突然跳到价格、项目原理或另一个顾虑。员工一句话中有多个明确问题时，按原顺序逐项回应；已回答的事实不重复，尚未掌握的内容明确说“我没留意/不太清楚”，不能只回答一个问题后换话题。员工解释数据或效果时，先回应这段解释，再提出一个与当前主题直接相关的顾虑；没有新问题时，不得凭空开启新的异议。员工给出具体方案、时间、记录方式或下一步安排时，先确认听懂、接受、犹豫或追问一个具体细节，不能只说“这些专业的我不懂”并退回旧顾虑。每轮自检：回复中至少有一个短语对应员工最新问题或动作；否则改写为“我还没听明白，您刚才问的是……对吗？”这类澄清。\n严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
+    system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。\n回答相关性契约（优先于普通顾虑推进）：先判断员工是在提问、解释、确认还是安排下一步；第一句话必须承接同一个主题，不能突然跳到价格、项目原理或另一个顾虑。员工一句话中有多个明确问题时，按原顺序逐项回应；已回答的事实不重复，尚未掌握的内容明确说“我没留意/不太清楚”，不能只回答一个问题后换话题。员工解释数据或效果时，先回应这段解释，再提出一个与当前主题直接相关的顾虑；没有新问题时，不得凭空开启新的异议。员工给出具体方案、时间、记录方式或下一步安排时，先确认听懂、接受、犹豫或追问一个具体细节，不能只说“这些专业的我不懂”并退回旧顾虑。若员工刚解释“测量时间、条件或结果不同”，必须先回应测量安排，再提出判断周期问题。顾客可以继续提问，但必须遵循“先回应、后追问”：先用一句话确认理解、接受、犹豫或具体不清楚之处，再提出最多一个与员工刚才内容直接相关的问题，禁止跳过回应直接抛出新问题。每轮自检：回复中至少有一个短语对应员工最新问题或动作；否则改写为“我还没听明白，您刚才问的是……对吗？”这类澄清。\n严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.55;
   } else if (mode === "test" && action === "finish") {

@@ -192,6 +192,7 @@ def test_static_site_has_same_guardrails() -> None:
         "sanitizeStaticTrainingSuggestedReply",
         "回答相关性契约",
         "逐项回应",
+        "先回应、后追问",
         "customerSystem",
         "coachSystem",
         "Promise.all",
@@ -253,6 +254,28 @@ def test_weight_change_conversation_stays_on_question() -> None:
     })["result"]["reply"]
     assert "复测" in fourth and "记录" in fourth, fourth
     assert "这些专业的我不太懂" not in fourth, fourth
+
+
+def test_model_generic_reset_is_repaired_after_measurement_explanation() -> None:
+    scenario = exact_scenario("SCN-CEX-M05-S01")
+    history = [
+        {"role": "assistant", "content": scenario["opening"]},
+        {"role": "user", "content": "请问你的体重分别是在什么时候测量的呢？"},
+        {"role": "assistant", "content": "上周早上，这次晚上。"},
+    ]
+    model_like = {
+        "reply": "我现在主要还是想先听懂再决定，其他专业的我也不太懂。",
+        "emotion": "hesitant",
+        "should_continue": True,
+    }
+    normalized = server.normalize_test_turn_result(
+        model_like,
+        scenario,
+        history,
+        "这个测量时间不一样，结果也可能不一样。",
+    )
+    assert "相近时间" in normalized["reply"], normalized
+    assert "先听懂再决定" not in normalized["reply"], normalized
 
 
 if __name__ == "__main__":

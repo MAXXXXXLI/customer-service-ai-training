@@ -768,6 +768,8 @@ TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客�
 10. 每轮回复前做一次自检：回复中至少有一个短语能对应员工最新问题或动作；若没有，改写为“我还没听明白，您刚才问的是……对吗？”这类澄清，而不是输出无关内容。
 11. 真人反应优先：员工给出具体方案、时间、记录方式或下一步安排时，先回应这个安排（接受、犹豫、确认一个细节或提出一个具体疑问），不能跳回旧顾虑，也不能自顾自开启新的异议。
 12. 员工已经解释清楚并提出可执行安排时，不要只说“这些专业的我不懂”；如果确实听不懂，要指出具体不懂的是时间、记录方法还是判断标准。
+13. 员工刚解释“测量时间、条件或结果不同”时，必须先回应测量安排，再提出判断周期或复测标准，不能直接回到“我想先听懂/我只想解决体重”等旧话题。
+14. 顾客可以继续提问，但回复必须遵循“先回应、后追问”：先用一句话确认理解、接受、犹豫或说明具体不清楚之处，再提出最多一个与员工刚才内容直接相关的问题。禁止跳过前半句直接抛出新问题。
 
 严格输出 JSON，不要 Markdown：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。""" + LIMITED_CUSTOMER_POLICY
 
@@ -1116,6 +1118,27 @@ def customer_objection_reply(objection: str) -> str:
     return f"我现在主要还是担心{objection}，其他专业的我也不太懂。"
 
 
+def customer_reply_needs_context_repair(reply: str, employee_message: str, scenario: dict[str, Any] | None) -> bool:
+    """Reject a generic objection when the employee just gave a concrete explanation or plan."""
+    reply = clean_text(reply)
+    employee_message = clean_text(employee_message)
+    if not reply or not employee_message:
+        return False
+    plan_or_explanation = bool(re.search(
+        r"测量时间.{0,16}(?:不一样|不同)|结果.{0,12}(?:不一样|不同)|同一(?:时间|条件)|相近时间|"
+        r"复测|记录.{0,12}(?:饮食|睡眠|运动|数据)|连续趋势|三到七天|一周后|先把.{0,10}记录|再一起判断",
+        employee_message,
+    ))
+    if not plan_or_explanation:
+        return False
+    generic_reset = bool(re.search(r"这些专业的我不太懂|主要还是(?:想|担心|希望)|先听懂再决定|还没完全放心", reply))
+    if generic_reset:
+        return True
+    acknowledgment = bool(re.search(r"明白|好的|好，那|原来|我会|我先|听起来|可以|接受|理解", reply))
+    question_only = bool(re.search(r"[？?]", reply)) and not acknowledgment and len(reply) <= 48
+    return question_only
+
+
 def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
     scenario = scenario or {}
     persona = scenario.get("persona") if isinstance(scenario.get("persona"), dict) else {}
@@ -1129,6 +1152,8 @@ def test_fallback_reply(scenario: dict[str, Any] | None, history: list[dict[str,
         return "有一阵子了，最近感觉比以前明显一些。"
     if re.search(r"哪里|哪个部位|什么位置", employee_message):
         return f"主要就是{goal}，其他地方我暂时没太留意。"
+    if re.search(r"测量时间.{0,12}(?:不一样|不同)|结果.{0,10}(?:不一样|不同)|同一(?:时间|条件)", employee_message):
+        return "明白了，那我之后尽量在相近时间、相近条件下测量。这样记录几天后再一起判断效果呢？"
     if re.search(r"不能直接说明|不能保证|连续趋势|测量条件|数据记录|再判断|再评估", employee_message):
         return "我明白，单次体重上涨不一定代表没有效果。那我们记录多久、达到什么变化时再一起判断呢？"
     if (
@@ -1548,6 +1573,8 @@ def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, histo
     if scenario and reply == clean_text(scenario.get("opening", "")):
         repeated = True
     if repeated or customer_reply_is_invalid(reply):
+        return test_fallback_reply(scenario, history, employee_message)
+    if customer_reply_needs_context_repair(reply, employee_message, scenario):
         return test_fallback_reply(scenario, history, employee_message)
     return reply
 
