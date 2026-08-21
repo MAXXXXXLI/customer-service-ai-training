@@ -32,6 +32,7 @@ jobs:
           cp -R local_app/static/. _site/
           cp knowledge_base/scenario_library.jsonl _site/data/
           cp knowledge_base/rag_documents.jsonl _site/data/
+          cp knowledge_base/common_qa_catalog.jsonl _site/data/
           cp knowledge_base/scoring_rubric.json _site/data/
           cp knowledge_base/customer_service_methodology.json _site/data/
       - name: Upload Pages artifact

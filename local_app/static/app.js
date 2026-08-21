@@ -178,10 +178,11 @@ async function loadStaticData() {
     staticDataPromise = Promise.all([
       fetch("./data/scenario_library.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/rag_documents.jsonl").then((response) => response.text()).then(parseJsonl),
+      fetch("./data/common_qa_catalog.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/scoring_rubric.json").then((response) => response.json()),
       fetch("./data/customer_service_methodology.json").then((response) => response.json()),
       fetch("./data/comprehensive_exam_bank.json").then((response) => response.json()),
-    ]).then(([scenarios, documents, rubric, methodology, examBank]) => ({ scenarios, documents, rubric, methodology, examBank }));
+    ]).then(([scenarios, documents, commonQa, rubric, methodology, examBank]) => ({ scenarios, documents, commonQa, rubric, methodology, examBank }));
   }
   return staticDataPromise;
 }
@@ -324,7 +325,106 @@ function staticQaQuery(message, history = []) {
   return [...priorQuestions, current].filter(Boolean).join(" ");
 }
 
-function staticRetrieve(query, documents, limit = 8, route = null) {
+const COMMON_QA_NOISE_RE = /请问|我想(?:问|了解)|想问一下|请教一下|什么是|是什么|为什么|为啥|怎么回事|如何|怎么|怎么办|能不能|可以吗|是否|吗|呢|呀|啊|的|一下/gi;
+const COMMON_QA_SYNONYMS = [
+  ["头疼", "头不适"],
+  ["头痛", "头不适"],
+  ["疼痛", "不适"],
+  ["疼", "不适"],
+  ["痛", "不适"],
+  ["为啥", "为什么"],
+  ["咋", "怎么"],
+];
+
+function normalizeStaticCommonQaText(value) {
+  let text = String(value || "").replace(/\s+/g, "").toLowerCase();
+  COMMON_QA_SYNONYMS.forEach(([source, target]) => { text = text.replaceAll(source, target); });
+  return text.replace(/[^a-z0-9\u4e00-\u9fff]+/g, "");
+}
+
+function staticCommonQaCoreText(value) {
+  return normalizeStaticCommonQaText(value).replace(COMMON_QA_NOISE_RE, "");
+}
+
+function staticCommonQaMatchTerms(value) {
+  const text = staticCommonQaCoreText(value);
+  const terms = new Set(text.match(/[a-z0-9_]+/g) || []);
+  for (let index = 0; index < text.length - 1; index += 1) {
+    const pair = text.slice(index, index + 2);
+    if (/^[\u4e00-\u9fff]{2}$/.test(pair)) terms.add(pair);
+  }
+  return terms;
+}
+
+function staticCommonQaScore(query, row) {
+  const queryCore = staticCommonQaCoreText(query);
+  const questionCore = staticCommonQaCoreText(row?.question);
+  if (queryCore.length < 2 || questionCore.length < 2) return 0;
+  if (queryCore === questionCore) return 1;
+  if (Math.min(queryCore.length, questionCore.length) >= 4 && (queryCore.includes(questionCore) || questionCore.includes(queryCore))) return 0.93;
+
+  const queryTerms = staticCommonQaMatchTerms(queryCore);
+  const questionTerms = staticCommonQaMatchTerms(questionCore);
+  const overlap = [...queryTerms].filter((term) => questionTerms.has(term)).length;
+  if (overlap < 2) return 0;
+  const keywordHits = (row?.keywords || []).filter((keyword) => {
+    const normalized = staticCommonQaCoreText(keyword);
+    return normalized.length >= 2 && queryCore.includes(normalized);
+  }).length;
+  if (!keywordHits && overlap < 3) return 0;
+  const queryChars = new Set(queryCore);
+  const questionChars = new Set(questionCore);
+  const sharedChars = [...queryChars].filter((char) => questionChars.has(char)).length;
+  const charDice = (2 * sharedChars) / Math.max(queryChars.size + questionChars.size, 1);
+  const questionCoverage = overlap / Math.max(questionTerms.size, 1);
+  const queryCoverage = overlap / Math.max(queryTerms.size, 1);
+  const keywordScore = Math.min(1, keywordHits / Math.max(1, Math.min((row?.keywords || []).length, 2)));
+  const score = questionCoverage * 0.38
+    + queryCoverage * 0.18
+    + charDice * 0.20
+    + keywordScore * 0.16
+    + ((queryCore.includes(questionCore) || questionCore.includes(queryCore)) ? 0.08 : 0);
+  return Math.min(score, 0.99);
+}
+
+function matchStaticCommonQa(query, catalog = []) {
+  const candidates = catalog.map((row) => ({ row, score: staticCommonQaScore(query, row) }))
+    .filter((item) => item.row?.approved_answer && item.score >= 0.66)
+    .sort((a, b) => b.score - a.score || Number(b.row.usage_count || 0) - Number(a.row.usage_count || 0) || String(b.row.question || "").length - String(a.row.question || "").length);
+  if (!candidates.length) return null;
+  const best = candidates[0];
+  return { row: best.row, score: Number(best.score.toFixed(3)) };
+}
+
+function publicStaticCommonQaMatch(match) {
+  const row = match?.row || {};
+  return { id: row.id || "", question: row.question || "", score: match?.score || 0, status: row.status || "" };
+}
+
+function staticCommonQaCourseReference(row) {
+  const course = resolveReferenceCourse({ course_id: row?.mapped_course_id });
+  if (!course) return null;
+  const module = moduleById(course.module_id);
+  return {
+    course_id: course.id,
+    title: course.title,
+    category: "标准问答课程",
+    module: module?.short_name || module?.title || "知识模块",
+    chapter: course.group_title || "",
+  };
+}
+
+function uniqueStaticReferences(references = []) {
+  const seen = new Set();
+  return references.filter((reference) => {
+    const key = reference.course_id || reference.title;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function staticRetrieve(query, documents, limit = 8, route = null, includeCommonQa = true) {
   const text = String(query || "").toLowerCase();
   const terms = new Set(text.match(/[a-z0-9_]{2,}/gi) || []);
   (text.match(/[\u4e00-\u9fff]+/g) || []).forEach((segment) => {
@@ -336,6 +436,7 @@ function staticRetrieve(query, documents, limit = 8, route = null) {
   const ranked = documents.map((document, index) => {
     const metadata = document.metadata || {};
     if (metadata.doc_type === "source") return null;
+    if (!includeCommonQa && metadata.doc_type === "common_qa") return null;
     if (route && metadata.doc_type === "course_section" && !routedModuleIds.has(metadata.module_id) && !requiredCourseIds.has(metadata.course_id)) return null;
     const title = String(metadata.title || "").toLowerCase();
     const haystack = `${document.text || ""} ${JSON.stringify(metadata)}`.toLowerCase();
@@ -407,6 +508,31 @@ function staticMock(mode, action, scenario) {
   if (mode === "test" && action === "turn") return { reply: scenario?.opening || "我最近有点困扰，想先了解一下你们的项目。", emotion: "hesitant", should_continue: true };
   if (mode === "test" && action === "finish") return { total_score: 72, dimension_scores: [], critical_failures: [], strengths: ["完成了基本接待并保持对话连续"], improvements: ["先问清目标、持续时间、影响和顾虑，再介绍项目"], summary: "演示评分：流程已走通，配置 API Key 后可使用模型评分。" };
   return { answer: "当前是演示模式。保存 SiliconFlow API Key 后，就能生成基于知识库的正式回答。", uncertainties: ["请以门店当前价格、项目标签和合规版本为准。"], recommended_action: "先核对门店当前版本的价格、频次和适用边界。" };
+}
+
+function staticKnowledgeQaResponse(message, route, docs) {
+  const snippets = [];
+  const seenTitles = new Set();
+  docs.slice(0, 2).forEach((document) => {
+    const course = resolveReferenceCourse(document);
+    const title = course?.title || document.metadata?.title || document.document_id || "知识库资料";
+    if (seenTitles.has(title)) return;
+    seenTitles.add(title);
+    const section = course?.sections?.[0];
+    const content = Array.isArray(section?.content)
+      ? section.content.slice(0, 2).join("；")
+      : typeof section?.content === "object" && section?.content
+        ? Object.entries(section.content).map(([key, value]) => `${key}：${value}`).join("；")
+        : String(section?.content || document.text || "");
+    const snippet = `${course?.summary || ""} ${content}`.replace(/\s+/g, " ").trim();
+    if (snippet) snippets.push(snippet.slice(0, 220));
+  });
+  if (!snippets.length) return staticMock("qa", "turn", null);
+  return {
+    answer: `围绕您问的“${String(message || "").trim()}”，知识库相关课程提到：${snippets.slice(0, 2).join("；")}`,
+    uncertainties: ["具体项目、适用条件和门店动态政策仍需按当前有效版本核对。"],
+    recommended_action: route.recommended_next || "如需继续了解，可打开下方相关课程并核对当前门店标准。",
+  };
 }
 
 const STATIC_CRITICAL_PATTERNS = [
@@ -1370,9 +1496,9 @@ function cleanStaticHistory(history = [], limit = 7) {
 async function staticApi(path, body) {
   const data = await loadStaticData();
   if (path === "/api/bootstrap") {
-    return { ok: true, scenarios: data.scenarios, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length, scenarios: data.scenarios.length }, rubric: { total: data.rubric.total, dimensions: data.rubric.dimensions || [] } };
+    return { ok: true, scenarios: data.scenarios, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length, common_qa: data.commonQa.length, scenarios: data.scenarios.length }, rubric: { total: data.rubric.total, dimensions: data.rubric.dimensions || [] } };
   }
-  if (path === "/api/health") return { ok: true, api_configured: Boolean(state.apiKey), mock_mode: !state.apiKey, model: state.model, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length } };
+  if (path === "/api/health") return { ok: true, api_configured: Boolean(state.apiKey), mock_mode: !state.apiKey, model: state.model, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length, common_qa: data.commonQa.length } };
   if (path !== "/api/chat") throw new Error("静态模式不支持该接口");
 
   const mode = body.mode || "qa";
@@ -1383,13 +1509,33 @@ async function staticApi(path, body) {
   const message = body.message || "";
   const history = body.history || [];
   const query = mode === "qa" ? staticQaQuery(message, history) : [...history.slice(-8).map((item) => item.content), message].join(" ");
+  const commonQaMatch = mode === "qa"
+    ? (matchStaticCommonQa(message, data.commonQa) || (query !== message ? matchStaticCommonQa(query, data.commonQa) : null))
+    : null;
   const route = staticRouteCustomerQuestion(query, data.methodology);
-  const docs = staticRetrieve(query, data.documents, 8, route);
+  let docs = staticRetrieve(query, data.documents, 8, route, mode !== "qa");
+  if (commonQaMatch && mode === "qa") {
+    docs = docs.filter((document) => document.metadata?.doc_type !== "common_qa");
+  }
   // Keep interactive prompts compact so multi-turn responses remain reliable
   // on the static Pages build while retrieval/citations stay unchanged.
   const context = docs.slice(0, mode === "training" ? 4 : 8).map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, mode === "training" ? 650 : 1200)}`).join("\n\n");
   if (!apiKey) {
-    const result = normalizeStaticResult(staticMockProgressive(mode, action, scenario, history, data.rubric, message), mode, action, scenario, history, data.rubric, message, query, route);
+    if (mode === "qa" && commonQaMatch) {
+      const result = normalizeStaticQaResult({
+        answer: commonQaMatch.row.approved_answer,
+        uncertainties: [],
+        recommended_action: "如需继续了解，可打开下方对应课程学习；涉及当前价格、门店政策或个体适用性时，请再核对有效版本。",
+        faq_match: publicStaticCommonQaMatch(commonQaMatch),
+      }, message, query, route, history);
+      result.answer = commonQaMatch.row.approved_answer;
+      result.faq_match = publicStaticCommonQaMatch(commonQaMatch);
+      const faqReference = staticCommonQaCourseReference(commonQaMatch.row);
+      const references = uniqueStaticReferences([faqReference, ...docs.map(publicStaticDocument)].filter(Boolean));
+      return { ok: true, mode, result, citations: references.slice(0, 3), retrieved: references, meta: { mock: true, model, common_qa: true } };
+    }
+    const rawResult = mode === "qa" ? staticKnowledgeQaResponse(message, route, docs) : staticMockProgressive(mode, action, scenario, history, data.rubric, message);
+    const result = normalizeStaticResult(rawResult, mode, action, scenario, history, data.rubric, message, query, route);
     return { ok: true, mode, result, citations: mode === "qa" ? docs.slice(0, 3).map(publicStaticDocument) : [], retrieved: mode === "qa" ? docs.map(publicStaticDocument) : [], meta: { mock: true, model } };
   }
 
@@ -1473,8 +1619,34 @@ async function staticApi(path, body) {
     system = `你是企业知识库中的顾客接待助手。只基于给定的方法路由和资料直接回答顾客当前问题。${safety}\n这是连续对话，必须结合最近问题和上一轮回答理解“这个、那、它、怎么办”等指代，但只回答当前这一问，不要机械重复上一轮。先承接问题，只补一个必要信息，再给已核验内容、边界和一个可执行下一步。严格输出 JSON：{"answer":"...","uncertainties":[],"recommended_action":"..."}。`;
     messages = [...dialogue, { role: "user", content: `顾客当前问题：${message}\n方法路由：\n${routeContext}\n相关知识库：\n${context}` }];
   }
+  if (mode === "qa" && commonQaMatch) {
+    const result = normalizeStaticQaResult({
+      answer: commonQaMatch.row.approved_answer,
+      uncertainties: [],
+      recommended_action: "",
+      faq_match: publicStaticCommonQaMatch(commonQaMatch),
+    }, message, query, route, history);
+    result.answer = commonQaMatch.row.approved_answer;
+    result.faq_match = publicStaticCommonQaMatch(commonQaMatch);
+    const faqReference = staticCommonQaCourseReference(commonQaMatch.row);
+    const references = uniqueStaticReferences([faqReference, ...docs.map(publicStaticDocument)].filter(Boolean));
+    return { ok: true, mode, result, citations: references.slice(0, 3), retrieved: references, meta: { mock: true, model, common_qa: true } };
+  }
   const timeoutMs = mode === "test" && action === "finish" ? 60000 : 45000;
   const modelResult = await callStaticModel(system, messages, model, apiKey, temperature, maxTokens, timeoutMs);
+  if (mode === "qa" && commonQaMatch) {
+    const result = normalizeStaticQaResult({
+      answer: commonQaMatch.row.approved_answer,
+      uncertainties: [],
+      recommended_action: "如需继续了解，可打开下方对应课程学习；涉及当前价格、门店政策或个体适用性时，请再核对有效版本。",
+      faq_match: publicStaticCommonQaMatch(commonQaMatch),
+    }, message, query, route, history);
+    result.answer = commonQaMatch.row.approved_answer;
+    result.faq_match = publicStaticCommonQaMatch(commonQaMatch);
+    const faqReference = staticCommonQaCourseReference(commonQaMatch.row);
+    const references = uniqueStaticReferences([faqReference, ...docs.map(publicStaticDocument)].filter(Boolean));
+    return { ok: true, mode, result, citations: references.slice(0, 3), retrieved: references, meta: { mock: true, model, common_qa: true } };
+  }
   let result = extractStaticJson(modelResult.content) || (mode === "test" && action === "turn" ? { reply: modelResult.content, emotion: "neutral", should_continue: true } : { answer: modelResult.content, uncertainties: [], recommended_action: "" });
   result = normalizeStaticResult(result, mode, action, scenario, history, data.rubric, message, query, route);
   return { ok: true, mode, result, citations: mode === "qa" ? docs.slice(0, 3).map(publicStaticDocument) : [], retrieved: mode === "qa" ? docs.map(publicStaticDocument) : [], meta: { ...modelResult.meta, mock: false } };
@@ -1558,6 +1730,15 @@ const COURSE_DOMAIN_MODULES = {
   safety: "MOD-01", service_safety: "MOD-01", operations: "MOD-01", product_ops: "MOD-01",
 };
 
+const COMMON_QA_COURSE_FALLBACKS = {
+  "COURSE-FAQ-POINT-WAVE-001": "COURSE-MOD-03-02",
+  "COURSE-FAQ-SUPER-V-001": "COURSE-MOD-04-02",
+  "COURSE-FAQ-SLIMMING-001": "COURSE-MOD-05-03",
+  "COURSE-FAQ-OBJECTION-001": "COURSE-MOD-02-04",
+  "COURSE-FAQ-SAFETY-001": "COURSE-MOD-06-02",
+  "COURSE-FAQ-BEAUTY-001": "COURSE-MOD-09-03",
+};
+
 const courseSearchTermCache = new Map();
 
 function searchableTerms(value) {
@@ -1592,7 +1773,8 @@ function resolveReferenceCourse(reference = {}) {
   const metadata = reference.metadata || {};
   const requestedId = reference.course_id || metadata.course_id;
   if (requestedId) {
-    const direct = state.courses.find((course) => course.id === requestedId);
+    const direct = state.courses.find((course) => course.id === requestedId)
+      || state.courses.find((course) => course.id === COMMON_QA_COURSE_FALLBACKS[requestedId]);
     if (direct) return direct;
   }
 
@@ -2410,6 +2592,9 @@ async function sendMessage() {
 
 function renderQAAnswer(result, retrieved, citations) {
   const row = addMessage("assistant", result.answer || "暂时没有找到足够依据。", "AI 接待助手");
+  if (result.faq_match) {
+    row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-faq-match"><span>优先命中常见问答标准答案</span><p>匹配问题：${escapeHtml(result.faq_match.question || "相似常见问题")}</p></div>`);
+  }
   const route = result.route || {};
   const supportingModules = Array.isArray(route.supporting_modules) ? route.supporting_modules : [];
   const routeModules = [route.primary_module, ...supportingModules].filter(Boolean);

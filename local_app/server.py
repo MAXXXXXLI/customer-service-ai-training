@@ -41,6 +41,7 @@ def read_jsonl(name: str) -> list[dict[str, Any]]:
 
 
 RAG_DOCUMENTS = read_jsonl("rag_documents.jsonl")
+COMMON_QA = read_jsonl("common_qa_catalog.jsonl")
 CARDS = read_jsonl("knowledge_cards.jsonl")
 OBJECTIONS = read_jsonl("objection_library.jsonl")
 SCENARIOS = read_jsonl("scenario_library.jsonl")
@@ -58,6 +59,19 @@ COURSE_BY_KNOWLEDGE_ID = {
     for course in LEARNING_CATALOG["courses"]
 }
 COURSE_BY_ID = {course["id"]: course for course in LEARNING_CATALOG["courses"]}
+COMMON_QA_DOC_BY_ID = {
+    doc.get("document_id"): doc
+    for doc in RAG_DOCUMENTS
+    if doc.get("metadata", {}).get("doc_type") == "common_qa"
+}
+COMMON_QA_COURSE_FALLBACKS = {
+    "COURSE-FAQ-POINT-WAVE-001": "COURSE-MOD-03-02",
+    "COURSE-FAQ-SUPER-V-001": "COURSE-MOD-04-02",
+    "COURSE-FAQ-SLIMMING-001": "COURSE-MOD-05-03",
+    "COURSE-FAQ-OBJECTION-001": "COURSE-MOD-02-04",
+    "COURSE-FAQ-SAFETY-001": "COURSE-MOD-06-02",
+    "COURSE-FAQ-BEAUTY-001": "COURSE-MOD-09-03",
+}
 MODULE_BY_ID = {module["id"]: module for module in LEARNING_MODULES}
 SOURCE_TO_COURSES: dict[str, list[dict[str, Any]]] = {}
 for item in [*CARDS, *OBJECTIONS]:
@@ -261,9 +275,129 @@ def text_terms(text: str) -> set[str]:
     return terms
 
 
+COMMON_QA_NOISE_RE = re.compile(
+    r"请问|我想(?:问|了解)|想问一下|请教一下|什么是|是什么|为什么|为啥|怎么回事|如何|怎么|怎么办|"
+    r"能不能|可以吗|是否|吗|呢|呀|啊|的|一下",
+    re.I,
+)
+COMMON_QA_SYNONYMS = (
+    ("头疼", "头不适"),
+    ("头痛", "头不适"),
+    ("疼痛", "不适"),
+    ("疼", "不适"),
+    ("痛", "不适"),
+    ("为啥", "为什么"),
+    ("咋", "怎么"),
+)
+
+
+def normalize_common_qa_text(value: Any) -> str:
+    text = clean_text(value).lower()
+    text = text.translate(str.maketrans({"？": "?", "！": "!", "，": ",", "。": ".", "：": ":"}))
+    for source, target in COMMON_QA_SYNONYMS:
+        text = text.replace(source, target)
+    return re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", text)
+
+
+def common_qa_core_text(value: Any) -> str:
+    return COMMON_QA_NOISE_RE.sub("", normalize_common_qa_text(value))
+
+
+def common_qa_match_terms(value: Any) -> set[str]:
+    text = common_qa_core_text(value)
+    terms = set(re.findall(r"[a-z0-9_]+", text))
+    terms.update(text[index : index + 2] for index in range(len(text) - 1) if "\u4e00" <= text[index] <= "\u9fff" and "\u4e00" <= text[index + 1] <= "\u9fff")
+    return terms
+
+
+def common_qa_score(query: str, row: dict[str, Any]) -> float:
+    query_core = common_qa_core_text(query)
+    question_core = common_qa_core_text(row.get("question", ""))
+    if len(query_core) < 2 or len(question_core) < 2:
+        return 0.0
+    if query_core == question_core:
+        return 1.0
+    if min(len(query_core), len(question_core)) >= 4 and (query_core in question_core or question_core in query_core):
+        return 0.93
+
+    query_terms = common_qa_match_terms(query_core)
+    question_terms = common_qa_match_terms(question_core)
+    overlap = len(query_terms & question_terms)
+    if overlap < 2:
+        return 0.0
+    keyword_hits = sum(
+        1
+        for keyword in row.get("keywords", [])
+        if len(common_qa_core_text(keyword)) >= 2 and common_qa_core_text(keyword) in query_core
+    )
+    if not keyword_hits and overlap < 3:
+        return 0.0
+    query_chars = set(query_core)
+    question_chars = set(question_core)
+    char_dice = (2 * len(query_chars & question_chars)) / max(len(query_chars) + len(question_chars), 1)
+    question_coverage = overlap / max(len(question_terms), 1)
+    query_coverage = overlap / max(len(query_terms), 1)
+    keyword_score = min(1.0, keyword_hits / max(1, min(len(row.get("keywords", [])), 2)))
+    score = (
+        question_coverage * 0.38
+        + query_coverage * 0.18
+        + char_dice * 0.20
+        + keyword_score * 0.16
+        + (0.08 if query_core in question_core or question_core in query_core else 0.0)
+    )
+    return min(score, 0.99)
+
+
+def match_common_qa(query: str) -> dict[str, Any] | None:
+    candidates = []
+    for row in COMMON_QA:
+        if not row.get("approved_answer"):
+            continue
+        score = common_qa_score(query, row)
+        if score >= 0.66:
+            candidates.append((score, int(row.get("usage_count") or 0), row))
+    if not candidates:
+        return None
+    score, _, row = max(candidates, key=lambda item: (item[0], item[1], len(item[2].get("question", ""))))
+    return {"row": row, "score": round(score, 3)}
+
+
+def public_common_qa_match(match: dict[str, Any]) -> dict[str, Any]:
+    row = match.get("row", {})
+    return {
+        "id": row.get("id", ""),
+        "question": row.get("question", ""),
+        "score": match.get("score", 0),
+        "status": row.get("status", ""),
+    }
+
+
+def common_qa_course(row: dict[str, Any]) -> dict[str, Any] | None:
+    requested_id = row.get("mapped_course_id", "")
+    return COURSE_BY_ID.get(requested_id) or COURSE_BY_ID.get(COMMON_QA_COURSE_FALLBACKS.get(requested_id, ""))
+
+
+def common_qa_course_reference(row: dict[str, Any]) -> dict[str, str] | None:
+    course = common_qa_course(row)
+    if not course:
+        return None
+    module = MODULE_BY_ID.get(course.get("module_id"), {})
+    return {
+        "course_id": course.get("id", ""),
+        "title": course.get("title", ""),
+        "category": "标准问答课程",
+        "module": module.get("short_name", ""),
+        "chapter": course.get("group_title", ""),
+    }
+
+
 def related_course(doc: dict[str, Any]) -> dict[str, Any] | None:
     document_id = str(doc.get("document_id", ""))
     metadata = doc.get("metadata", {})
+    if metadata.get("doc_type") == "common_qa":
+        common_qa = next((row for row in COMMON_QA if row.get("id") == document_id), None)
+        if common_qa:
+            return common_qa_course(common_qa)
     if metadata.get("course_id") in COURSE_BY_ID:
         return COURSE_BY_ID[metadata["course_id"]]
     if document_id in COURSE_BY_KNOWLEDGE_ID:
@@ -281,7 +415,13 @@ def related_course(doc: dict[str, Any]) -> dict[str, Any] | None:
     )
 
 
-def retrieve(query: str, limit: int = 8, domain: str | None = None, route: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def retrieve(
+    query: str,
+    limit: int = 8,
+    domain: str | None = None,
+    route: dict[str, Any] | None = None,
+    include_common_qa: bool = True,
+) -> list[dict[str, Any]]:
     query = clean_text(query)
     if not query:
         return []
@@ -295,6 +435,8 @@ def retrieve(query: str, limit: int = 8, domain: str | None = None, route: dict[
     routed_module_ids.discard(None)
     for doc in RAG_DOCUMENTS:
         metadata = doc.get("metadata", {})
+        if not include_common_qa and metadata.get("doc_type") == "common_qa":
+            continue
         # 原始资料保留用于审计，但不直接进入机器人上下文；机器人只使用已重写的
         # 课程、结构化卡片、异议案例和安全规则，避免旧版医疗化/绝对化话术复现。
         if metadata.get("doc_type") == "source":
@@ -911,7 +1053,37 @@ def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any]
 
 
 def mock_qa_response(message: str, route: dict[str, Any], docs: list[dict[str, Any]]) -> dict[str, Any]:
-    """Provide a useful, deterministic QA answer when no provider key is configured."""
+    """Provide a deterministic answer grounded in the retrieved course knowledge."""
+    snippets = []
+    seen_titles = set()
+    for doc in docs[:2]:
+        course = related_course(doc)
+        title = course.get("title") if course else public_doc_title(doc)
+        if title in seen_titles:
+            continue
+        seen_titles.add(title)
+        if course:
+            section = (course.get("sections") or [{}])[0]
+            content = section.get("content", "") if isinstance(section, dict) else ""
+            if isinstance(content, list):
+                content = "；".join(clean_text(item) for item in content[:2] if clean_text(item))
+            elif isinstance(content, dict):
+                content = "；".join(f"{key}：{clean_text(value)}" for key, value in content.items())
+            snippet = clean_text(f"{course.get('summary', '')} {content}")
+        else:
+            snippet = clean_text(doc.get("text", ""))
+        if snippet:
+            snippets.append(snippet[:220])
+
+    if snippets:
+        answer = f"围绕您问的“{clean_text(message)}”，知识库相关课程提到：{'；'.join(snippets[:2])}"
+        return {
+            "answer": answer,
+            "uncertainties": ["具体项目、适用条件和门店动态政策仍需按当前有效版本核对。"],
+            "citations": [{"document_id": item.get("document_id"), "title": item.get("metadata", {}).get("title")} for item in docs[:3]],
+            "recommended_action": route.get("recommended_next", "如需继续了解，可打开下方相关课程并核对当前门店标准。"),
+        }
+
     intent_id = route.get("intent_id")
     module_ids = {route.get("primary_module_id"), *route.get("support_module_ids", [])}
     if re.search(r"(?:背部|后背).{0,8}(?:凉|冷)|(?:凉|冷).{0,8}(?:背部|后背)|器官功能", message, re.I):
@@ -2222,13 +2394,32 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
     dialogue_history = clean_dialogue_history(history)
     recent_dialogue = " ".join(item["content"] for item in dialogue_history[-6:])
     query = qa_context_query(message, dialogue_history) if mode == "qa" else clean_text(f"{recent_dialogue} {message}")
+    common_qa_match = match_common_qa(message)
+    if not common_qa_match and query != message:
+        common_qa_match = match_common_qa(query)
     route = route_customer_question(query)
-    docs = retrieve(query, limit=8, route=route)
+    docs = retrieve(query, limit=8, route=route, include_common_qa=mode != "qa")
+    if common_qa_match and mode == "qa":
+        matched_doc = COMMON_QA_DOC_BY_ID.get(common_qa_match["row"].get("id"))
+        if matched_doc:
+            docs = [matched_doc, *[doc for doc in docs if doc.get("document_id") != matched_doc.get("document_id")]]
     if mode in {"qa", "training", "test"}:
         docs = with_safety_doc(docs)
     citation_refs = public_citations(docs)
 
     if mode == "qa":
+        if common_qa_match:
+            matched_row = common_qa_match["row"]
+            result = {
+                "answer": matched_row.get("approved_answer", ""),
+                "uncertainties": [],
+                "recommended_action": "如需继续了解，可打开下方对应课程学习；涉及当前价格、门店政策或个体适用性时，请再核对有效版本。",
+                "faq_match": public_common_qa_match(common_qa_match),
+            }
+            result = apply_methodology_result(result, mode, route)
+            result["answer"] = matched_row.get("approved_answer", "")
+            result["faq_match"] = public_common_qa_match(common_qa_match)
+            return response_payload(mode, result, docs, {"mock": True, "model": model, "common_qa": True})
         user_message = f"顾客当前问题：{message}\n\n方法路由：\n{route_context_block(route)}\n\n检索资料：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_qa_response(message, route, docs), mode, message, route), mode, route)
@@ -2375,10 +2566,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         request_path = self.path.split("?", 1)[0]
         if request_path == "/api/health":
-            self.send_json({"ok": True, "api_configured": bool(ENV_API_KEY), "mock_mode": MOCK_MODE, "model": DEFAULT_MODEL, "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "scenarios": len(SCENARIOS)}})
+            self.send_json({"ok": True, "api_configured": bool(ENV_API_KEY), "mock_mode": MOCK_MODE, "model": DEFAULT_MODEL, "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "common_qa": len(COMMON_QA), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "scenarios": len(SCENARIOS)}})
             return
         if request_path == "/api/bootstrap":
-            self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
+            self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "common_qa": len(COMMON_QA), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
             return
         root_static_files = {"/app.js", "/styles.css", "/showyu-logo.png", "/learning_modules.json", "/learning_catalog.json"}
         if request_path.startswith("/static/") or request_path in root_static_files:
