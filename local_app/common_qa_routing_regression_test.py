@@ -37,6 +37,10 @@ exact_result = server.handle_chat({"mode": "qa", "message": "点阵波打完更�
 check(exact_result["result"].get("faq_match", {}).get("id") == "FAQ-XLS-0002", "相同问题应命中对应标准问答")
 check(course_ids(exact_result) == ["COURSE-NKB-012"], "服务后疼痛问答只能引用服务后反应课程")
 
+typo_result = server.handle_chat({"mode": "qa", "message": "点振波的副作用有哪些"})
+check(typo_result["result"]["route"].get("primary_module") == "点阵波与疼痛服务", "点振波错别字仍应进入点阵波模块")
+check(course_ids(typo_result) == ["COURSE-NKB-012"], "点振波错别字应检索服务后反应课程")
+
 original_call_model = server.call_model
 try:
     def fake_model(system, messages, model, api_key, temperature=0.4, max_tokens=1800):
@@ -78,4 +82,5 @@ print(json.dumps({
     "candidate_count": len(side_effect_candidates),
     "fallback_courses": course_ids(side_effect_result),
     "exact_match": exact_result["result"]["faq_match"]["id"],
+    "typo_course": course_ids(typo_result),
 }, ensure_ascii=False, indent=2))

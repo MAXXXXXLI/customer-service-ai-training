@@ -223,7 +223,7 @@ function uniqueStaticItems(values = []) {
 }
 
 function staticRouteCustomerQuestion(query, methodology = {}) {
-  const text = String(query || "").replace(/\s+/g, " ").trim();
+  const text = String(query || "").replace(/\s+/g, " ").trim().replaceAll("点振波", "点阵波");
   const intents = [...(methodology.intent_routes || [])].sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
   let matchedIntent = intents.find((item) => staticIntentMatches(text, item)) || null;
   const topics = (methodology.topic_routes || []).filter((item) => staticMatchesAny(text, item.patterns));
@@ -499,7 +499,7 @@ function staticCommonQaCourseIds(row = {}) {
 }
 
 function staticPreferredCourseIds(query) {
-  const text = String(query || "");
+  const text = String(query || "").replaceAll("点振波", "点阵波");
   const intents = staticCommonQaIntents(text);
   if (/点阵波|点振波/i.test(text)) {
     if (intents.has("adverse_effect")) return ["COURSE-NKB-012"];
@@ -524,7 +524,7 @@ function staticPreferredCourseIds(query) {
 }
 
 function staticRetrieve(query, documents, limit = 8, route = null, includeCommonQa = true) {
-  const text = String(query || "").toLowerCase();
+  const text = String(query || "").replaceAll("点振波", "点阵波").toLowerCase();
   const stopTerms = new Set(["这个", "那个", "这些", "那些", "项目", "服务", "可以", "不能", "能不", "是不是", "是否", "怎么", "如何", "什么", "有没有", "请问", "我想", "你们", "我们", "现在", "一下", "一个", "哪些", "有哪", "吗", "呢", "一次", "几次", "需要"]);
   const terms = new Set(text.match(/[a-z0-9_]{2,}/gi) || []);
   (text.match(/[\u4e00-\u9fff]+/g) || []).forEach((segment) => {

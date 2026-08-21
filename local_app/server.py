@@ -154,7 +154,7 @@ def unique_items(values: list[str]) -> list[str]:
 
 def route_customer_question(query: str) -> dict[str, Any]:
     """Deterministically map a customer question to the approved knowledge modules."""
-    text = clean_text(query)
+    text = clean_text(query).replace("点振波", "点阵波")
     intent_routes = sorted(METHODOLOGY.get("intent_routes", []), key=lambda item: -item.get("priority", 0))
     intent = next((item for item in intent_routes if intent_matches(text, item)), None)
     matched_intent = intent is not None
@@ -599,7 +599,7 @@ def retrieve(
     route: dict[str, Any] | None = None,
     include_common_qa: bool = True,
 ) -> list[dict[str, Any]]:
-    query = clean_text(query)
+    query = clean_text(query).replace("点振波", "点阵波")
     if not query:
         return []
     q_terms = retrieval_terms(query)
