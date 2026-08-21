@@ -41,7 +41,10 @@ def read_jsonl(name: str) -> list[dict[str, Any]]:
 
 
 RAG_DOCUMENTS = read_jsonl("rag_documents.jsonl")
-COMMON_QA = read_jsonl("common_qa_catalog.jsonl")
+COMMON_QA = [
+    *read_jsonl("common_qa_catalog.jsonl"),
+    *read_jsonl("common_qa_excel_catalog.jsonl"),
+]
 CARDS = read_jsonl("knowledge_cards.jsonl")
 OBJECTIONS = read_jsonl("objection_library.jsonl")
 SCENARIOS = read_jsonl("scenario_library.jsonl")

@@ -179,10 +179,11 @@ async function loadStaticData() {
       fetch("./data/scenario_library.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/rag_documents.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/common_qa_catalog.jsonl").then((response) => response.text()).then(parseJsonl),
+      fetch("./data/common_qa_excel_catalog.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/scoring_rubric.json").then((response) => response.json()),
       fetch("./data/customer_service_methodology.json").then((response) => response.json()),
       fetch("./data/comprehensive_exam_bank.json").then((response) => response.json()),
-    ]).then(([scenarios, documents, commonQa, rubric, methodology, examBank]) => ({ scenarios, documents, commonQa, rubric, methodology, examBank }));
+    ]).then(([scenarios, documents, commonQa, commonQaExcel, rubric, methodology, examBank]) => ({ scenarios, documents, commonQa: [...commonQa, ...commonQaExcel], rubric, methodology, examBank }));
   }
   return staticDataPromise;
 }
