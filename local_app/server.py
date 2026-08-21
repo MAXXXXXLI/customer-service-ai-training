@@ -75,6 +75,14 @@ COMMON_QA_COURSE_FALLBACKS = {
     "COURSE-FAQ-SAFETY-001": "COURSE-MOD-06-02",
     "COURSE-FAQ-BEAUTY-001": "COURSE-MOD-09-03",
 }
+COMMON_QA_LEGACY_COURSE_IDS = {
+    "COURSE-FAQ-POINT-WAVE-001": ("COURSE-NKB-010", "COURSE-NKB-011", "COURSE-NKB-012"),
+    "COURSE-FAQ-SUPER-V-001": ("COURSE-NKB-017", "COURSE-NKB-018", "COURSE-NKB-019"),
+    "COURSE-FAQ-SLIMMING-001": ("COURSE-NKB-020", "COURSE-NKB-021", "COURSE-NKB-022", "COURSE-NKB-023"),
+    "COURSE-FAQ-OBJECTION-001": ("COURSE-NKB-007", "COURSE-NKB-008"),
+    "COURSE-FAQ-SAFETY-001": ("COURSE-NKB-003",),
+    "COURSE-FAQ-BEAUTY-001": ("COURSE-NKB-033", "COURSE-NKB-036", "COURSE-NKB-038", "COURSE-NKB-039", "COURSE-NKB-040", "COURSE-NKB-043"),
+}
 MODULE_BY_ID = {module["id"]: module for module in LEARNING_MODULES}
 SOURCE_TO_COURSES: dict[str, list[dict[str, Any]]] = {}
 for item in [*CARDS, *OBJECTIONS]:
@@ -151,6 +159,13 @@ def route_customer_question(query: str) -> dict[str, Any]:
     intent = next((item for item in intent_routes if intent_matches(text, item)), None)
     matched_intent = intent is not None
     topics = [item for item in METHODOLOGY.get("topic_routes", []) if matches_any(text, item.get("patterns", []))]
+    # Some legacy intent patterns use broad words such as “副作用”. When the
+    # question explicitly names a point-wave service and does not mention a
+    # drug or injection, the project topic must win over the medication route.
+    if intent and intent.get("id") == "INTENT-DRUG" and any(topic.get("module_id") == "MOD-03" for topic in topics):
+        if not re.search(r"药|用药|口服|注射|针剂|GLP.?1|贝那鲁肽|司美格鲁肽|美妥", text, re.I):
+            intent = None
+            matched_intent = False
     default = METHODOLOGY.get("default_route", {})
     if not intent:
         if topics:
@@ -284,6 +299,7 @@ COMMON_QA_NOISE_RE = re.compile(
     re.I,
 )
 COMMON_QA_SYNONYMS = (
+    ("点振波", "点阵波"),
     ("头疼", "头不适"),
     ("头痛", "头不适"),
     ("疼痛", "不适"),
@@ -313,6 +329,39 @@ def common_qa_match_terms(value: Any) -> set[str]:
     return terms
 
 
+RAG_STOP_TERMS = {
+    "这个", "那个", "这些", "那些", "项目", "服务", "可以", "不能", "能不", "是不是", "是否", "怎么", "如何",
+    "什么", "什么是", "有没有", "请问", "我想", "你们", "我们", "现在", "一下", "一个", "哪些", "有哪", "吗", "呢",
+    "的", "了", "很", "还", "会不", "能否", "做不", "怎么", "为什么", "一次", "几次", "想要", "需要",
+}
+
+
+def retrieval_terms(text: str) -> set[str]:
+    return {
+        term for term in text_terms(text)
+        if len(term) >= 2 and term not in RAG_STOP_TERMS
+    }
+
+
+COMMON_QA_INTENT_PATTERNS: dict[str, re.Pattern[str]] = {
+    "definition": re.compile(r"什么是|是什么|原理|定位|怎么工作|作用是什么", re.I),
+    "adverse_effect": re.compile(
+        r"副作用|不良反应|反应|不适|疼痛|痛|酸胀|刺痛|更痛|更疼|淤青|青紫|肿|麻木|发麻|头晕|耳鸣|犯困|恶心|红肿|发热|过敏",
+        re.I,
+    ),
+    "suitability": re.compile(r"能做|可以做|适合|风险|危险|禁忌|术后|疾病|结节|孕|哺乳|心脏|高血压", re.I),
+    "efficacy": re.compile(r"有效|效果|改善|见效|一次|几次|多久|保证|反弹|好不好", re.I),
+    "comparison": re.compile(r"区别|比较|哪个|联合|同时|和.+区别", re.I),
+    "price": re.compile(r"价格|多少钱|收费|贵|预算|费用", re.I),
+    "process": re.compile(r"怎么做|如何做|操作|顺序|安排|部位|频率|次数|流程", re.I),
+}
+
+
+def common_qa_intents(value: Any) -> set[str]:
+    text = clean_text(value)
+    return {name for name, pattern in COMMON_QA_INTENT_PATTERNS.items() if pattern.search(text)}
+
+
 def common_qa_score(query: str, row: dict[str, Any]) -> float:
     query_core = common_qa_core_text(query)
     question_core = common_qa_core_text(row.get("question", ""))
@@ -320,8 +369,6 @@ def common_qa_score(query: str, row: dict[str, Any]) -> float:
         return 0.0
     if query_core == question_core:
         return 1.0
-    if min(len(query_core), len(question_core)) >= 4 and (query_core in question_core or question_core in query_core):
-        return 0.93
 
     query_terms = common_qa_match_terms(query_core)
     question_terms = common_qa_match_terms(question_core)
@@ -346,23 +393,63 @@ def common_qa_score(query: str, row: dict[str, Any]) -> float:
         + query_coverage * 0.18
         + char_dice * 0.20
         + keyword_score * 0.16
-        + (0.08 if query_core in question_core or question_core in query_core else 0.0)
     )
+    query_intents = common_qa_intents(query)
+    question_intents = common_qa_intents(row.get("question", ""))
+    shared_intents = query_intents & question_intents
+    if query_intents and question_intents:
+        if not shared_intents:
+            # “副作用”和“项目原理”都是同一项目的词面相关问题，
+            # 但不能互相替代。让二次判断看到候选，同时显著降低误命中概率。
+            score *= 0.35
+        else:
+            score += 0.14
+    elif query_intents and not question_intents:
+        score *= 0.75
+    length_ratio = min(len(query_core), len(question_core)) / max(len(query_core), len(question_core), 1)
+    if query_core in question_core or question_core in query_core:
+        # 只有候选覆盖了大部分当前问题时，短语包含才算加分；
+        # “点阵波”不能覆盖“点阵波的副作用有哪些”。
+        score += 0.06 * length_ratio if length_ratio >= 0.55 else -0.08
     return min(score, 0.99)
 
 
-def match_common_qa(query: str) -> dict[str, Any] | None:
-    candidates = []
+def common_qa_candidates(query: str, limit: int = 6) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
     for row in COMMON_QA:
         if not row.get("approved_answer"):
             continue
         score = common_qa_score(query, row)
-        if score >= 0.66:
-            candidates.append((score, int(row.get("usage_count") or 0), row))
+        if score >= 0.28:
+            candidates.append({
+                "row": row,
+                "score": round(score, 3),
+                "intent_match": bool(common_qa_intents(query) & common_qa_intents(row.get("question", ""))),
+            })
+    candidates.sort(
+        key=lambda item: (
+            -item["score"],
+            -int(item["row"].get("usage_count") or 0),
+            -len(item["row"].get("question", "")),
+        )
+    )
+    return candidates[:limit]
+
+
+def common_qa_auto_accept(candidate: dict[str, Any] | None) -> bool:
+    if not candidate or candidate.get("score", 0) < 0.84:
+        return False
+    query_intents = common_qa_intents(candidate.get("query", ""))
+    row_intents = common_qa_intents(candidate.get("row", {}).get("question", ""))
+    return not query_intents or not row_intents or bool(query_intents & row_intents)
+
+
+def match_common_qa(query: str) -> dict[str, Any] | None:
+    candidates = common_qa_candidates(query, limit=6)
     if not candidates:
         return None
-    score, _, row = max(candidates, key=lambda item: (item[0], item[1], len(item[2].get("question", ""))))
-    return {"row": row, "score": round(score, 3)}
+    best = {**candidates[0], "query": query, "candidate_count": len(candidates), "selection": "deterministic"}
+    return best if common_qa_auto_accept(best) else None
 
 
 def public_common_qa_match(match: dict[str, Any]) -> dict[str, Any]:
@@ -372,12 +459,53 @@ def public_common_qa_match(match: dict[str, Any]) -> dict[str, Any]:
         "question": row.get("question", ""),
         "score": match.get("score", 0),
         "status": row.get("status", ""),
+        "candidate_count": match.get("candidate_count", 1),
+        "selection": match.get("selection", "candidate"),
     }
 
 
-def common_qa_course(row: dict[str, Any]) -> dict[str, Any] | None:
+def common_qa_course_ids(row: dict[str, Any]) -> list[str]:
     requested_id = row.get("mapped_course_id", "")
-    return COURSE_BY_ID.get(requested_id) or COURSE_BY_ID.get(COMMON_QA_COURSE_FALLBACKS.get(requested_id, ""))
+    if requested_id in COURSE_BY_ID:
+        return [requested_id]
+    candidates = list(COMMON_QA_LEGACY_COURSE_IDS.get(requested_id, ()))
+    question = clean_text(f"{row.get('question', '')} {' '.join(row.get('keywords', []))}")
+    intents = common_qa_intents(question)
+    if requested_id == "COURSE-FAQ-POINT-WAVE-001":
+        if "adverse_effect" in intents:
+            candidates = ["COURSE-NKB-012", "COURSE-NKB-015", *candidates]
+        elif "comparison" in intents:
+            candidates = ["COURSE-NKB-013", *candidates]
+        elif "suitability" in intents:
+            candidates = ["COURSE-NKB-016", "COURSE-NKB-003", *candidates]
+        elif "process" in intents:
+            candidates = ["COURSE-NKB-011", *candidates]
+        elif "definition" in intents:
+            candidates = ["COURSE-NKB-010", *candidates]
+    elif requested_id == "COURSE-FAQ-SUPER-V-001":
+        if "adverse_effect" in intents:
+            candidates = ["COURSE-NKB-018", *candidates]
+        elif "suitability" in intents:
+            candidates = ["COURSE-NKB-019", *candidates]
+        else:
+            candidates = ["COURSE-NKB-017", *candidates]
+    elif requested_id == "COURSE-FAQ-SLIMMING-001":
+        if "adverse_effect" in intents:
+            candidates = ["COURSE-NKB-024", "COURSE-NKB-027", *candidates]
+        elif "suitability" in intents:
+            candidates = ["COURSE-NKB-025", *candidates]
+        else:
+            candidates = ["COURSE-NKB-020", "COURSE-NKB-021", *candidates]
+    elif requested_id == "COURSE-FAQ-OBJECTION-001":
+        candidates = ["COURSE-NKB-008", *candidates]
+    elif requested_id == "COURSE-FAQ-SAFETY-001":
+        candidates = ["COURSE-NKB-003", *candidates]
+    return unique_items([course_id for course_id in candidates if course_id in COURSE_BY_ID])
+
+
+def common_qa_course(row: dict[str, Any]) -> dict[str, Any] | None:
+    course_ids = common_qa_course_ids(row)
+    return COURSE_BY_ID.get(course_ids[0]) if course_ids else None
 
 
 def common_qa_course_reference(row: dict[str, Any]) -> dict[str, str] | None:
@@ -391,6 +519,19 @@ def common_qa_course_reference(row: dict[str, Any]) -> dict[str, str] | None:
         "category": "标准问答课程",
         "module": module.get("short_name", ""),
         "chapter": course.get("group_title", ""),
+    }
+
+
+def common_qa_document(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "document_id": row.get("id", ""),
+        "text": row.get("approved_answer", ""),
+        "metadata": {
+            "doc_type": "common_qa",
+            "title": row.get("question", ""),
+            "course_id": row.get("mapped_course_id", ""),
+            "domain": row.get("domain", ""),
+        },
     }
 
 
@@ -418,6 +559,39 @@ def related_course(doc: dict[str, Any]) -> dict[str, Any] | None:
     )
 
 
+def preferred_course_ids_for_query(query: str) -> list[str]:
+    """Return the narrow course scope for the current question, not just its route module."""
+    text = clean_text(query)
+    intents = common_qa_intents(text)
+    if re.search(r"点阵波|点振波", text, re.I):
+        if "adverse_effect" in intents:
+            return ["COURSE-NKB-012"]
+        if "comparison" in intents:
+            return ["COURSE-NKB-013"]
+        if re.search(r"超V|热动力|联合", text, re.I):
+            return ["COURSE-NKB-014"]
+        if "suitability" in intents:
+            return ["COURSE-NKB-016", "COURSE-NKB-003"]
+        if "process" in intents:
+            return ["COURSE-NKB-011"]
+        if "definition" in intents:
+            return ["COURSE-NKB-010"]
+        return ["COURSE-NKB-010", "COURSE-NKB-011"]
+    if re.search(r"超V|热动力", text, re.I):
+        return ["COURSE-NKB-018", "COURSE-NKB-019"] if "adverse_effect" in intents else ["COURSE-NKB-017", "COURSE-NKB-018"]
+    if re.search(r"减肥|减重|体重|贝那鲁肽|GLP.?1|美妥", text, re.I):
+        if "adverse_effect" in intents:
+            return ["COURSE-NKB-024", "COURSE-NKB-027"]
+        if "suitability" in intents:
+            return ["COURSE-NKB-025", "COURSE-NKB-027"]
+        return ["COURSE-NKB-020", "COURSE-NKB-021", "COURSE-NKB-022"]
+    if re.search(r"脱毛|祛斑|水光|皮肤|敏感肌|线雕|热玛吉|玻尿酸|私密", text, re.I):
+        if re.search(r"脱毛", text, re.I):
+            return ["COURSE-NKB-036"]
+        return ["COURSE-NKB-033", "COURSE-NKB-038", "COURSE-NKB-040", "COURSE-NKB-043"]
+    return []
+
+
 def retrieve(
     query: str,
     limit: int = 8,
@@ -428,7 +602,7 @@ def retrieve(
     query = clean_text(query)
     if not query:
         return []
-    q_terms = text_terms(query)
+    q_terms = retrieval_terms(query)
     scored: list[tuple[float, dict[str, Any]]] = []
     required_course_ids = set((route or {}).get("required_course_ids", []))
     routed_module_ids = {
@@ -436,6 +610,7 @@ def retrieve(
         *((route or {}).get("support_module_ids", [])),
     }
     routed_module_ids.discard(None)
+    preferred_course_ids = set(preferred_course_ids_for_query(query))
     for doc in RAG_DOCUMENTS:
         metadata = doc.get("metadata", {})
         if not include_common_qa and metadata.get("doc_type") == "common_qa":
@@ -449,11 +624,14 @@ def retrieve(
         if route and metadata.get("doc_type") == "course_section":
             if metadata.get("module_id") not in routed_module_ids and metadata.get("course_id") not in required_course_ids:
                 continue
+        if preferred_course_ids and metadata.get("doc_type") in {"course_section", "integrated_course_section"}:
+            if metadata.get("course_id") not in preferred_course_ids:
+                continue
         doc_text = clean_text(doc.get("text", ""))
-        d_terms = text_terms(doc_text)
+        d_terms = retrieval_terms(doc_text)
         overlap = len(q_terms & d_terms)
         phrase = 1.0 if query.lower() in doc_text.lower() else 0.0
-        title_bonus = len(q_terms & text_terms(metadata.get("title", ""))) * 0.7
+        title_bonus = len(q_terms & retrieval_terms(metadata.get("title", ""))) * 0.7
         base_score = overlap + phrase * 5 + title_bonus
         course_bonus = 2.5 if metadata.get("doc_type") == "course_section" else 0.0
         route_bonus = 0.0
@@ -462,7 +640,9 @@ def retrieve(
         if metadata.get("module_id") in routed_module_ids:
             route_bonus += 3.0
         score = base_score + course_bonus + route_bonus
-        if base_score > 0 or route_bonus > 0:
+        # A route is only a scope hint. It must not make a course relevant when
+        # none of the question's terms occur in the course section.
+        if base_score > 0 or (route_bonus > 0 and metadata.get("doc_type") not in {"course_section", "integrated_course_section"}):
             scored.append((score, doc))
     scored.sort(key=lambda item: (-item[0], item[1].get("document_id", "")))
     selected = []
@@ -926,6 +1106,17 @@ QA_SYSTEM = """你是企业培训知识库中的专业顾客接待助手。你�
 回答结构严格 JSON：{"answer":"可直接对顾客说的完整回答","uncertainties":["确实需要核验的点，没有则为空数组"],"citations":[],"recommended_action":"一个明确、可执行的下一步"}。如果资料不足，明确说资料不足并说明要补充什么；如果涉及医疗、药品、孕期、儿童、慢病、服务后异常或红旗症状，优先安全分流。""" + SAFETY_POLICY + METHODOLOGY_POLICY
 
 
+COMMON_QA_JUDGE_SYSTEM = """你是常见问答的严格路由判断器。你的任务不是凭空回答，而是判断当前顾客问题是否被候选标准问答真正覆盖。
+
+必须遵守：
+1. 先比较当前问题与每个候选问题的核心意图。项目相同不代表问题相同；“是什么/原理”“副作用/不适”“能不能做/风险”“效果/多久”“价格”“区别”不能互相替代。
+2. 只有候选问题和标准答案能够直接回答当前问题时才选择；如果候选只能回答项目背景、但当前问的是副作用或风险，必须返回 NONE。
+3. 选择后只能基于被选候选的 approved_answer 做压缩、分点或口语化整理，不得增加候选答案没有的事实、承诺、治疗结论、用法或数字。
+4. 不要把候选问题拼接成一个新答案。无法确认时宁可 NONE，系统会回退到知识库检索。
+
+严格输出 JSON：{"match_id":"候选id或NONE","confidence":0.0,"answer":"整理后的直接回答；NONE时为空","reason":"一句话说明意图是否一致"}"""
+
+
 ASSESS_SYSTEM = """你是企业培训考核官。只在对话结束后评分，不再扮演顾客，也不继续对话。
 
 评分边界：
@@ -1011,6 +1202,75 @@ def call_model(system: str, messages: list[dict[str, str]], model: str, api_key:
     return content, {"model": body.get("model", model), "usage": body.get("usage", {})}
 
 
+def common_qa_answer_is_grounded(answer: str, approved_answer: str) -> bool:
+    answer = clean_text(answer)
+    approved_answer = clean_text(approved_answer)
+    if not answer or len(answer) > 700 or not approved_answer:
+        return False
+    if re.search(r"保证|一定|治愈|根治|固定减重|药品剂量|停药", answer, re.I):
+        return False
+    answer_terms = common_qa_match_terms(answer)
+    approved_terms = common_qa_match_terms(approved_answer)
+    return len(answer_terms & approved_terms) >= 2
+
+
+def select_common_qa_with_model(
+    query: str,
+    candidates: list[dict[str, Any]],
+    model: str,
+    api_key: str,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    if not candidates:
+        return None, {"attempted": False, "candidate_count": 0}
+    prepared = []
+    for candidate in candidates:
+        row = candidate["row"]
+        prepared.append({
+            "id": row.get("id", ""),
+            "question": row.get("question", ""),
+            "approved_answer": row.get("approved_answer", ""),
+            "keywords": row.get("keywords", []),
+            "match_score": candidate.get("score", 0),
+        })
+    if MOCK_MODE or not api_key:
+        best = {**candidates[0], "query": query, "candidate_count": len(candidates), "selection": "deterministic"}
+        if common_qa_auto_accept(best):
+            return best, {"attempted": False, "candidate_count": len(candidates), "selection": "deterministic"}
+        return None, {"attempted": False, "candidate_count": len(candidates), "selection": "fallback_knowledge"}
+
+    prompt = json.dumps({"current_question": query, "candidates": prepared}, ensure_ascii=False)
+    try:
+        raw, meta = call_model(
+            COMMON_QA_JUDGE_SYSTEM,
+            [{"role": "user", "content": prompt}],
+            model,
+            api_key,
+            temperature=0.0,
+            max_tokens=1000,
+        )
+    except Exception as exc:
+        return None, {"attempted": True, "candidate_count": len(candidates), "selection": "fallback_knowledge", "error": str(exc)[:160]}
+    payload = extract_json(raw) or {}
+    match_id = clean_text(payload.get("match_id", ""))
+    if not match_id or match_id.upper() == "NONE":
+        return None, {**meta, "attempted": True, "candidate_count": len(candidates), "selection": "fallback_knowledge"}
+    selected = next((candidate for candidate in candidates if candidate["row"].get("id") == match_id), None)
+    confidence = float(payload.get("confidence") or 0)
+    if not selected or confidence < 0.62:
+        return None, {**meta, "attempted": True, "candidate_count": len(candidates), "selection": "fallback_knowledge"}
+    selected = {
+        **selected,
+        "query": query,
+        "candidate_count": len(candidates),
+        "selection": "model_judged",
+        "model_confidence": round(confidence, 3),
+    }
+    organized_answer = clean_text(payload.get("answer", ""))
+    if common_qa_answer_is_grounded(organized_answer, selected["row"].get("approved_answer", "")):
+        selected["answer"] = organized_answer
+    return selected, {**meta, "attempted": True, "candidate_count": len(candidates), "selection": "model_judged"}
+
+
 def merge_model_meta(*metas: dict[str, Any]) -> dict[str, Any]:
     """Combine parallel model-call metadata without changing the public model/usage shape."""
     usage: dict[str, Any] = {}
@@ -1057,6 +1317,17 @@ def mock_response(mode: str, action: str, message: str, scenario: dict[str, Any]
 
 def mock_qa_response(message: str, route: dict[str, Any], docs: list[dict[str, Any]]) -> dict[str, Any]:
     """Provide a deterministic answer grounded in the retrieved course knowledge."""
+    intent_id = route.get("intent_id")
+    module_ids = {route.get("primary_module_id"), *route.get("support_module_ids", [])}
+    high_priority_query = bool(
+        re.search(r"(?:背部|后背).{0,8}(?:凉|冷)|(?:凉|冷).{0,8}(?:背部|后背)|器官功能", message, re.I)
+        or re.search(r"水分测试笔|水分(?:测试|数值|值)|含水量|含水(?:测试|数值)", message, re.I)
+        or intent_id == "INTENT-RESULT"
+        or re.search(r"一次|几次|多久|有效|见效|保证|反弹", message, re.I)
+        or intent_id == "INTENT-COMPARISON"
+        or "MOD-05" in module_ids
+        or "MOD-04" in module_ids
+    )
     snippets = []
     seen_titles = set()
     for doc in docs[:2]:
@@ -1078,7 +1349,7 @@ def mock_qa_response(message: str, route: dict[str, Any], docs: list[dict[str, A
         if snippet:
             snippets.append(snippet[:220])
 
-    if snippets:
+    if snippets and not high_priority_query:
         answer = f"围绕您问的“{clean_text(message)}”，知识库相关课程提到：{'；'.join(snippets[:2])}"
         return {
             "answer": answer,
@@ -1087,8 +1358,6 @@ def mock_qa_response(message: str, route: dict[str, Any], docs: list[dict[str, A
             "recommended_action": route.get("recommended_next", "如需继续了解，可打开下方相关课程并核对当前门店标准。"),
         }
 
-    intent_id = route.get("intent_id")
-    module_ids = {route.get("primary_module_id"), *route.get("support_module_ids", [])}
     if re.search(r"(?:背部|后背).{0,8}(?:凉|冷)|(?:凉|冷).{0,8}(?:背部|后背)|器官功能", message, re.I):
         answer = "背部发凉是一种主观感受，不能据此判断某个器官功能不好，也不能由门店作疾病诊断。先确认持续时间、变化和伴随症状；症状明显、持续或伴随异常时应由医疗机构评估。"
         uncertainties = ["需要确认持续时间、变化、诱因和伴随症状。"]
@@ -2397,16 +2666,28 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
     dialogue_history = clean_dialogue_history(history)
     recent_dialogue = " ".join(item["content"] for item in dialogue_history[-6:])
     query = qa_context_query(message, dialogue_history) if mode == "qa" else clean_text(f"{recent_dialogue} {message}")
-    common_qa_match = match_common_qa(message)
-    if not common_qa_match and query != message:
-        common_qa_match = match_common_qa(query)
+    common_qa_candidates_list: list[dict[str, Any]] = []
+    common_qa_selection_meta: dict[str, Any] = {"attempted": False, "candidate_count": 0}
+    common_qa_match: dict[str, Any] | None = None
+    if mode == "qa":
+        candidate_query = message
+        common_qa_candidates_list = common_qa_candidates(message, limit=6)
+        if query != message and message.startswith(("那", "这个", "这种", "它", "刚才", "如果", "那么", "可是", "但是")):
+            candidate_query = query
+            common_qa_candidates_list = common_qa_candidates(query, limit=6)
+        common_qa_match, common_qa_selection_meta = select_common_qa_with_model(
+            candidate_query,
+            common_qa_candidates_list,
+            model,
+            api_key,
+        )
     route = route_customer_question(query)
-    docs = retrieve(query, limit=8, route=route, include_common_qa=mode != "qa")
+    docs = [] if common_qa_match and mode == "qa" else retrieve(query, limit=8, route=route, include_common_qa=mode != "qa")
     if common_qa_match and mode == "qa":
-        matched_doc = COMMON_QA_DOC_BY_ID.get(common_qa_match["row"].get("id"))
-        if matched_doc:
-            docs = [matched_doc, *[doc for doc in docs if doc.get("document_id") != matched_doc.get("document_id")]]
-    if mode in {"qa", "training", "test"}:
+        # A matched FAQ owns the answer and its course references. Do not mix
+        # generic route documents into the same response.
+        docs = [common_qa_document(common_qa_match["row"])]
+    elif mode in {"qa", "training", "test"}:
         docs = with_safety_doc(docs)
     citation_refs = public_citations(docs)
 
@@ -2414,22 +2695,22 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
         if common_qa_match:
             matched_row = common_qa_match["row"]
             result = {
-                "answer": matched_row.get("approved_answer", ""),
+                "answer": common_qa_match.get("answer") or matched_row.get("approved_answer", ""),
                 "uncertainties": [],
                 "recommended_action": "如需继续了解，可打开下方对应课程学习；涉及当前价格、门店政策或个体适用性时，请再核对有效版本。",
                 "faq_match": public_common_qa_match(common_qa_match),
             }
             result = apply_methodology_result(result, mode, route)
-            result["answer"] = matched_row.get("approved_answer", "")
+            result["answer"] = common_qa_match.get("answer") or matched_row.get("approved_answer", "")
             result["faq_match"] = public_common_qa_match(common_qa_match)
-            return response_payload(mode, result, docs, {"mock": True, "model": model, "common_qa": True})
+            return response_payload(mode, result, docs, {"mock": not common_qa_selection_meta.get("attempted"), "model": model, "common_qa": True, **common_qa_selection_meta})
         user_message = f"顾客当前问题：{message}\n\n方法路由：\n{route_context_block(route)}\n\n检索资料：\n{context_block(docs)}"
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_qa_response(message, route, docs), mode, message, route), mode, route)
-            return response_payload(mode, result, docs, {"mock": True, "model": model})
+            return response_payload(mode, result, docs, {"mock": True, "model": model, "common_qa": False, **common_qa_selection_meta})
         raw, meta = call_model(QA_SYSTEM, [*dialogue_history, {"role": "user", "content": user_message}], model, api_key, temperature=0.2)
         result = apply_methodology_result(safety_filter(extract_json(raw) or {"answer": raw, "uncertainties": ["模型未按结构化格式返回，请人工核验。"], "citations": citation_refs, "recommended_action": ""}, mode, message, route), mode, route)
-        return response_payload(mode, result, docs, {**meta, "mock": False})
+        return response_payload(mode, result, docs, {**meta, "mock": False, "common_qa": False, **common_qa_selection_meta})
 
     if mode == "training":
         turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
