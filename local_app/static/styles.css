@@ -256,6 +256,9 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .typing i:nth-child(3) { animation-delay: 0.3s; }
 
 .answer-basis { margin-top: 9px; padding: 12px; border: 1px solid rgba(37, 90, 223, 0.15); border-radius: 10px; background: rgba(37, 90, 223, 0.035); }
+.answer-faq-match { margin-top: 9px; padding: 9px 12px; border-left: 3px solid var(--lime); border-radius: 2px 9px 9px 2px; background: rgba(126, 224, 168, 0.12); }
+.answer-faq-match span { color: var(--lime); font-size: 8px; font-weight: 800; }
+.answer-faq-match p { margin: 4px 0 0; color: var(--muted); font-size: 8px; line-height: 1.55; }
 .answer-method { margin-top: 9px; padding: 12px; border: 1px solid rgba(37, 90, 223, 0.14); border-radius: 10px; background: rgba(37, 90, 223, 0.035); }
 .answer-method-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .answer-method-head span, .answer-method-route span, .answer-method-step span, .answer-next-action span { color: var(--faint); font-size: 7px; font-weight: 800; }

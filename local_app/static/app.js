@@ -219,10 +219,12 @@ async function loadStaticData() {
     staticDataPromise = Promise.all([
       fetch("./data/scenario_library.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/rag_documents.jsonl").then((response) => response.text()).then(parseJsonl),
+      fetch("./data/common_qa_catalog.jsonl").then((response) => response.text()).then(parseJsonl),
+      fetch("./data/common_qa_excel_catalog.jsonl").then((response) => response.text()).then(parseJsonl),
       fetch("./data/scoring_rubric.json").then((response) => response.json()),
       fetch("./data/customer_service_methodology.json").then((response) => response.json()),
       fetch("./data/comprehensive_exam_bank.json").then((response) => response.json()),
-    ]).then(([scenarios, documents, rubric, methodology, examBank]) => ({ scenarios, documents, rubric, methodology, examBank }));
+    ]).then(([scenarios, documents, commonQa, commonQaExcel, rubric, methodology, examBank]) => ({ scenarios, documents, commonQa: [...commonQa, ...commonQaExcel], rubric, methodology, examBank }));
   }
   return staticDataPromise;
 }
@@ -262,10 +264,13 @@ function uniqueStaticItems(values = []) {
 }
 
 function staticRouteCustomerQuestion(query, methodology = {}) {
-  const text = String(query || "").replace(/\s+/g, " ").trim();
+  const text = String(query || "").replace(/\s+/g, " ").trim().replaceAll("点振波", "点阵波");
   const intents = [...(methodology.intent_routes || [])].sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
-  const matchedIntent = intents.find((item) => staticIntentMatches(text, item)) || null;
+  let matchedIntent = intents.find((item) => staticIntentMatches(text, item)) || null;
   const topics = (methodology.topic_routes || []).filter((item) => staticMatchesAny(text, item.patterns));
+  if (matchedIntent?.id === "INTENT-DRUG" && topics.some((topic) => topic.module_id === "MOD-03") && !/(药|用药|口服|注射|针剂|GLP.?1|贝那鲁肽|司美格鲁肽|美妥)/i.test(text)) {
+    matchedIntent = null;
+  }
   const fallback = methodology.default_route || {};
   const intent = matchedIntent || (topics.length ? {
     id: "INTENT-INFORMATION",
@@ -365,8 +370,203 @@ function staticQaQuery(message, history = []) {
   return [...priorQuestions, current].filter(Boolean).join(" ");
 }
 
-function staticRetrieve(query, documents, limit = 8, route = null) {
-  const text = String(query || "").toLowerCase();
+const COMMON_QA_NOISE_RE = /请问|我想(?:问|了解)|想问一下|请教一下|什么是|是什么|为什么|为啥|怎么回事|如何|怎么|怎么办|能不能|可以吗|是否|吗|呢|呀|啊|的|一下/gi;
+const COMMON_QA_SYNONYMS = [
+  ["点振波", "点阵波"],
+  ["头疼", "头不适"],
+  ["头痛", "头不适"],
+  ["疼痛", "不适"],
+  ["疼", "不适"],
+  ["痛", "不适"],
+  ["为啥", "为什么"],
+  ["咋", "怎么"],
+];
+
+function normalizeStaticCommonQaText(value) {
+  let text = String(value || "").replace(/\s+/g, "").toLowerCase();
+  COMMON_QA_SYNONYMS.forEach(([source, target]) => { text = text.replaceAll(source, target); });
+  return text.replace(/[^a-z0-9\u4e00-\u9fff]+/g, "");
+}
+
+function staticCommonQaCoreText(value) {
+  return normalizeStaticCommonQaText(value).replace(COMMON_QA_NOISE_RE, "");
+}
+
+function staticCommonQaMatchTerms(value) {
+  const text = staticCommonQaCoreText(value);
+  const terms = new Set(text.match(/[a-z0-9_]+/g) || []);
+  for (let index = 0; index < text.length - 1; index += 1) {
+    const pair = text.slice(index, index + 2);
+    if (/^[\u4e00-\u9fff]{2}$/.test(pair)) terms.add(pair);
+  }
+  return terms;
+}
+
+const COMMON_QA_INTENT_PATTERNS = {
+  definition: /什么是|是什么|原理|定位|怎么工作|作用是什么/i,
+  adverse_effect: /副作用|不良反应|反应|不适|疼痛|痛|酸胀|刺痛|更痛|更疼|淤青|青紫|肿|麻木|发麻|头晕|耳鸣|犯困|恶心|红肿|发热|过敏/i,
+  suitability: /能做|可以做|适合|风险|危险|禁忌|术后|疾病|结节|孕|哺乳|心脏|高血压/i,
+  efficacy: /有效|效果|改善|见效|一次|几次|多久|保证|反弹|好不好/i,
+  comparison: /区别|比较|哪个|联合|同时|和.+区别/i,
+  price: /价格|多少钱|收费|贵|预算|费用/i,
+  process: /怎么做|如何做|操作|顺序|安排|部位|频率|次数|流程/i,
+};
+
+function staticCommonQaIntents(value) {
+  const text = String(value || "");
+  return new Set(Object.entries(COMMON_QA_INTENT_PATTERNS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name));
+}
+
+function staticCommonQaScore(query, row) {
+  const queryCore = staticCommonQaCoreText(query);
+  const questionCore = staticCommonQaCoreText(row?.question);
+  if (queryCore.length < 2 || questionCore.length < 2) return 0;
+  if (queryCore === questionCore) return 1;
+
+  const queryTerms = staticCommonQaMatchTerms(queryCore);
+  const questionTerms = staticCommonQaMatchTerms(questionCore);
+  const overlap = [...queryTerms].filter((term) => questionTerms.has(term)).length;
+  if (overlap < 2) return 0;
+  const keywordHits = (row?.keywords || []).filter((keyword) => {
+    const normalized = staticCommonQaCoreText(keyword);
+    return normalized.length >= 2 && queryCore.includes(normalized);
+  }).length;
+  if (!keywordHits && overlap < 3) return 0;
+  const queryChars = new Set(queryCore);
+  const questionChars = new Set(questionCore);
+  const sharedChars = [...queryChars].filter((char) => questionChars.has(char)).length;
+  const charDice = (2 * sharedChars) / Math.max(queryChars.size + questionChars.size, 1);
+  const questionCoverage = overlap / Math.max(questionTerms.size, 1);
+  const queryCoverage = overlap / Math.max(queryTerms.size, 1);
+  const keywordScore = Math.min(1, keywordHits / Math.max(1, Math.min((row?.keywords || []).length, 2)));
+  const score = questionCoverage * 0.38
+    + queryCoverage * 0.18
+    + charDice * 0.20
+    + keywordScore * 0.16;
+  const queryIntents = staticCommonQaIntents(query);
+  const questionIntents = staticCommonQaIntents(row?.question);
+  const sharedIntents = [...queryIntents].filter((intent) => questionIntents.has(intent));
+  let adjustedScore = score;
+  if (queryIntents.size && questionIntents.size) {
+    adjustedScore = sharedIntents.length ? adjustedScore + 0.14 : adjustedScore * 0.35;
+  } else if (queryIntents.size && !questionIntents.size) {
+    adjustedScore *= 0.75;
+  }
+  const lengthRatio = Math.min(queryCore.length, questionCore.length) / Math.max(queryCore.length, questionCore.length, 1);
+  if (queryCore.includes(questionCore) || questionCore.includes(queryCore)) {
+    adjustedScore += lengthRatio >= 0.55 ? 0.06 * lengthRatio : -0.08;
+  }
+  return Math.min(adjustedScore, 0.99);
+}
+
+function matchStaticCommonQaCandidates(query, catalog = [], limit = 6) {
+  const candidates = catalog.map((row) => ({ row, score: staticCommonQaScore(query, row) }))
+    .filter((item) => item.row?.approved_answer && item.score >= 0.28)
+    .sort((a, b) => b.score - a.score || Number(b.row.usage_count || 0) - Number(a.row.usage_count || 0) || String(b.row.question || "").length - String(a.row.question || "").length);
+  return candidates.slice(0, limit).map((candidate) => ({
+    ...candidate,
+    score: Number(candidate.score.toFixed(3)),
+    intent_match: [...staticCommonQaIntents(query)].some((intent) => staticCommonQaIntents(candidate.row.question).has(intent)),
+  }));
+}
+
+function matchStaticCommonQa(query, catalog = []) {
+  const best = matchStaticCommonQaCandidates(query, catalog, 6)[0];
+  if (!best || best.score < 0.84) return null;
+  const queryIntents = staticCommonQaIntents(query);
+  const rowIntents = staticCommonQaIntents(best.row.question);
+  if (queryIntents.size && rowIntents.size && ![...queryIntents].some((intent) => rowIntents.has(intent))) return null;
+  return { ...best, query, candidate_count: 1, selection: "deterministic" };
+}
+
+function publicStaticCommonQaMatch(match) {
+  const row = match?.row || {};
+  return { id: row.id || "", question: row.question || "", score: match?.score || 0, status: row.status || "", candidate_count: match?.candidate_count || 1, selection: match?.selection || "candidate" };
+}
+
+function staticCommonQaCourseReference(row) {
+  const course = resolveReferenceCourse({ course_id: staticCommonQaCourseIds(row)[0] });
+  if (!course) return null;
+  const module = moduleById(course.module_id);
+  return {
+    course_id: course.id,
+    title: course.title,
+    category: "标准问答课程",
+    module: module?.short_name || module?.title || "知识模块",
+    chapter: course.group_title || "",
+  };
+}
+
+function uniqueStaticReferences(references = []) {
+  const seen = new Set();
+  return references.filter((reference) => {
+    const key = reference.course_id || reference.title;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+const COMMON_QA_LEGACY_COURSE_IDS = {
+  "COURSE-FAQ-POINT-WAVE-001": ["COURSE-NKB-010", "COURSE-NKB-011", "COURSE-NKB-012"],
+  "COURSE-FAQ-SUPER-V-001": ["COURSE-NKB-017", "COURSE-NKB-018", "COURSE-NKB-019"],
+  "COURSE-FAQ-SLIMMING-001": ["COURSE-NKB-020", "COURSE-NKB-021", "COURSE-NKB-022", "COURSE-NKB-023"],
+  "COURSE-FAQ-OBJECTION-001": ["COURSE-NKB-007", "COURSE-NKB-008"],
+  "COURSE-FAQ-SAFETY-001": ["COURSE-NKB-003"],
+  "COURSE-FAQ-BEAUTY-001": ["COURSE-NKB-033", "COURSE-NKB-036", "COURSE-NKB-038", "COURSE-NKB-039", "COURSE-NKB-040", "COURSE-NKB-043"],
+};
+
+function staticCommonQaCourseIds(row = {}) {
+  const requestedId = String(row.mapped_course_id || "");
+  if (state.courses.some((course) => course.id === requestedId)) return [requestedId];
+  let candidates = [...(COMMON_QA_LEGACY_COURSE_IDS[requestedId] || [])];
+  const question = `${row.question || ""} ${(row.keywords || []).join(" ")}`;
+  const intents = staticCommonQaIntents(question);
+  if (requestedId === "COURSE-FAQ-POINT-WAVE-001") {
+    if (intents.has("adverse_effect")) candidates = ["COURSE-NKB-012", "COURSE-NKB-015", ...candidates];
+    else if (intents.has("comparison")) candidates = ["COURSE-NKB-013", ...candidates];
+    else if (intents.has("suitability")) candidates = ["COURSE-NKB-016", "COURSE-NKB-003", ...candidates];
+    else if (intents.has("process")) candidates = ["COURSE-NKB-011", ...candidates];
+    else if (intents.has("definition")) candidates = ["COURSE-NKB-010", ...candidates];
+  } else if (requestedId === "COURSE-FAQ-SUPER-V-001") {
+    candidates = intents.has("adverse_effect") ? ["COURSE-NKB-018", ...candidates] : ["COURSE-NKB-017", ...candidates];
+  } else if (requestedId === "COURSE-FAQ-SLIMMING-001") {
+    if (intents.has("adverse_effect")) candidates = ["COURSE-NKB-024", "COURSE-NKB-027", ...candidates];
+    else if (intents.has("suitability")) candidates = ["COURSE-NKB-025", ...candidates];
+    else candidates = ["COURSE-NKB-020", "COURSE-NKB-021", ...candidates];
+  } else if (requestedId === "COURSE-FAQ-OBJECTION-001") candidates = ["COURSE-NKB-008", ...candidates];
+  else if (requestedId === "COURSE-FAQ-SAFETY-001") candidates = ["COURSE-NKB-003", ...candidates];
+  return uniqueStaticItems(candidates).filter((id) => state.courses.some((course) => course.id === id));
+}
+
+function staticPreferredCourseIds(query) {
+  const text = String(query || "").replaceAll("点振波", "点阵波");
+  const intents = staticCommonQaIntents(text);
+  if (/点阵波|点振波/i.test(text)) {
+    if (intents.has("adverse_effect")) return ["COURSE-NKB-012"];
+    if (intents.has("comparison")) return ["COURSE-NKB-013"];
+    if (/超V|热动力|联合/i.test(text)) return ["COURSE-NKB-014"];
+    if (intents.has("suitability")) return ["COURSE-NKB-016", "COURSE-NKB-003"];
+    if (intents.has("process")) return ["COURSE-NKB-011"];
+    if (intents.has("definition")) return ["COURSE-NKB-010"];
+    return ["COURSE-NKB-010", "COURSE-NKB-011"];
+  }
+  if (/超V|热动力/i.test(text)) return intents.has("adverse_effect") ? ["COURSE-NKB-018", "COURSE-NKB-019"] : ["COURSE-NKB-017", "COURSE-NKB-018"];
+  if (/减肥|减重|体重|贝那鲁肽|GLP.?1|美妥/i.test(text)) {
+    if (intents.has("adverse_effect")) return ["COURSE-NKB-024", "COURSE-NKB-027"];
+    if (intents.has("suitability")) return ["COURSE-NKB-025", "COURSE-NKB-027"];
+    return ["COURSE-NKB-020", "COURSE-NKB-021", "COURSE-NKB-022"];
+  }
+  if (/脱毛|祛斑|水光|皮肤|敏感肌|线雕|热玛吉|玻尿酸|私密/i.test(text)) {
+    if (/脱毛/i.test(text)) return ["COURSE-NKB-036"];
+    return ["COURSE-NKB-033", "COURSE-NKB-038", "COURSE-NKB-040", "COURSE-NKB-043"];
+  }
+  return [];
+}
+
+function staticRetrieve(query, documents, limit = 8, route = null, includeCommonQa = true) {
+  const text = String(query || "").replaceAll("点振波", "点阵波").toLowerCase();
+  const stopTerms = new Set(["这个", "那个", "这些", "那些", "项目", "服务", "可以", "不能", "能不", "是不是", "是否", "怎么", "如何", "什么", "有没有", "请问", "我想", "你们", "我们", "现在", "一下", "一个", "哪些", "有哪", "吗", "呢", "一次", "几次", "需要"]);
   const terms = new Set(text.match(/[a-z0-9_]{2,}/gi) || []);
   (text.match(/[\u4e00-\u9fff]+/g) || []).forEach((segment) => {
     if (segment.length <= 8) terms.add(segment);
@@ -374,14 +574,19 @@ function staticRetrieve(query, documents, limit = 8, route = null) {
   });
   const requiredCourseIds = new Set(route?.required_course_ids || []);
   const routedModuleIds = new Set([route?.primary_module_id, ...(route?.support_module_ids || [])].filter(Boolean));
+  const preferredCourseIds = new Set(staticPreferredCourseIds(query));
   const ranked = documents.map((document, index) => {
     const metadata = document.metadata || {};
     if (metadata.doc_type === "source") return null;
+    if (!includeCommonQa && metadata.doc_type === "common_qa") return null;
     if (route && metadata.doc_type === "course_section" && !routedModuleIds.has(metadata.module_id) && !requiredCourseIds.has(metadata.course_id)) return null;
+    if (preferredCourseIds.size && ["course_section", "integrated_course_section"].includes(metadata.doc_type) && !preferredCourseIds.has(metadata.course_id)) return null;
     const title = String(metadata.title || "").toLowerCase();
     const haystack = `${document.text || ""} ${JSON.stringify(metadata)}`.toLowerCase();
     const baseScore = [...terms].reduce((total, term) => total + (title.includes(term) ? 4 : haystack.includes(term) ? 1 : 0), 0);
-    const score = baseScore + (requiredCourseIds.has(metadata.course_id) ? 10 : 0) + (routedModuleIds.has(metadata.module_id) ? 3 : 0);
+    const routeBonus = (requiredCourseIds.has(metadata.course_id) ? 10 : 0) + (routedModuleIds.has(metadata.module_id) ? 3 : 0);
+    const score = baseScore + routeBonus;
+    if (baseScore <= 0 && ["course_section", "integrated_course_section"].includes(metadata.doc_type)) return null;
     return { document, score, index };
   }).filter((item) => item && item.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
   const selected = [];
@@ -440,6 +645,71 @@ async function callStaticModel(system, messages, model, apiKey, temperature, max
   }
 }
 
+const STATIC_COMMON_QA_JUDGE_SYSTEM = `你是常见问答的严格路由判断器。你的任务不是凭空回答，而是判断当前顾客问题是否被候选标准问答真正覆盖。
+必须遵守：
+1. 先比较当前问题与每个候选问题的核心意图。项目相同不代表问题相同；“是什么/原理”“副作用/不适”“能不能做/风险”“效果/多久”“价格”“区别”不能互相替代。
+2. 只有候选问题和标准答案能够直接回答当前问题时才选择；如果候选只能回答项目背景、但当前问的是副作用或风险，必须返回 NONE。
+3. 选择后只能基于被选候选的 approved_answer 做压缩、分点或口语化整理，不得增加候选答案没有的事实、承诺、治疗结论、用法或数字。
+4. 不要把候选问题拼接成一个新答案。无法确认时宁可 NONE，系统会回退到知识库检索。
+严格输出 JSON：{"match_id":"候选id或NONE","confidence":0.0,"answer":"整理后的直接回答；NONE时为空","reason":"一句话说明意图是否一致"}`;
+
+function staticCommonQaAnswerGrounded(answer, approvedAnswer) {
+  const text = String(answer || "").trim();
+  const approved = String(approvedAnswer || "").trim();
+  if (!text || text.length > 700 || /保证|一定|治愈|根治|固定减重|药品剂量|停药/i.test(text)) return false;
+  const answerTerms = staticCommonQaMatchTerms(text);
+  const approvedTerms = staticCommonQaMatchTerms(approved);
+  return [...answerTerms].filter((term) => approvedTerms.has(term)).length >= 2;
+}
+
+async function selectStaticCommonQaWithModel(query, candidates, model, apiKey) {
+  if (!candidates.length) return { match: null, meta: { attempted: false, candidate_count: 0 } };
+  if (!apiKey) {
+    const best = candidates[0];
+    const queryIntents = staticCommonQaIntents(query);
+    const rowIntents = staticCommonQaIntents(best.row.question);
+    const accepted = best.score >= 0.84 && (!queryIntents.size || !rowIntents.size || [...queryIntents].some((intent) => rowIntents.has(intent)));
+    return {
+      match: accepted ? { ...best, query, candidate_count: candidates.length, selection: "deterministic" } : null,
+      meta: { attempted: false, candidate_count: candidates.length, selection: accepted ? "deterministic" : "fallback_knowledge" },
+    };
+  }
+  const prompt = JSON.stringify({
+    current_question: query,
+    candidates: candidates.map((candidate) => ({
+      id: candidate.row.id,
+      question: candidate.row.question,
+      approved_answer: candidate.row.approved_answer,
+      keywords: candidate.row.keywords || [],
+      match_score: candidate.score,
+    })),
+  });
+  stopTerms.forEach((term) => terms.delete(term));
+  let modelResult;
+  try {
+    modelResult = await callStaticModel(STATIC_COMMON_QA_JUDGE_SYSTEM, [{ role: "user", content: prompt }], model, apiKey, 0, 1000, 30000);
+  } catch (error) {
+    return { match: null, meta: { attempted: true, candidate_count: candidates.length, selection: "fallback_knowledge", error: String(error.message || error).slice(0, 160) } };
+  }
+  const payload = extractStaticJson(modelResult.content) || {};
+  const matchId = String(payload.match_id || "").trim();
+  const confidence = Number(payload.confidence || 0);
+  const selected = candidates.find((candidate) => candidate.row.id === matchId);
+  if (!selected || confidence < 0.62) return { match: null, meta: { ...modelResult.meta, attempted: true, candidate_count: candidates.length, selection: "fallback_knowledge" } };
+  const organizedAnswer = String(payload.answer || "").trim();
+  return {
+    match: {
+      ...selected,
+      query,
+      candidate_count: candidates.length,
+      selection: "model_judged",
+      model_confidence: Number(confidence.toFixed(3)),
+      ...(staticCommonQaAnswerGrounded(organizedAnswer, selected.row.approved_answer) ? { answer: organizedAnswer } : {}),
+    },
+    meta: { ...modelResult.meta, attempted: true, candidate_count: candidates.length, selection: "model_judged" },
+  };
+}
+
 function staticMock(mode, action, scenario) {
   if (mode === "training") return {
     customer_reply: staticCustomerFallback(scenario, [], ""),
@@ -448,6 +718,73 @@ function staticMock(mode, action, scenario) {
   if (mode === "test" && action === "turn") return { reply: scenario?.opening || "我最近有点困扰，想先了解一下你们的项目。", emotion: "hesitant", should_continue: true };
   if (mode === "test" && action === "finish") return { total_score: 72, dimension_scores: [], critical_failures: [], strengths: ["完成了基本接待并保持对话连续"], improvements: ["先问清目标、持续时间、影响和顾虑，再介绍项目"], summary: "演示评分：流程已走通，配置 API Key 后可使用模型评分。" };
   return { answer: "当前是演示模式。保存 SiliconFlow API Key 后，就能生成基于知识库的正式回答。", uncertainties: ["请以门店当前价格、项目标签和合规版本为准。"], recommended_action: "先核对门店当前版本的价格、频次和适用边界。" };
+}
+
+function staticKnowledgeQaResponse(message, route, docs) {
+  if (/(?:背部|后背).{0,8}(?:凉|冷)|(?:凉|冷).{0,8}(?:背部|后背)|器官功能/i.test(message)) {
+    return {
+      answer: "背部发凉是一种主观感受，不能据此判断某个器官功能不好，也不能由门店作疾病诊断。先确认持续时间、变化和伴随症状；症状明显、持续或伴随异常时应由医疗机构评估。",
+      uncertainties: ["需要确认持续时间、变化、诱因和伴随症状。"],
+      recommended_action: "先做风险问询；不能用项目体验替代医疗诊断或评估。",
+    };
+  }
+  if (/水分测试笔|水分(?:测试|数值|值)|含水量|含水(?:测试|数值)/i.test(message)) {
+    return {
+      answer: "一次水分数值升高最多说明当次、当时测量出现变化，不能直接证明长期改善。比较时要使用同一设备、同一部位、相近时间和环境，并在相同条件下多次复测。",
+      uncertainties: ["需要确认设备、部位、时间、环境和前后测量条件是否一致。"],
+      recommended_action: "按统一条件记录并复测，不把单次读数宣传为长期效果。",
+    };
+  }
+  if (route?.intent_id === "INTENT-RESULT" || /一次|几次|多久|有效|见效|保证|反弹/i.test(message)) {
+    return {
+      answer: "我理解您希望尽快看到变化，但不能承诺一次、固定时间或固定结果，也不能保证不反弹。先确认您最想改善的指标和既往情况，再按相同条件记录并做阶段观察；长期变化还会受到生活方式和个体差异影响。",
+      uncertainties: ["需要确认具体项目、顾客目标和用于判断变化的指标。"],
+      recommended_action: "先确定一个可观察指标和必要安全信息，再决定是否体验及何时复盘。",
+    };
+  }
+  if (route?.intent_id === "INTENT-COMPARISON") {
+    return {
+      answer: "不同项目不能只按名称判断谁更好，需要围绕您想改善的问题、可接受的体验、时间安排和必要安全信息来比较。请先告诉我您正在比较哪两个项目，以及最在意效果感受、时间还是预算中的哪一点。",
+      uncertainties: ["需要确认正在比较的具体项目和最重要的选择标准。"],
+      recommended_action: "先补齐比较对象和选择标准，再按当前课程与门店有效版本逐项说明。",
+    };
+  }
+  if ((route?.primary_module_id || "") === "MOD-05") {
+    return {
+      answer: "体重管理不能只凭一个数字直接推荐方案，也不能承诺固定减重斤数。先了解当前体重趋势、饮食、活动、睡眠、既往经历和健康情况，再把目标拆成可观察、能执行的阶段指标。",
+      uncertainties: ["需要确认当前体重趋势、生活节奏、既往经历和必要健康信息。"],
+      recommended_action: "先完成需求与风险问询，再确定一到两个阶段指标。",
+    };
+  }
+  if ((route?.primary_module_id || "") === "MOD-04") {
+    return {
+      answer: "是否适合不能只凭一个肤质标签判断。先确认当前是否有泛红、刺痛、破损、渗出或过敏发作，以及近期是否做过医美、刷酸、激光或使用强刺激产品；无法确认时先不操作。",
+      uncertainties: ["需要确认当前皮肤状态、过敏史、近期项目史和具体成分。"],
+      recommended_action: "先完成肤况和项目适用性确认，再说明可选服务。",
+    };
+  }
+  const snippets = [];
+  const seenTitles = new Set();
+  docs.slice(0, 2).forEach((document) => {
+    const course = resolveReferenceCourse(document);
+    const title = course?.title || document.metadata?.title || document.document_id || "知识库资料";
+    if (seenTitles.has(title)) return;
+    seenTitles.add(title);
+    const section = course?.sections?.[0];
+    const content = Array.isArray(section?.content)
+      ? section.content.slice(0, 2).join("；")
+      : typeof section?.content === "object" && section?.content
+        ? Object.entries(section.content).map(([key, value]) => `${key}：${value}`).join("；")
+        : String(section?.content || document.text || "");
+    const snippet = `${course?.summary || ""} ${content}`.replace(/\s+/g, " ").trim();
+    if (snippet) snippets.push(snippet.slice(0, 220));
+  });
+  if (!snippets.length) return staticMock("qa", "turn", null);
+  return {
+    answer: `围绕您问的“${String(message || "").trim()}”，知识库相关课程提到：${snippets.slice(0, 2).join("；")}`,
+    uncertainties: ["具体项目、适用条件和门店动态政策仍需按当前有效版本核对。"],
+    recommended_action: route.recommended_next || "如需继续了解，可打开下方相关课程并核对当前门店标准。",
+  };
 }
 
 const STATIC_CRITICAL_PATTERNS = [
@@ -1411,9 +1748,9 @@ function cleanStaticHistory(history = [], limit = 7) {
 async function staticApi(path, body) {
   const data = await loadStaticData();
   if (path === "/api/bootstrap") {
-    return { ok: true, scenarios: data.scenarios, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length, scenarios: data.scenarios.length }, rubric: { total: data.rubric.total, dimensions: data.rubric.dimensions || [] } };
+    return { ok: true, scenarios: data.scenarios, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length, common_qa: data.commonQa.length, scenarios: data.scenarios.length }, rubric: { total: data.rubric.total, dimensions: data.rubric.dimensions || [] } };
   }
-  if (path === "/api/health") return { ok: true, api_configured: Boolean(state.apiKey), mock_mode: !state.apiKey, model: state.model, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length } };
+  if (path === "/api/health") return { ok: true, api_configured: Boolean(state.apiKey), mock_mode: !state.apiKey, model: state.model, models: AVAILABLE_MODELS, knowledge: { rag_documents: data.documents.length, common_qa: data.commonQa.length } };
   if (path !== "/api/chat") throw new Error("静态模式不支持该接口");
 
   const mode = body.mode || "qa";
@@ -1425,13 +1762,36 @@ async function staticApi(path, body) {
   const message = body.message || "";
   const history = body.history || [];
   const query = mode === "qa" ? staticQaQuery(message, history) : [...history.slice(-8).map((item) => item.content), message].join(" ");
+  let commonQaMatch = null;
+  let commonQaSelectionMeta = { attempted: false, candidate_count: 0 };
+  if (mode === "qa") {
+    const candidateQuery = query !== message && /^(?:那|这个|这种|它|刚才|如果|那么|可是|但是)/.test(String(message).trim()) ? query : message;
+    const candidates = matchStaticCommonQaCandidates(candidateQuery, data.commonQa, 6);
+    const selection = await selectStaticCommonQaWithModel(candidateQuery, candidates, model, apiKey);
+    commonQaMatch = selection.match;
+    commonQaSelectionMeta = selection.meta;
+  }
   const route = staticRouteCustomerQuestion(query, data.methodology);
-  const docs = staticRetrieve(query, data.documents, 8, route);
+  let docs = commonQaMatch && mode === "qa" ? [] : staticRetrieve(query, data.documents, 8, route, mode !== "qa");
   // Keep interactive prompts compact so multi-turn responses remain reliable
   // on the static Pages build while retrieval/citations stay unchanged.
   const context = docs.slice(0, mode === "training" ? 4 : 8).map((item) => `${item.metadata?.title || item.document_id}\n${String(item.text || "").slice(0, mode === "training" ? 650 : 1200)}`).join("\n\n");
   if (!apiKey) {
-    const result = normalizeStaticResult(staticMockProgressive(mode, action, scenario, history, data.rubric, message), mode, action, scenario, history, data.rubric, message, query, route);
+    if (mode === "qa" && commonQaMatch) {
+      const result = normalizeStaticQaResult({
+        answer: commonQaMatch.answer || commonQaMatch.row.approved_answer,
+        uncertainties: [],
+        recommended_action: "如需继续了解，可打开下方对应课程学习；涉及当前价格、门店政策或个体适用性时，请再核对有效版本。",
+        faq_match: publicStaticCommonQaMatch(commonQaMatch),
+      }, message, query, route, history);
+      result.answer = commonQaMatch.answer || commonQaMatch.row.approved_answer;
+      result.faq_match = publicStaticCommonQaMatch(commonQaMatch);
+      const faqReference = staticCommonQaCourseReference(commonQaMatch.row);
+      const references = uniqueStaticReferences([faqReference].filter(Boolean));
+      return { ok: true, mode, result, citations: references, retrieved: references, meta: { mock: !commonQaSelectionMeta.attempted, model, common_qa: true, ...commonQaSelectionMeta } };
+    }
+    const rawResult = mode === "qa" ? staticKnowledgeQaResponse(message, route, docs) : staticMockProgressive(mode, action, scenario, history, data.rubric, message);
+    const result = normalizeStaticResult(rawResult, mode, action, scenario, history, data.rubric, message, query, route);
     return { ok: true, mode, result, citations: mode === "qa" ? docs.slice(0, 3).map(publicStaticDocument) : [], retrieved: mode === "qa" ? docs.map(publicStaticDocument) : [], meta: { mock: true, model } };
   }
 
@@ -1497,6 +1857,19 @@ async function staticApi(path, body) {
         ],
       },
     };
+  }
+  if (mode === "qa" && commonQaMatch) {
+    const result = normalizeStaticQaResult({
+      answer: commonQaMatch.answer || commonQaMatch.row.approved_answer,
+      uncertainties: [],
+      recommended_action: "如需继续了解，可打开下方对应课程学习；涉及当前价格、门店政策或个体适用性时，请再核对有效版本。",
+      faq_match: publicStaticCommonQaMatch(commonQaMatch),
+    }, message, query, route, history);
+    result.answer = commonQaMatch.answer || commonQaMatch.row.approved_answer;
+    result.faq_match = publicStaticCommonQaMatch(commonQaMatch);
+    const faqReference = staticCommonQaCourseReference(commonQaMatch.row);
+    const references = uniqueStaticReferences([faqReference].filter(Boolean));
+    return { ok: true, mode, result, citations: references, retrieved: references, meta: { mock: false, model, common_qa: true, ...commonQaSelectionMeta } };
   }
   let system;
   let messages;
@@ -1602,6 +1975,15 @@ const COURSE_DOMAIN_MODULES = {
   safety: "MOD-01", service_safety: "MOD-01", operations: "MOD-01", product_ops: "MOD-01",
 };
 
+const COMMON_QA_COURSE_FALLBACKS = {
+  "COURSE-FAQ-POINT-WAVE-001": "COURSE-MOD-03-02",
+  "COURSE-FAQ-SUPER-V-001": "COURSE-MOD-04-02",
+  "COURSE-FAQ-SLIMMING-001": "COURSE-MOD-05-03",
+  "COURSE-FAQ-OBJECTION-001": "COURSE-MOD-02-04",
+  "COURSE-FAQ-SAFETY-001": "COURSE-MOD-06-02",
+  "COURSE-FAQ-BEAUTY-001": "COURSE-MOD-09-03",
+};
+
 const courseSearchTermCache = new Map();
 
 function searchableTerms(value) {
@@ -1636,7 +2018,8 @@ function resolveReferenceCourse(reference = {}) {
   const metadata = reference.metadata || {};
   const requestedId = reference.course_id || metadata.course_id;
   if (requestedId) {
-    const direct = state.courses.find((course) => course.id === requestedId);
+    const direct = state.courses.find((course) => course.id === requestedId)
+      || state.courses.find((course) => course.id === COMMON_QA_COURSE_FALLBACKS[requestedId]);
     if (direct) return direct;
   }
 
@@ -2455,6 +2838,10 @@ async function sendMessage() {
 
 function renderQAAnswer(result, retrieved, citations) {
   const row = addMessage("assistant", result.answer || "暂时没有找到足够依据。", "AI 接待助手");
+  if (result.faq_match) {
+    const faqLabel = Number(result.faq_match.candidate_count || 1) > 1 ? "多条常见问答复核后命中" : "命中常见问答标准答案";
+    row.querySelector(".bubble-wrap").insertAdjacentHTML("beforeend", `<div class="answer-faq-match"><span>${faqLabel}</span><p>匹配问题：${escapeHtml(result.faq_match.question || "相似常见问题")}</p></div>`);
+  }
   const route = result.route || {};
   const supportingModules = Array.isArray(route.supporting_modules) ? route.supporting_modules : [];
   const routeModules = [route.primary_module, ...supportingModules].filter(Boolean);
