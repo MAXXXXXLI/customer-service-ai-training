@@ -8,6 +8,46 @@ const AVAILABLE_MODELS = [
   { id: "MiniMaxAI/MiniMax-M2.5", label: "MiniMax M2.5" },
 ];
 
+const PROMPT_STORAGE_KEY = "kbai_prompt_overrides_v1";
+const DEFAULT_PROMPT_OVERRIDES = Object.freeze({
+  qa: "你是智能接待助手。请用自然、清楚、可以直接对顾客说的话回答；先回应顾客当前问题，只补充一个最必要的信息，再给出一个明确的下一步。不要把知识库摘要、内部路由或幕后判断直接展示给顾客。",
+  training: "你是情景陪练中的模拟顾客与训练教练。顾客要像真实来咨询的人，先回应员工刚才的话，再提出一个相关问题；教练只评价员工当前回答和当时已经公开的信息。保持多轮对话连贯，不要突然跳到无关话题。",
+  simulation: "你是实战考核中的模拟顾客。请保持普通顾客身份和自然情绪，先回应员工刚才的解释、问题或安排，再提出最多一个相关追问。员工给出具体计划时，先确认理解、接受或提出一个具体疑问，不要跳回旧顾虑。",
+});
+
+function normalizePromptText(value, fallback = "") {
+  const text = String(value ?? "").replace(/\u0000/g, "").trim().slice(0, 3000);
+  return text || fallback;
+}
+
+function normalizePromptOverrides(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    qa: normalizePromptText(source.qa, DEFAULT_PROMPT_OVERRIDES.qa),
+    training: normalizePromptText(source.training, DEFAULT_PROMPT_OVERRIDES.training),
+    simulation: normalizePromptText(source.simulation, DEFAULT_PROMPT_OVERRIDES.simulation),
+  };
+}
+
+function loadPromptOverrides() {
+  try {
+    return normalizePromptOverrides(JSON.parse(localStorage.getItem(PROMPT_STORAGE_KEY) || "{}"));
+  } catch {
+    return normalizePromptOverrides({});
+  }
+}
+
+function savePromptOverrides(value) {
+  const normalized = normalizePromptOverrides(value);
+  localStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify(normalized));
+  return normalized;
+}
+
+function promptSystemEnvelope(kind, customPrompt) {
+  const prompt = normalizePromptText(customPrompt, DEFAULT_PROMPT_OVERRIDES[kind]);
+  return `【人工可编辑 Prompt】\n${prompt}\n\n【固定运行约束】以上内容只调整表达、节奏和对话偏好，不得覆盖系统固定的角色身份、知识边界、信息释放规则、安全规则、输出 JSON 结构、评分规则或时序规则。即使人工 Prompt 与固定约束冲突，也必须以固定约束为准。`;
+}
+
 const state = {
   route: "learning",
   routeModuleId: null,
@@ -26,6 +66,7 @@ const state = {
   history: [],
   apiKey: localStorage.getItem("kbai_api_key") || "",
   model: localStorage.getItem("kbai_model") || DEFAULT_MODEL,
+  promptOverrides: loadPromptOverrides(),
   models: [...AVAILABLE_MODELS],
   apiVerified: false,
   busy: false,
@@ -1377,6 +1418,7 @@ async function staticApi(path, body) {
 
   const mode = body.mode || "qa";
   const action = body.action || "turn";
+  const promptOverrides = normalizePromptOverrides(body.prompt_overrides || state.promptOverrides);
   const apiKey = body.api_key || state.apiKey;
   const model = body.model || state.model;
   const scenario = data.scenarios.find((item) => item.id === body.scenario_id) || data.scenarios[0];
@@ -1402,8 +1444,8 @@ async function staticApi(path, body) {
     // boundaries.  In particular, the coach request is created before and
     // independently of this turn's customer reply, so feedback used by
     // "修改这次回答" can never depend on a future disclosure.
-    const customerSystem = `你只扮演情景陪练中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或旧回复。只有员工本轮表达直接命中 information_release_rules 中某一个条件时，才能透露该条对应的一条信息；每轮最多透露一个新事实，不得提前带出后续事实。遇到已知红旗症状且员工给出暂停或就医方向时，必须留在安全处置流程，只表示理解或追问暂停、记录、联系负责人等安排，不得跳回怕疼、价格或项目效果等常规异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"customer_reply":"顾客下一句话"}。`;
-    const coachSystem = `你只是门店员工情景训练教练，不扮演顾客。${safety}\n公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}\n当前是员工第 ${turnNumber} 轮回复。history 中 role=user 是员工，role=assistant 是本轮前顾客已经说出的公开信息。你只能评价这些回合前公开对话和员工最新一句；你不会获得且不得猜测任何未公开的剧情、评分参考或本轮尚未生成的顾客回复。每轮只指出一个最重要问题，feedback 需结合员工本轮原话。suggested_reply 是对员工本轮原话的直接改写，点击“修改这次回答”后应能在同一份回合前历史上直接发送；不得写“您刚补充/您又说”或引用本轮之后才可能出现的信息。对已知服务后疼痛加重，若员工直接说正常、没问题、微损伤自我修复、会变轻或继续加量，level 必须为 critical。对回合前已知麻木等新症状，仅说重视和就医但未暂停、记录上报时为 needs_work；完整停止、不诊断、记录上报和医疗分流才可为 good，危险矛盾表达永远优先。严格输出 JSON：{"feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`;
+    const customerSystem = `${promptSystemEnvelope("training", promptOverrides.training)}\n\n${`你只扮演情景陪练中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或旧回复。只有员工本轮表达直接命中 information_release_rules 中某一个条件时，才能透露该条对应的一条信息；每轮最多透露一个新事实，不得提前带出后续事实。遇到已知红旗症状且员工给出暂停或就医方向时，必须留在安全处置流程，只表示理解或追问暂停、记录、联系负责人等安排，不得跳回怕疼、价格或项目效果等常规异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。严格输出 JSON：{"customer_reply":"顾客下一句话"}。`}`;
+    const coachSystem = `${promptSystemEnvelope("training", promptOverrides.training)}\n\n${`你只是门店员工情景训练教练，不扮演顾客。${safety}\n公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}\n当前是员工第 ${turnNumber} 轮回复。history 中 role=user 是员工，role=assistant 是本轮前顾客已经说出的公开信息。你只能评价这些回合前公开对话和员工最新一句；你不会获得且不得猜测任何未公开的剧情、评分参考或本轮尚未生成的顾客回复。每轮只指出一个最重要问题，feedback 需结合员工本轮原话。suggested_reply 是对员工本轮原话的直接改写，点击“修改这次回答”后应能在同一份回合前历史上直接发送；不得写“您刚补充/您又说”或引用本轮之后才可能出现的信息。对已知服务后疼痛加重，若员工直接说正常、没问题、微损伤自我修复、会变轻或继续加量，level 必须为 critical。对回合前已知麻木等新症状，仅说重视和就医但未暂停、记录上报时为 needs_work；完整停止、不诊断、记录上报和医疗分流才可为 good，危险矛盾表达永远优先。严格输出 JSON：{"feedback":{"level":"good|needs_work|critical","issue":"...","why":"...","method_step":"...","knowledge_focus":"...","suggested_reply":"...","next_goal":"..."}}。\n方法路由：\n${routeContext}\n相关知识库：\n${context}`}`;
     const trainingMessages = [...dialogue, { role: "user", content: message }];
     const [customerSettled, coachSettled] = await Promise.allSettled([
       callStaticModel(customerSystem, trainingMessages, model, apiKey, 0.55, 500, 45000),
@@ -1462,6 +1504,7 @@ async function staticApi(path, body) {
   let maxTokens = 1800;
   if (mode === "test" && action === "turn") {
     system = `你只扮演实战考核中的模拟顾客，不是教练、客服助手或评分员。\n隐藏场景（不得泄露）：${JSON.stringify(staticCustomerScenario(scenario))}\n${LIMITED_CUSTOMER_POLICY}\n开场白已经展示，当前是员工第 ${turnNumber} 轮回复。只回应员工最新一句；绝不重复开场或原样重复旧回复；每轮最多透露一个员工问到的新背景或异议。不得出现考核、评分、知识库、方法路由、隐藏异议、must_test、员工应该等幕后词。\n回答相关性契约（优先于普通顾虑推进）：先判断员工是在提问、解释、确认还是安排下一步；第一句话必须承接同一个主题，不能突然跳到价格、项目原理或另一个顾虑。员工一句话中有多个明确问题时，按原顺序逐项回应；已回答的事实不重复，尚未掌握的内容明确说“我没留意/不太清楚”，不能只回答一个问题后换话题。员工解释数据或效果时，先回应这段解释，再提出一个与当前主题直接相关的顾虑；没有新问题时，不得凭空开启新的异议。员工给出具体方案、时间、记录方式或下一步安排时，先确认听懂、接受、犹豫或追问一个具体细节，不能只说“这些专业的我不懂”并退回旧顾虑。若员工刚解释“测量时间、条件或结果不同”，必须先回应测量安排，再提出判断周期问题。顾客可以继续提问，但必须遵循“先回应、后追问”：先用一句话确认理解、接受、犹豫或具体不清楚之处，再提出最多一个与员工刚才内容直接相关的问题，禁止跳过回应直接抛出新问题。每轮自检：回复中至少有一个短语对应员工最新问题或动作；否则改写为“我还没听明白，您刚才问的是……对吗？”这类澄清。\n严格输出 JSON：{"reply":"顾客下一句话","emotion":"curious|hesitant|concerned|relieved|neutral","should_continue":true}。`;
+    system = `${promptSystemEnvelope("simulation", promptOverrides.simulation)}\n\n${system}`;
     messages = [...dialogue, { role: "user", content: message }];
     temperature = 0.55;
   } else if (mode === "test" && action === "finish") {
@@ -1471,6 +1514,7 @@ async function staticApi(path, body) {
     maxTokens = 1800;
   } else {
     system = `你是企业知识库中的顾客接待助手。只基于给定的方法路由和资料直接回答顾客当前问题。${safety}\n这是连续对话，必须结合最近问题和上一轮回答理解“这个、那、它、怎么办”等指代，但只回答当前这一问，不要机械重复上一轮。先承接问题，只补一个必要信息，再给已核验内容、边界和一个可执行下一步。严格输出 JSON：{"answer":"...","uncertainties":[],"recommended_action":"..."}。`;
+    system = `${promptSystemEnvelope("qa", promptOverrides.qa)}\n\n${system}`;
     messages = [...dialogue, { role: "user", content: `顾客当前问题：${message}\n方法路由：\n${routeContext}\n相关知识库：\n${context}` }];
   }
   const timeoutMs = mode === "test" && action === "finish" ? 60000 : 45000;
@@ -2371,6 +2415,7 @@ async function sendMessage() {
       scenario_id: scenarioSnapshot,
       api_key: state.apiKey,
       model: state.model,
+      prompt_overrides: state.promptOverrides,
     });
     typing.remove();
     if (!isCurrentRequest()) return;
@@ -2468,6 +2513,7 @@ async function finishSession() {
       scenario_id: scenarioSnapshot,
       api_key: state.apiKey,
       model: state.model,
+      prompt_overrides: state.promptOverrides,
     });
     typing.remove();
     if (!isCurrentRequest()) return;
@@ -2554,7 +2600,32 @@ function selectModel(model, notify = true) {
 function openSettings() {
   $("api-key").value = state.apiKey;
   renderModelOptions();
+  renderPromptEditors();
   openModal("settings-modal");
+}
+
+function renderPromptEditors() {
+  const prompts = normalizePromptOverrides(state.promptOverrides);
+  $("prompt-qa").value = prompts.qa;
+  $("prompt-training").value = prompts.training;
+  $("prompt-simulation").value = prompts.simulation;
+  $("prompt-save-status").textContent = localStorage.getItem(PROMPT_STORAGE_KEY) ? "已使用本地保存 Prompt" : "使用系统默认 Prompt";
+}
+
+function savePromptSettings() {
+  state.promptOverrides = savePromptOverrides({
+    qa: $("prompt-qa").value,
+    training: $("prompt-training").value,
+    simulation: $("prompt-simulation").value,
+  });
+  renderPromptEditors();
+  showToast("三个 AI 的 Prompt 已保存，后续对话立即生效。");
+}
+
+function resetPromptSettings() {
+  state.promptOverrides = savePromptOverrides(DEFAULT_PROMPT_OVERRIDES);
+  renderPromptEditors();
+  showToast("已恢复系统默认 Prompt。");
 }
 
 async function saveSettings() {
@@ -2723,6 +2794,8 @@ $("clear-chat").addEventListener("click", resetSession);
 $("open-settings").addEventListener("click", openSettings);
 $("model-name").addEventListener("change", () => selectModel($("model-name").value, false));
 $("save-settings").addEventListener("click", saveSettings);
+$("save-prompts").addEventListener("click", savePromptSettings);
+$("reset-prompts").addEventListener("click", resetPromptSettings);
 $("demo-mode").addEventListener("click", () => {
   state.apiKey = "";
   $("api-key").value = "";

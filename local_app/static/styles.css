@@ -310,13 +310,21 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .critical-block { margin-top: 9px; padding: 11px; color: var(--red); border: 1px solid rgba(220, 67, 86, 0.2); border-radius: 9px; background: rgba(220, 67, 86, 0.035); font-size: 8px; line-height: 1.6; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(4, 20, 61, 0.7); backdrop-filter: blur(12px); }
-.modal { position: relative; width: min(500px, 100%); padding: 28px; border: 1px solid var(--line-strong); border-radius: 17px; background: var(--surface-2); box-shadow: 0 30px 100px rgba(0, 32, 110, 0.28); }
+.modal { position: relative; width: min(500px, 100%); max-height: min(90vh, 900px); overflow: auto; padding: 28px; border: 1px solid var(--line-strong); border-radius: 17px; background: var(--surface-2); box-shadow: 0 30px 100px rgba(0, 32, 110, 0.28); }
 .course-modal { width: min(820px, 100%); max-height: min(82vh, 820px); overflow: auto; }
 .modal-close { position: sticky; top: -12px; z-index: 2; float: right; display: grid; place-items: center; width: 30px; height: 30px; color: var(--muted); border: 1px solid var(--line); border-radius: 50%; background: var(--surface-3); font-size: 17px; }
 .modal h2 { margin: 9px 0 8px; font-size: 24px; }
 .modal-copy { margin: 0 0 20px; color: var(--muted); font-size: 10px; line-height: 1.75; }
 .modal label { display: block; margin-top: 13px; color: var(--muted); font-size: 9px; }
 .modal input, .modal select { width: 100%; margin-top: 6px; padding: 11px; color: var(--text); border: 1px solid var(--line); border-radius: 9px; outline: 0; background: var(--surface-3); font-size: 10px; }
+.prompt-editor { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--line); }
+.prompt-editor h3 { margin: 8px 0; font-size: 18px; }
+.prompt-editor-copy { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.prompt-editor label { margin-top: 14px; }
+.prompt-editor textarea { width: 100%; min-height: 112px; margin-top: 6px; padding: 11px; color: var(--text); border: 1px solid var(--line); border-radius: 9px; outline: 0; background: var(--surface-3); font: inherit; font-size: 14px; line-height: 1.55; resize: vertical; }
+.prompt-editor textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(38, 91, 224, 0.12); }
+.prompt-editor-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; color: var(--faint); font-size: 12px; line-height: 1.5; }
+.prompt-actions { margin-top: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .secondary-button { padding: 10px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 9px; background: transparent; font-size: 9px; }
 .course-modal-breadcrumb { padding-right: 40px; color: var(--faint); font-size: 11px; }
