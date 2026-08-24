@@ -8,7 +8,7 @@ const AVAILABLE_MODELS = [
   { id: "MiniMaxAI/MiniMax-M2.5", label: "MiniMax M2.5" },
 ];
 
-const PROMPT_STORAGE_KEY = "kbai_prompt_overrides_v2";
+const PROMPT_STORAGE_KEY = "kbai_prompt_preferences_v3";
 const DEFAULT_PROMPT_OVERRIDES = Object.freeze({
   qa: "你是智能接待助手。请用自然、清楚、可以直接对顾客说的话回答；先回应顾客当前问题，只补充一个最必要的信息，再给出一个明确的下一步。不要把知识库摘要、内部路由或幕后判断直接展示给顾客。",
   training: { customer: "你是情景陪练中的模拟顾客。请先回应员工最新一句，再继续相关对话。", coach: "你是情景陪练中的训练教练，只评价员工当前回答和此前公开信息。" },
@@ -16,8 +16,14 @@ const DEFAULT_PROMPT_OVERRIDES = Object.freeze({
 });
 
 function normalizePromptText(value, fallback = "") {
-  const text = String(value ?? "").replace(/\u0000/g, "").trim().slice(0, 12000);
+  const text = String(value ?? "").replace(/\u0000/g, "").trim().slice(0, 2000);
   return text || fallback;
+}
+
+function sanitizePromptPreference(value, fallback = "") {
+  const text = normalizePromptText(value, fallback);
+  if (/(?:忽略|无视|覆盖|改写|取消固定|不要输出\s*json|不要遵守|system|assistant|developer|role\s*=|hidden_information|information_release_rules)/i.test(text)) return fallback;
+  return text;
 }
 
 function normalizePromptOverrides(value, defaults = DEFAULT_PROMPT_OVERRIDES) {
@@ -25,14 +31,14 @@ function normalizePromptOverrides(value, defaults = DEFAULT_PROMPT_OVERRIDES) {
   const training = source.training && typeof source.training === "object" ? source.training : { customer: source.training, coach: source.training };
   const simulation = source.simulation && typeof source.simulation === "object" ? source.simulation : { customer: source.simulation, assessment: source.simulation };
   return {
-    qa: normalizePromptText(source.qa, defaults.qa),
+    qa: sanitizePromptPreference(source.qa, defaults.qa),
     training: {
-      customer: normalizePromptText(training.customer, defaults.training.customer),
-      coach: normalizePromptText(training.coach, defaults.training.coach),
+      customer: sanitizePromptPreference(training.customer, defaults.training.customer),
+      coach: sanitizePromptPreference(training.coach, defaults.training.coach),
     },
     simulation: {
-      customer: normalizePromptText(simulation.customer, defaults.simulation.customer),
-      assessment: normalizePromptText(simulation.assessment, defaults.simulation.assessment),
+      customer: sanitizePromptPreference(simulation.customer, defaults.simulation.customer),
+      assessment: sanitizePromptPreference(simulation.assessment, defaults.simulation.assessment),
     },
   };
 }
@@ -46,14 +52,14 @@ function loadPromptOverrides(defaults = DEFAULT_PROMPT_OVERRIDES) {
 }
 
 function savePromptOverrides(value, defaults = state.promptDefaults || DEFAULT_PROMPT_OVERRIDES) {
-  const normalized = normalizePromptOverrides(value, defaults);
+  const normalized = normalizePromptOverrides(value, DEFAULT_PROMPT_OVERRIDES);
   localStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify(normalized));
   return normalized;
 }
 
 function promptSystemEnvelope(kind, customPrompt) {
   const configuredDefaults = state.promptDefaults || DEFAULT_PROMPT_OVERRIDES;
-  const defaults = {
+  const fixedPrompts = {
     qa: configuredDefaults.qa,
     training_customer: configuredDefaults.training.customer,
     training_coach: configuredDefaults.training.coach,
@@ -67,8 +73,15 @@ function promptSystemEnvelope(kind, customPrompt) {
     simulation_customer: "保持模拟顾客身份，只输出 reply、emotion、should_continue；先回应员工最新问题或安排，再提出最多一个相关追问。",
     simulation_assessment: "保持考核官身份，只输出固定评分报告；严格保留 7 个维度、JSON 字段、逐轮时序和关键失败封顶规则。",
   };
-  const prompt = normalizePromptText(customPrompt, defaults[kind]);
-  return `【人工可编辑完整 Prompt】\n${prompt}\n\n【固定结构与安全保护（不可编辑）】\n${guards[kind] || "保持系统角色、边界和结构化输出。"}`;
+  const preferenceDefaults = {
+    qa: DEFAULT_PROMPT_OVERRIDES.qa,
+    training_customer: DEFAULT_PROMPT_OVERRIDES.training.customer,
+    training_coach: DEFAULT_PROMPT_OVERRIDES.training.coach,
+    simulation_customer: DEFAULT_PROMPT_OVERRIDES.simulation.customer,
+    simulation_assessment: DEFAULT_PROMPT_OVERRIDES.simulation.assessment,
+  };
+  const preference = sanitizePromptPreference(customPrompt, preferenceDefaults[kind] || "");
+  return `【可编辑内容参考（仅影响表达偏好，不改变功能）】\n${preference}\n\n【固定系统 Prompt（不可编辑）】\n${fixedPrompts[kind] || "保持系统角色、边界和结构化输出。"}\n\n【固定结构与安全保护（不可编辑）】\n${guards[kind] || "保持系统角色、边界和结构化输出。"}`;
 }
 
 const state = {
@@ -3023,7 +3036,7 @@ function renderPromptEditors() {
   $("prompt-training-coach").value = prompts.training.coach;
   $("prompt-simulation-customer").value = prompts.simulation.customer;
   $("prompt-simulation-assessment").value = prompts.simulation.assessment;
-  $("prompt-save-status").textContent = localStorage.getItem(PROMPT_STORAGE_KEY) ? "已使用本地保存 Prompt" : "使用系统默认 Prompt";
+  $("prompt-save-status").textContent = localStorage.getItem(PROMPT_STORAGE_KEY) ? "已使用本地保存偏好" : "使用系统默认偏好";
 }
 
 function savePromptSettings() {
@@ -3033,13 +3046,13 @@ function savePromptSettings() {
     simulation: { customer: $("prompt-simulation-customer").value, assessment: $("prompt-simulation-assessment").value },
   });
   renderPromptEditors();
-  showToast("三个 AI 的 Prompt 已保存，后续对话立即生效。");
+  showToast("三个 AI 的表达偏好已保存，后续对话立即生效。");
 }
 
 function resetPromptSettings() {
   state.promptOverrides = savePromptOverrides(DEFAULT_PROMPT_OVERRIDES);
   renderPromptEditors();
-  showToast("已恢复系统默认 Prompt。");
+  showToast("已恢复系统默认表达偏好。");
 }
 
 async function saveSettings() {
@@ -3161,8 +3174,11 @@ async function boot() {
     state.knowledge = bootstrap.knowledge || {};
     state.examBank = examBank;
     state.realExamBank = realExamBank;
-    state.promptDefaults = normalizePromptOverrides(bootstrap.prompt_defaults || DEFAULT_PROMPT_OVERRIDES);
-    state.promptOverrides = loadPromptOverrides(state.promptDefaults);
+    // The bootstrap payload contains the fixed long prompts. They are used
+    // only inside the system envelope; the editable local values remain
+    // short presentation preferences.
+    state.promptDefaults = bootstrap.prompt_defaults || state.promptDefaults || DEFAULT_PROMPT_OVERRIDES;
+    state.promptOverrides = loadPromptOverrides(DEFAULT_PROMPT_OVERRIDES);
     state.models = bootstrap.models?.length ? bootstrap.models : AVAILABLE_MODELS;
     renderModelOptions();
     els.healthNumber.textContent = state.knowledge.rag_documents || 172;

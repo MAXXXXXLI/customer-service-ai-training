@@ -62,7 +62,9 @@ def run_with_model(
 
 
 def is_customer_system(system: str) -> bool:
-    return system.startswith(server.TRAIN_CUSTOMER_SYSTEM)
+    # Editable preferences are intentionally placed before the fixed prompt;
+    # identify the role by the protected long prompt rather than its prefix.
+    return server.TRAIN_CUSTOMER_SYSTEM in system
 
 
 def test_customer_failure_keeps_real_coach_and_uses_customer_fallback() -> None:

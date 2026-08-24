@@ -11,7 +11,7 @@
         window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
       }
     </script>
-    <link rel="stylesheet" href="./styles.css?v=20260824-01" />
+    <link rel="stylesheet" href="./styles.css?v=20260824-03" />
   </head>
   <body>
     <div class="app-shell">
@@ -145,17 +145,17 @@
         <label>AI 模型<select id="model-name" aria-label="选择 SiliconFlow 模型"></select></label>
         <div class="modal-actions"><button class="secondary-button" id="demo-mode">使用演示模式</button><button class="primary-button" id="save-settings">保存并验证</button></div>
         <section class="prompt-editor" aria-labelledby="prompt-editor-title">
-          <span class="step-tag">Prompt 管理</span><h3 id="prompt-editor-title">三个 AI 的可编辑 Prompt</h3>
-          <p class="prompt-editor-copy">这里展示的是机器人当前使用的完整 Prompt，可以直接编辑全部具体内容。三个 AI 入口下包含各自的内部角色 Prompt；系统只固定保护角色边界、JSON 结构、安全规则、信息释放和评分时序，避免改错后机器人失效。每项修改都只保存在当前浏览器。</p>
-          <label>智能接待 · 完整 Prompt<textarea id="prompt-qa" rows="8" maxlength="12000"></textarea></label>
-          <div class="prompt-subgroup"><strong>情景陪练</strong><label>模拟顾客 Prompt<textarea id="prompt-training-customer" rows="8" maxlength="12000"></textarea></label><label>训练教练 Prompt<textarea id="prompt-training-coach" rows="8" maxlength="12000"></textarea></label></div>
-          <div class="prompt-subgroup"><strong>模拟顾客考核</strong><label>模拟顾客 Prompt<textarea id="prompt-simulation-customer" rows="8" maxlength="12000"></textarea></label><label>考后评分 Prompt<textarea id="prompt-simulation-assessment" rows="8" maxlength="12000"></textarea></label></div>
-          <div class="prompt-editor-foot"><span id="prompt-save-status">使用系统默认 Prompt</span><span>每项最多 12000 字</span></div>
+          <span class="step-tag">Prompt 管理</span><h3 id="prompt-editor-title">三个 AI 的表达偏好</h3>
+          <p class="prompt-editor-copy">这里可以调整语气、表达重点和互动方式。原始长 Prompt、角色身份、输出字段、安全规则、信息释放和评分时序由系统固定保护；你怎么修改这些偏好，都不会破坏机器人的功能。每项修改只保存在当前浏览器。</p>
+          <label>智能接待 · 表达偏好<textarea id="prompt-qa" rows="4" maxlength="2000" placeholder="例如：先直接回答问题，再给一个清楚、可执行的下一步。"></textarea></label>
+          <div class="prompt-subgroup"><strong>情景陪练</strong><label>模拟顾客 · 表达偏好<textarea id="prompt-training-customer" rows="4" maxlength="2000" placeholder="例如：像普通顾客一样先回应员工，再只追问一个相关问题。"></textarea></label><label>训练教练 · 反馈偏好<textarea id="prompt-training-coach" rows="4" maxlength="2000" placeholder="例如：先说最重要的改进点，再给一句可以直接使用的话。"></textarea></label></div>
+          <div class="prompt-subgroup"><strong>模拟顾客考核</strong><label>模拟顾客 · 表达偏好<textarea id="prompt-simulation-customer" rows="4" maxlength="2000" placeholder="例如：顾客说话自然、简短，先回应员工当前问题。"></textarea></label><label>评分报告 · 表达偏好<textarea id="prompt-simulation-assessment" rows="4" maxlength="2000" placeholder="例如：评分理由具体，改进建议每条只聚焦一个动作。"></textarea></label></div>
+          <div class="prompt-editor-foot"><span id="prompt-save-status">使用系统默认偏好</span><span>每项最多 2000 字</span></div>
           <div class="modal-actions prompt-actions"><button class="secondary-button" id="reset-prompts">恢复默认 Prompt</button><button class="primary-button" id="save-prompts">保存 Prompt</button></div>
         </section>
       </div>
     </div>
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260824-02"></script>
+    <script src="./app.js?v=20260824-03"></script>
   </body>
 </html>

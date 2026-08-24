@@ -287,8 +287,21 @@ def clean_text(value: Any) -> str:
 
 
 def normalize_prompt_text(value: Any, fallback: str = "") -> str:
-    text = str(value or "").replace("\x00", "").strip()[:12000]
+    text = str(value or "").replace("\x00", "").strip()[:2000]
     return text or fallback
+
+
+def sanitize_prompt_preference(value: Any, fallback: str = "") -> str:
+    """Keep the editable field as a presentation preference, never a system override."""
+    text = normalize_prompt_text(value, fallback)
+    if re.search(
+        r"(?:忽略|无视|覆盖|改写|取消固定|不要输出\s*json|不要遵守|"
+        r"system|assistant|developer|role\s*=|hidden_information|information_release_rules)",
+        text,
+        flags=re.I,
+    ):
+        return fallback
+    return text
 
 
 def normalize_prompt_overrides(value: Any) -> dict[str, Any]:
@@ -296,30 +309,31 @@ def normalize_prompt_overrides(value: Any) -> dict[str, Any]:
     training = source.get("training") if isinstance(source.get("training"), dict) else {"customer": source.get("training"), "coach": source.get("training")}
     simulation = source.get("simulation") if isinstance(source.get("simulation"), dict) else {"customer": source.get("simulation"), "assessment": source.get("simulation")}
     return {
-        "qa": normalize_prompt_text(source.get("qa"), DEFAULT_PROMPT_OVERRIDES["qa"]),
+        "qa": sanitize_prompt_preference(source.get("qa"), PROMPT_PREFERENCE_DEFAULTS["qa"]),
         "training": {
-            "customer": normalize_prompt_text(training.get("customer"), DEFAULT_PROMPT_OVERRIDES["training"]["customer"]),
-            "coach": normalize_prompt_text(training.get("coach"), DEFAULT_PROMPT_OVERRIDES["training"]["coach"]),
+            "customer": sanitize_prompt_preference(training.get("customer"), PROMPT_PREFERENCE_DEFAULTS["training_customer"]),
+            "coach": sanitize_prompt_preference(training.get("coach"), PROMPT_PREFERENCE_DEFAULTS["training_coach"]),
         },
         "simulation": {
-            "customer": normalize_prompt_text(simulation.get("customer"), DEFAULT_PROMPT_OVERRIDES["simulation"]["customer"]),
-            "assessment": normalize_prompt_text(simulation.get("assessment"), DEFAULT_PROMPT_OVERRIDES["simulation"]["assessment"]),
+            "customer": sanitize_prompt_preference(simulation.get("customer"), PROMPT_PREFERENCE_DEFAULTS["simulation_customer"]),
+            "assessment": sanitize_prompt_preference(simulation.get("assessment"), PROMPT_PREFERENCE_DEFAULTS["simulation_assessment"]),
         },
     }
 
 
 def prompt_system_envelope(kind: str, custom_prompt: Any) -> str:
-    default_prompts = {
+    fixed_prompts = {
         "qa": DEFAULT_PROMPT_OVERRIDES["qa"],
         "training_customer": DEFAULT_PROMPT_OVERRIDES["training"]["customer"],
         "training_coach": DEFAULT_PROMPT_OVERRIDES["training"]["coach"],
         "simulation_customer": DEFAULT_PROMPT_OVERRIDES["simulation"]["customer"],
         "simulation_assessment": DEFAULT_PROMPT_OVERRIDES["simulation"]["assessment"],
     }
-    prompt = normalize_prompt_text(custom_prompt, default_prompts.get(kind, ""))
+    preference = sanitize_prompt_preference(custom_prompt, PROMPT_PREFERENCE_DEFAULTS.get(kind, ""))
     guard = PROMPT_FIXED_GUARDS.get(kind, "保持系统角色、边界和结构化输出。")
     return (
-        f"【人工可编辑完整 Prompt】\n{prompt}\n\n"
+        f"【可编辑内容参考（仅影响表达偏好，不改变功能）】\n{preference}\n\n"
+        f"【固定系统 Prompt（不可编辑）】\n{fixed_prompts.get(kind, '')}\n\n"
         f"【固定结构与安全保护（不可编辑）】\n{guard}"
     )
 
@@ -1193,6 +1207,17 @@ DEFAULT_PROMPT_OVERRIDES = {
     "qa": QA_SYSTEM,
     "training": {"customer": TRAIN_CUSTOMER_SYSTEM, "coach": TRAIN_FEEDBACK_SYSTEM},
     "simulation": {"customer": TEST_TURN_SYSTEM, "assessment": ASSESS_SYSTEM},
+}
+
+# These are the only values the operator edits. The long prompts above remain
+# fixed so changing wording preferences cannot remove a role, JSON schema,
+# safety rule, release rule, or scoring rule.
+PROMPT_PREFERENCE_DEFAULTS = {
+    "qa": "先直接回应顾客当前问题，语气清楚温和；只补充一个最必要的信息，再给出明确的下一步。",
+    "training_customer": "顾客先回应员工最新一句，再继续相关对话；每轮只表达一个重点，像普通人一样说话。",
+    "training_coach": "反馈先指出最重要的问题，再给一句可以直接使用的替代表达；语言具体、简洁、可执行。",
+    "simulation_customer": "顾客先回应员工最新的问题或安排，再提出一个相关追问；语气自然，每轮只推进一个重点。",
+    "simulation_assessment": "评分报告语言清楚、具体、可执行；每条改进建议只聚焦一个动作，并引用真实对话证据。",
 }
 
 PROMPT_FIXED_GUARDS = {
@@ -2762,7 +2787,7 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
         if MOCK_MODE or not api_key:
             result = apply_methodology_result(safety_filter(mock_qa_response(message, route, docs), mode, message, route), mode, route)
             return response_payload(mode, result, docs, {"mock": True, "model": model, "common_qa": False, **common_qa_selection_meta})
-        qa_system = f"{prompt_system_envelope('qa', prompt_overrides['qa'])}\n\n{QA_SYSTEM}"
+        qa_system = prompt_system_envelope("qa", prompt_overrides["qa"])
         raw, meta = call_model(qa_system, [*dialogue_history, {"role": "user", "content": user_message}], model, api_key, temperature=0.2)
         result = apply_methodology_result(safety_filter(extract_json(raw) or {"answer": raw, "uncertainties": ["模型未按结构化格式返回，请人工核验。"], "citations": citation_refs, "recommended_action": ""}, mode, message, route), mode, route)
         return response_payload(mode, result, docs, {**meta, "mock": False, "common_qa": False, **common_qa_selection_meta})
