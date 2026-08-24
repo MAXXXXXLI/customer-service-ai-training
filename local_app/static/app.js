@@ -8,7 +8,7 @@ const AVAILABLE_MODELS = [
   { id: "MiniMaxAI/MiniMax-M2.5", label: "MiniMax M2.5" },
 ];
 
-const PROMPT_STORAGE_KEY = "kbai_prompt_overrides_v1";
+const PROMPT_STORAGE_KEY = "kbai_prompt_overrides_v2";
 const DEFAULT_PROMPT_OVERRIDES = Object.freeze({
   qa: "你是智能接待助手。请用自然、清楚、可以直接对顾客说的话回答；先回应顾客当前问题，只补充一个最必要的信息，再给出一个明确的下一步。不要把知识库摘要、内部路由或幕后判断直接展示给顾客。",
   training: { customer: "你是情景陪练中的模拟顾客。请先回应员工最新一句，再继续相关对话。", coach: "你是情景陪练中的训练教练，只评价员工当前回答和此前公开信息。" },
