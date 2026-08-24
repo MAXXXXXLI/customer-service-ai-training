@@ -11,7 +11,7 @@
         window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
       }
     </script>
-    <link rel="stylesheet" href="./styles.css?v=20260821-04" />
+    <link rel="stylesheet" href="./styles.css?v=20260824-01" />
   </head>
   <body>
     <div class="app-shell">
@@ -146,16 +146,16 @@
         <div class="modal-actions"><button class="secondary-button" id="demo-mode">使用演示模式</button><button class="primary-button" id="save-settings">保存并验证</button></div>
         <section class="prompt-editor" aria-labelledby="prompt-editor-title">
           <span class="step-tag">Prompt 管理</span><h3 id="prompt-editor-title">三个 AI 的可编辑 Prompt</h3>
-          <p class="prompt-editor-copy">下面三段内容可以完整编辑并保存在当前浏览器。系统会自动保留角色、安全、信息释放、输出格式和评分结构；即使 Prompt 写错，机器人也会回退默认文本并继续运行。</p>
-          <label>智能接待 Prompt<textarea id="prompt-qa" rows="4" maxlength="3000" placeholder="例如：回答先直接回应顾客当前问题，再给一个清晰的下一步。"></textarea></label>
-          <label>情景陪练 Prompt<textarea id="prompt-training" rows="4" maxlength="3000" placeholder="例如：顾客先回应员工，再提出一个相关追问。"></textarea></label>
-          <label>模拟顾客考核 Prompt<textarea id="prompt-simulation" rows="4" maxlength="3000" placeholder="例如：像普通顾客一样交流，先回应员工，再继续提问。"></textarea></label>
-          <div class="prompt-editor-foot"><span id="prompt-save-status">使用系统默认 Prompt</span><span>每项最多 3000 字</span></div>
+          <p class="prompt-editor-copy">这里展示的是机器人当前使用的完整 Prompt，可以直接编辑全部具体内容。三个 AI 入口下包含各自的内部角色 Prompt；系统只固定保护角色边界、JSON 结构、安全规则、信息释放和评分时序，避免改错后机器人失效。每项修改都只保存在当前浏览器。</p>
+          <label>智能接待 · 完整 Prompt<textarea id="prompt-qa" rows="8" maxlength="12000"></textarea></label>
+          <div class="prompt-subgroup"><strong>情景陪练</strong><label>模拟顾客 Prompt<textarea id="prompt-training-customer" rows="8" maxlength="12000"></textarea></label><label>训练教练 Prompt<textarea id="prompt-training-coach" rows="8" maxlength="12000"></textarea></label></div>
+          <div class="prompt-subgroup"><strong>模拟顾客考核</strong><label>模拟顾客 Prompt<textarea id="prompt-simulation-customer" rows="8" maxlength="12000"></textarea></label><label>考后评分 Prompt<textarea id="prompt-simulation-assessment" rows="8" maxlength="12000"></textarea></label></div>
+          <div class="prompt-editor-foot"><span id="prompt-save-status">使用系统默认 Prompt</span><span>每项最多 12000 字</span></div>
           <div class="modal-actions prompt-actions"><button class="secondary-button" id="reset-prompts">恢复默认 Prompt</button><button class="primary-button" id="save-prompts">保存 Prompt</button></div>
         </section>
       </div>
     </div>
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260822-02"></script>
+    <script src="./app.js?v=20260824-01"></script>
   </body>
 </html>

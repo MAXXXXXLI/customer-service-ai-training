@@ -23,7 +23,7 @@ def main() -> None:
     for field in ("qa", "training", "simulation"):
         check(field in server.DEFAULT_PROMPT_OVERRIDES, f"missing server default: {field}")
         check(field in app, f"missing static prompt field: {field}")
-    for element_id in ("prompt-qa", "prompt-training", "prompt-simulation", "save-prompts", "reset-prompts"):
+    for element_id in ("prompt-qa", "prompt-training-customer", "prompt-training-coach", "prompt-simulation-customer", "prompt-simulation-assessment", "save-prompts", "reset-prompts"):
         check(f'id="{element_id}"' in html, f"missing editor element: {element_id}")
     check("PROMPT_STORAGE_KEY" in app and "localStorage" in app, "prompt editor must persist locally")
     server_source = (ROOT / "server.py").read_text(encoding="utf-8")
@@ -31,10 +31,10 @@ def main() -> None:
 
     normalized = server.normalize_prompt_overrides({"qa": "  自定义接待语  ", "training": "\x00" + "x" * 5000})
     check(normalized["qa"] == "自定义接待语", "custom prompt should be trimmed")
-    check(len(normalized["training"]) == 3000, "long prompt should be safely bounded")
-    check(normalized["simulation"] == server.DEFAULT_PROMPT_OVERRIDES["simulation"], "missing prompt should use default")
+    check(len(normalized["training"]["customer"]) == 5000, "long prompt should be safely bounded")
+    check(normalized["simulation"]["customer"] == server.DEFAULT_PROMPT_OVERRIDES["simulation"]["customer"], "missing prompt should use default")
     envelope = server.prompt_system_envelope("qa", "请多说一点")
-    check("请多说一点" in envelope and "固定运行约束" in envelope, "fixed envelope must remain after editable text")
+    check("请多说一点" in envelope and "固定结构与安全保护" in envelope, "fixed envelope must remain after editable text")
     print("prompt settings regression passed")
 
 

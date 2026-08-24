@@ -326,6 +326,8 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .prompt-editor label { margin-top: 14px; }
 .prompt-editor textarea { width: 100%; min-height: 112px; margin-top: 6px; padding: 11px; color: var(--text); border: 1px solid var(--line); border-radius: 9px; outline: 0; background: var(--surface-3); font: inherit; font-size: 14px; line-height: 1.55; resize: vertical; }
 .prompt-editor textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(38, 91, 224, 0.12); }
+.prompt-subgroup { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.prompt-subgroup > strong { display: block; color: var(--text); font-size: 15px; }
 .prompt-editor-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; color: var(--faint); font-size: 12px; line-height: 1.5; }
 .prompt-actions { margin-top: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }

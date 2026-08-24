@@ -489,6 +489,7 @@ def test_real_training_calls_are_isolated_and_schema_compatible() -> None:
 
 def test_static_training_prompts_and_finish_context_are_isolated() -> None:
     app_js = APP_JS_PATH.read_text(encoding="utf-8")
+    prompt_defaults = (APP_JS_PATH.parent / "data" / "prompt_defaults.json").read_text(encoding="utf-8")
     assert "function staticPublicTrainingScenario" in app_js
     assert "staticTrainingSafetyDecision" in app_js
     assert "staticTrainingMessageHasUnsafeContradiction" in app_js
@@ -502,10 +503,11 @@ def test_static_training_prompts_and_finish_context_are_isolated() -> None:
     public_context_call = "JSON.stringify(staticPublicTrainingScenario(scenario))"
     assert app_js.count(public_context_call) >= 2, "coach 与 finish 都应只使用公开场景字段"
     assert "场景：${JSON.stringify(scenario)}" not in app_js
-    assert "一句员工原话只能使用它之前已出现的顾客信息" in app_js
-    assert "后来顾客才透露的信息不得追溯扣分" in app_js
-    assert "后续的正确补救不能抹去先前已经发生的关键失败" in app_js
-    assert "顾客明确说“没有/否认”的症状不得当作已出现" in app_js
+    finish_prompt = app_js + prompt_defaults
+    assert "一句员工原话只能使用它之前已出现的顾客信息" in finish_prompt
+    assert "后来顾客才透露的信息不得追溯扣分" in finish_prompt
+    assert "后续的正确补救不能抹去先前已经发生的关键失败" in finish_prompt
+    assert "顾客明确说“没有/否认”的症状不得当作已出现" in finish_prompt
 
     helper_match = re.search(
         r"function staticPublicTrainingScenario\(scenario\s*=\s*\{\}\)\s*\{([\s\S]{0,1200}?)\n\}",

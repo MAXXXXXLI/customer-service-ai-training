@@ -286,32 +286,41 @@ def clean_text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-DEFAULT_PROMPT_OVERRIDES = {
-    "qa": "你是智能接待助手。请用自然、清楚、可以直接对顾客说的话回答；先回应顾客当前问题，只补充一个最必要的信息，再给出一个明确的下一步。不要把知识库摘要、内部路由或幕后判断直接展示给顾客。",
-    "training": "你是情景陪练中的模拟顾客与训练教练。顾客要像真实来咨询的人，先回应员工刚才的话，再提出一个相关问题；教练只评价员工当前回答和当时已经公开的信息。保持多轮对话连贯，不要突然跳到无关话题。",
-    "simulation": "你是实战考核中的模拟顾客。请保持普通顾客身份和自然情绪，先回应员工刚才的解释、问题或安排，再提出最多一个相关追问。员工给出具体计划时，先确认理解、接受或提出一个具体疑问，不要跳回旧顾虑。",
-}
-
-
 def normalize_prompt_text(value: Any, fallback: str = "") -> str:
-    text = str(value or "").replace("\x00", "").strip()[:3000]
+    text = str(value or "").replace("\x00", "").strip()[:12000]
     return text or fallback
 
 
-def normalize_prompt_overrides(value: Any) -> dict[str, str]:
+def normalize_prompt_overrides(value: Any) -> dict[str, Any]:
     source = value if isinstance(value, dict) else {}
+    training = source.get("training") if isinstance(source.get("training"), dict) else {"customer": source.get("training"), "coach": source.get("training")}
+    simulation = source.get("simulation") if isinstance(source.get("simulation"), dict) else {"customer": source.get("simulation"), "assessment": source.get("simulation")}
     return {
-        key: normalize_prompt_text(source.get(key), DEFAULT_PROMPT_OVERRIDES[key])
-        for key in ("qa", "training", "simulation")
+        "qa": normalize_prompt_text(source.get("qa"), DEFAULT_PROMPT_OVERRIDES["qa"]),
+        "training": {
+            "customer": normalize_prompt_text(training.get("customer"), DEFAULT_PROMPT_OVERRIDES["training"]["customer"]),
+            "coach": normalize_prompt_text(training.get("coach"), DEFAULT_PROMPT_OVERRIDES["training"]["coach"]),
+        },
+        "simulation": {
+            "customer": normalize_prompt_text(simulation.get("customer"), DEFAULT_PROMPT_OVERRIDES["simulation"]["customer"]),
+            "assessment": normalize_prompt_text(simulation.get("assessment"), DEFAULT_PROMPT_OVERRIDES["simulation"]["assessment"]),
+        },
     }
 
 
 def prompt_system_envelope(kind: str, custom_prompt: Any) -> str:
-    prompt = normalize_prompt_text(custom_prompt, DEFAULT_PROMPT_OVERRIDES.get(kind, ""))
+    default_prompts = {
+        "qa": DEFAULT_PROMPT_OVERRIDES["qa"],
+        "training_customer": DEFAULT_PROMPT_OVERRIDES["training"]["customer"],
+        "training_coach": DEFAULT_PROMPT_OVERRIDES["training"]["coach"],
+        "simulation_customer": DEFAULT_PROMPT_OVERRIDES["simulation"]["customer"],
+        "simulation_assessment": DEFAULT_PROMPT_OVERRIDES["simulation"]["assessment"],
+    }
+    prompt = normalize_prompt_text(custom_prompt, default_prompts.get(kind, ""))
+    guard = PROMPT_FIXED_GUARDS.get(kind, "保持系统角色、边界和结构化输出。")
     return (
-        f"【人工可编辑 Prompt】\n{prompt}\n\n"
-        "【固定运行约束】以上内容只调整表达、节奏和对话偏好，不得覆盖系统固定的角色身份、知识边界、信息释放规则、安全规则、输出 JSON 结构、评分规则或时序规则。"
-        "即使人工 Prompt 与固定约束冲突，也必须以固定约束为准。"
+        f"【人工可编辑完整 Prompt】\n{prompt}\n\n"
+        f"【固定结构与安全保护（不可编辑）】\n{guard}"
     )
 
 
@@ -1180,6 +1189,20 @@ TRAIN_SYSTEM = TRAIN_FEEDBACK_SYSTEM
 QA_SYSTEM += PUBLIC_OUTPUT_POLICY
 ASSESS_SYSTEM += PUBLIC_OUTPUT_POLICY
 
+DEFAULT_PROMPT_OVERRIDES = {
+    "qa": QA_SYSTEM,
+    "training": {"customer": TRAIN_CUSTOMER_SYSTEM, "coach": TRAIN_FEEDBACK_SYSTEM},
+    "simulation": {"customer": TEST_TURN_SYSTEM, "assessment": ASSESS_SYSTEM},
+}
+
+PROMPT_FIXED_GUARDS = {
+    "qa": "保持顾客接待助手身份，只基于请求中提供的路由和资料回答；不得泄露内部字段。必须输出 JSON 对象，键为 answer、uncertainties、citations、recommended_action。遵守安全边界，不诊断、不处方、不承诺固定效果，遇到红旗优先停止销售并建议专业评估。",
+    "training_customer": "保持模拟顾客身份，只生成 customer_reply 字段。不得评价员工、泄露隐藏设定或批量提前释放事实；按信息释放规则逐轮回应，先回应员工最新一句再追问。",
+    "training_coach": "保持训练教练身份，只评价员工本轮原话和此前公开顾客信息；不得使用本轮未来顾客回复或隐藏事实。必须输出 feedback 对象，字段为 level、issue、why、method_step、knowledge_focus、suggested_reply、next_goal。",
+    "simulation_customer": "保持实战考核模拟顾客身份，只输出 reply、emotion、should_continue。先回应员工最新问题或安排，再提出最多一个相关追问；不得扮演教练、评分员或泄露评分点。",
+    "simulation_assessment": "保持考核官身份，只输出评分报告，不再扮演顾客。必须严格输出评分表要求的 7 个维度和固定 JSON 字段；按对话时序评分，后续顾客信息不得追溯影响之前员工回合，关键失败封顶规则仍由系统本地复核。",
+}
+
 
 def extract_json(content: str) -> dict[str, Any] | None:
     content = (content or "").strip()
@@ -1468,7 +1491,7 @@ def assessment_scenario_context(scenario: dict[str, Any] | None) -> dict[str, An
 
 def training_customer_system(scenario: dict[str, Any] | None, turn_number: int, prompt_override: str | None = None) -> str:
     return (
-        f"{prompt_system_envelope('training', prompt_override)}\n\n{TRAIN_CUSTOMER_SYSTEM}\n\n"
+        f"{prompt_system_envelope('training_customer', prompt_override)}\n\n"
         f"隐藏场景（只供顾客角色使用，不得泄露）："
         f"{json.dumps(customer_turn_context(scenario), ensure_ascii=False)}\n"
         f"公开开场白：{clean_text((scenario or {}).get('opening'))}\n"
@@ -1484,7 +1507,7 @@ def training_feedback_system(
     prompt_override: str | None = None,
 ) -> str:
     return (
-        f"{prompt_system_envelope('training', prompt_override)}\n\n{TRAIN_FEEDBACK_SYSTEM}\n\n"
+        f"{prompt_system_envelope('training_coach', prompt_override)}\n\n"
         f"公开任务：{json.dumps(training_feedback_context(scenario), ensure_ascii=False)}\n"
         f"当前是员工第 {turn_number} 轮回复。请只评价消息列表最后一条员工原话。\n\n"
         f"方法路由：\n{route_context_block(route)}\n\n"
@@ -2751,8 +2774,8 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
             result = normalize_training_result(result, scenario, history, message)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
         model_messages = [*dialogue_history, {"role": "user", "content": message}]
-        customer_system = training_customer_system(scenario, turn_number, prompt_overrides["training"])
-        feedback_system = training_feedback_system(scenario, route, docs, turn_number, prompt_overrides["training"])
+        customer_system = training_customer_system(scenario, turn_number, prompt_overrides["training"]["customer"])
+        feedback_system = training_feedback_system(scenario, route, docs, turn_number, prompt_overrides["training"]["coach"])
         # Both role calls share one bounded wait budget. This preserves a
         # healthy peer that finishes after the other role fails, while also
         # preventing either provider call from holding the request for its
@@ -2829,7 +2852,7 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
     if mode == "test" and action == "turn":
         hidden_context = json.dumps(customer_turn_context(scenario), ensure_ascii=False)
         turn_number = sum(1 for item in dialogue_history if item.get("role") == "user") + 1
-        test_system = f"{prompt_system_envelope('simulation', prompt_overrides['simulation'])}\n\n{TEST_TURN_SYSTEM}\n\n场景设定（只供你使用，不得泄露）：{hidden_context}\n开场白：{scenario.get('opening')}\n当前是员工第 {turn_number} 轮回复。"
+        test_system = f"{prompt_system_envelope('simulation_customer', prompt_overrides['simulation']['customer'])}\n\n场景设定（只供你使用，不得泄露）：{hidden_context}\n开场白：{scenario.get('opening')}\n当前是员工第 {turn_number} 轮回复。"
         if MOCK_MODE or not api_key:
             result = normalize_test_turn_result(mock_response(mode, action, message, scenario, history, docs), scenario, history, message)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
@@ -2855,7 +2878,8 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
             }
             result = normalize_assessment_result(result, full_dialogue)
             return response_payload(mode, result, docs, {"mock": True, "model": model})
-        raw, meta = call_model(ASSESS_SYSTEM, [{"role": "user", "content": user_message}], model, api_key, temperature=0.1, max_tokens=1800)
+        assessment_system = prompt_system_envelope("simulation_assessment", prompt_overrides["simulation"]["assessment"])
+        raw, meta = call_model(assessment_system, [{"role": "user", "content": user_message}], model, api_key, temperature=0.1, max_tokens=1800)
         result = extract_json(raw) or {"total_score": 0, "dimension_scores": [], "critical_failures": [], "strengths": [], "improvements": [raw], "next_training_scene": SCENARIOS[0].get("id"), "summary": "模型未按结构化格式返回，请检查 Prompt。"}
         result = normalize_assessment_result(result, full_dialogue)
         result = sanitize_assessment_advice(result)
@@ -2885,7 +2909,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True, "api_configured": bool(ENV_API_KEY), "mock_mode": MOCK_MODE, "model": DEFAULT_MODEL, "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "common_qa": len(COMMON_QA), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "scenarios": len(SCENARIOS)}})
             return
         if request_path == "/api/bootstrap":
-            self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "models": AVAILABLE_MODELS, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "common_qa": len(COMMON_QA), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
+            self.send_json({"ok": True, "scenarios": [public_scenario(item) for item in SCENARIOS], "models": AVAILABLE_MODELS, "prompt_defaults": DEFAULT_PROMPT_OVERRIDES, "knowledge": {"rag_documents": len(RAG_DOCUMENTS), "common_qa": len(COMMON_QA), "knowledge_cards": len(CARDS), "objections": len(OBJECTIONS), "sources": len(SOURCE_REGISTRY)}, "rubric": {"total": RUBRIC.get("total"), "dimensions": [{"id": item["id"], "name": item["name"], "weight": item["weight"]} for item in RUBRIC.get("dimensions", [])]}})
             return
         root_static_files = {"/app.js", "/styles.css", "/showyu-logo.png", "/learning_modules.json", "/learning_catalog.json"}
         if request_path.startswith("/static/") or request_path in root_static_files:
