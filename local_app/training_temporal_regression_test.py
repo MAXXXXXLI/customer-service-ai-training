@@ -529,9 +529,59 @@ def test_static_training_prompts_and_finish_context_are_isolated() -> None:
     assert "治疗|治好|根治|改善糖尿病" in app_js
 
 
+def test_point_wave_natural_continuity_and_role_attribution_are_grounded() -> None:
+    scenario = next(item for item in server.SCENARIOS if item.get("id") == "SCN-CEX-M03-S02")
+    history = [
+        {"role": "assistant", "content": scenario["opening"]},
+        {"role": "user", "content": "您不用硬忍，我先把能量调低一些。"},
+        {"role": "assistant", "content": "好的那把能量调低一些"},
+        {"role": "user", "content": "现在疼痛大概是几分？"},
+        {"role": "assistant", "content": "大概8分。"},
+        {"role": "user", "content": "现在有没有麻木、无力、肿胀或发热？"},
+        {"role": "assistant", "content": "我比较怕疼，过程中会不会很难受？"},
+    ]
+    employee = "我们已经停止今天的操作。我会记录本次部位和反应，并请负责人马上复核；如果持续加重，建议尽快由医疗机构评估。"
+    normalized = server.normalize_training_result(
+        {
+            "customer_reply": "我现在主要还是想尽快处理，其他专业的我也不太懂。",
+            "feedback": {
+                **base_feedback(level="good"),
+                "issue": "员工主动询问‘过程中会不会很难受’，没有执行安全流程。",
+                "why": "员工在顾客8分疼痛后仍询问‘过程中会不会很难受’。",
+            },
+        },
+        scenario,
+        history,
+        employee,
+    )
+    assert normalized["customer_reply"].startswith("好，那今天就先不做了"), normalized
+    assert normalized["feedback"]["level"] == "good", normalized
+    assert "过程中会不会很难受" not in normalized["feedback"]["issue"], normalized
+    assert "终止本次操作" in normalized["feedback"]["issue"], normalized
+
+    failures = server.detect_assessment_failures([
+        {"role": "assistant", "content": "现在疼痛大概8分。"},
+        {"role": "user", "content": "收到，我们今天不再继续操作，我先确认有没有麻木或无力。"},
+    ])
+    assert "CF-04" not in failures, failures
+    assert server.training_critical_reason(
+        "收到，我们今天不再继续操作，我先确认有没有麻木或无力。",
+        [{"role": "assistant", "content": "现在疼痛大概8分。"}],
+        scenario,
+    ) == ""
+    grounded = server.deterministic_training_feedback(
+        "收到，我们今天不再继续操作，我先确认有没有麻木、无力、肿胀、发热或继续加重。",
+        [{"role": "assistant", "content": "现在疼痛大概8分。"}],
+        scenario,
+    )
+    assert grounded and grounded["level"] == "good", grounded
+    assert "CUSTOMER_REALISM_POLICY" in APP_JS_PATH.read_text(encoding="utf-8")
+    assert "不按轮次机械轮播隐藏异议" in server.TRAIN_CUSTOMER_SYSTEM
+
+
 if __name__ == "__main__":
     tests = [
-        test_screenshot_one_unsafe_normalization_is_critical_without_future_fact,
+        test_point_wave_approved_reply_is_good_without_future_fact,
         test_screenshot_two_dismissal_is_critical_without_future_fact,
         test_safe_pause_and_change_question_is_not_misread_as_continuing_service,
         test_known_red_flag_has_three_distinct_safety_levels,
@@ -543,6 +593,7 @@ if __name__ == "__main__":
         test_medical_claim_rules_match_server_and_static_expectations,
         test_real_training_calls_are_isolated_and_schema_compatible,
         test_static_training_prompts_and_finish_context_are_isolated,
+        test_point_wave_natural_continuity_and_role_attribution_are_grounded,
     ]
     passed = []
     for test in tests:

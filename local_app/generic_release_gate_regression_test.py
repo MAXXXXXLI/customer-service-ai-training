@@ -68,7 +68,7 @@ def test_all_scenario_rules_are_parseable_and_render_one_customer_turn() -> None
             assert not server.customer_reply_is_invalid(rendered), rendered
 
 
-def test_rule_bearing_scenario_never_passes_through_untriggered_model_text() -> None:
+def test_rule_bearing_scenario_blocks_hidden_facts_but_keeps_natural_grounded_text() -> None:
     item = scenario("SCN-CEX-M01-S02")
     history = opening_history(item)
     leaked = normalize(
@@ -85,7 +85,7 @@ def test_rule_bearing_scenario_never_passes_through_untriggered_model_text() -> 
         "好，那你核对清楚以后再告诉我。",
         history,
     )
-    assert ordinary != "好，那你核对清楚以后再告诉我。", ordinary
+    assert ordinary == "好，那你核对清楚以后再告诉我。", ordinary
 
 
 def test_semantic_paraphrase_cannot_bypass_an_untriggered_gate() -> None:
@@ -97,16 +97,16 @@ def test_semantic_paraphrase_cannot_bypass_an_untriggered_gate() -> None:
     assert not re.search(r"昨夜|今早|胳膊|木木", leaked), leaked
 
 
-def test_every_rule_bearing_scenario_structurally_blocks_an_untriggered_candidate() -> None:
+def test_every_rule_bearing_scenario_rejects_repeated_opening() -> None:
     for item in server.SCENARIOS:
-        marker = f"模型原始回复-{item['id']}"
+        marker = item["opening"]
         result = server.normalized_customer_reply(
             marker,
             item,
             opening_history(item),
             "我先听您说完，再核对已知情况。",
         )
-        assert result and marker not in result, {"scenario": item["id"], "reply": result}
+        assert result and result != marker, {"scenario": item["id"], "reply": result}
 
 
 def test_negated_question_does_not_release_a_rule() -> None:
@@ -234,6 +234,30 @@ def test_point_wave_in_session_reply_tracks_the_employee_action_across_turns() -
     )
     assert pain_score == "大概8分。", pain_score
 
+    pain_feeling = normalize(
+        item["id"],
+        "我先暂停一下。现在是酸胀、刺痛，还是像电到一样？",
+        "我现在主要还是想尽快处理，其他专业的我也不太懂。",
+        [*lower_history, {"role": "user", "content": "现在疼痛大概是几分？"}, {"role": "assistant", "content": pain_score}],
+    )
+    assert pain_feeling == "像电到一样。", pain_feeling
+
+    companion = normalize(
+        item["id"],
+        "收到，8分属于明显疼痛，我们今天不再继续操作。现在有没有麻木、无力、明显肿胀、发热，或者疼痛还在加重？",
+        "我比较怕疼，过程中会不会很难受？",
+        [*lower_history, {"role": "user", "content": "现在疼痛大概是几分？"}, {"role": "assistant", "content": pain_score}],
+    )
+    assert "没有麻木" in companion and "没有继续加重" in companion, companion
+
+    safe_closure = normalize(
+        item["id"],
+        "我们已经停止今天的操作。我会记录本次部位、能量和反应，并请负责人马上复核；如果持续加重，建议尽快由医疗机构评估。",
+        "我现在主要还是想尽快处理，其他专业的我也不太懂。",
+        opening,
+    )
+    assert "今天就先不做" in safe_closure and "负责人" in safe_closure, safe_closure
+
     denied = normalize(
         item["id"],
         "您不用忍，我们先暂停，也不降低能量继续做。",
@@ -293,6 +317,9 @@ def test_static_and_server_gates_match_representative_cases() -> None:
         ("SCN-CEX-M03-S01", "我先核对一下情况。", "昨夜才开始疼，今早更厉害，胳膊木木的。"),
         ("SCN-CEX-M03-S02", "如果实在很痛，我可以把力度调低一些。", "无关回复。"),
         ("SCN-CEX-M03-S02", "辛苦您再忍一会儿试试。", "无关回复。"),
+        ("SCN-CEX-M03-S02", "我先暂停一下。现在是酸胀、刺痛，还是像电到一样？", "无关回复。"),
+        ("SCN-CEX-M03-S02", "收到，8分属于明显疼痛，我们今天不再继续操作。现在有没有麻木、无力、明显肿胀、发热，或者疼痛还在加重？", "无关回复。"),
+        ("SCN-CEX-M03-S02", "我们已经停止今天的操作。我会记录本次部位、能量和反应，并请负责人马上复核；如果持续加重，建议尽快由医疗机构评估。", "无关回复。"),
         ("SCN-CEX-M01-S01", "我不是在问您持续多久。", "已经两个月了。"),
     ]
     cases = []
@@ -315,9 +342,9 @@ def test_static_and_server_gates_match_representative_cases() -> None:
 if __name__ == "__main__":
     tests = [
         test_all_scenario_rules_are_parseable_and_render_one_customer_turn,
-        test_rule_bearing_scenario_never_passes_through_untriggered_model_text,
+        test_rule_bearing_scenario_blocks_hidden_facts_but_keeps_natural_grounded_text,
         test_semantic_paraphrase_cannot_bypass_an_untriggered_gate,
-        test_every_rule_bearing_scenario_structurally_blocks_an_untriggered_candidate,
+        test_every_rule_bearing_scenario_rejects_repeated_opening,
         test_negated_question_does_not_release_a_rule,
         test_no_rule_scenario_still_preserves_safe_natural_model_text,
         test_one_turn_unlocks_at_most_one_group_and_later_turn_can_unlock_next,

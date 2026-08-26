@@ -124,6 +124,33 @@ const enduredReply = helpers.normalizeStaticCustomerReply(
   "辛苦您再忍一会儿试试。",
 );
 if (enduredReply !== "好的那我再忍一会儿试试") throw new Error(`静态站忍耐回复错误：${enduredReply}`);
+const feelingReply = helpers.normalizeStaticCustomerReply(
+  "我现在主要还是想尽快处理，其他专业的我也不太懂。",
+  pointWaveInSessionScenario,
+  pointWaveOpening,
+  "我先暂停一下。现在是酸胀、刺痛，还是像电到一样？",
+);
+if (feelingReply !== "像电到一样。") throw new Error(`静态站疼痛感觉回复错误：${feelingReply}`);
+const companionReply = helpers.normalizeStaticCustomerReply(
+  "我比较怕疼，过程中会不会很难受？",
+  pointWaveInSessionScenario,
+  pointWaveOpening,
+  "收到，8分属于明显疼痛，我们今天不再继续操作。现在有没有麻木、无力、明显肿胀、发热，或者疼痛还在加重？",
+);
+if (!companionReply.includes("没有麻木") || !companionReply.includes("没有继续加重")) throw new Error(`静态站伴随情况回复错误：${companionReply}`);
+const closureReply = helpers.normalizeStaticCustomerReply(
+  "我现在主要还是想尽快处理，其他专业的我也不太懂。",
+  pointWaveInSessionScenario,
+  pointWaveOpening,
+  "我们已经停止今天的操作。我会记录本次部位和反应，并请负责人马上复核；如果持续加重，建议尽快由医疗机构评估。",
+);
+if (!closureReply.includes("今天就先不做") || !closureReply.includes("负责人")) throw new Error(`静态站安全安排承接错误：${closureReply}`);
+
+const notContinueFailures = helpers.staticAssessmentFailureMatches([
+  { role: "assistant", content: "现在疼痛大概8分。" },
+  { role: "user", content: "收到，我们今天不再继续操作，我先确认有没有麻木或无力。" },
+]).map((item) => item.code);
+if (notContinueFailures.includes("CF-04")) throw new Error(`“不再继续操作”被误判：${notContinueFailures.join(",")}`);
 
 for (const message of [
   "您是不是还想继续做？",

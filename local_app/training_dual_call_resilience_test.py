@@ -117,7 +117,7 @@ def test_coach_failure_keeps_real_customer_and_uses_local_feedback() -> None:
     expected_reply = server.normalized_customer_reply(
         customer_reply, scenario, payload["history"], EMPLOYEE_MESSAGE,
     )
-    assert expected_reply != customer_reply, "带释放规则的场景不应原样直通模型顾客句"
+    assert expected_reply == customer_reply, "安全、相关且不泄露隐藏事实的真实顾客句应保留"
     assert response["result"]["customer_reply"] == expected_reply, response
     feedback = response["result"]["feedback"]
     assert feedback["issue"] == "你有继续追问顾客目标，方向正确。", response
@@ -193,7 +193,7 @@ def test_successful_role_does_not_wait_for_hanging_peer_provider_timeout() -> No
     expected_reply = server.normalized_customer_reply(
         customer_reply, scenario, payload["history"], EMPLOYEE_MESSAGE,
     )
-    assert expected_reply != customer_reply, "带释放规则的场景不应原样直通模型顾客句"
+    assert expected_reply == customer_reply, "安全、相关且不泄露隐藏事实的真实顾客句应保留"
     assert response["result"]["customer_reply"] == expected_reply, response
     assert response["result"]["feedback"]["issue"] == "你有继续追问顾客目标，方向正确。", response
     assert response["meta"]["degraded"] is True, response
