@@ -80,13 +80,10 @@ def assert_no_unreleased_hand_fact(result: dict[str, Any]) -> None:
     assert not UNRELEASED_HAND_FACT_ASSERTION.search(text), text
 
 
-def test_screenshot_one_unsafe_normalization_is_critical_without_future_fact() -> None:
+def test_point_wave_approved_reply_is_good_without_future_fact() -> None:
     scenario = exact_scenario()
     history = [{"role": "assistant", "content": scenario["opening"]}]
-    employee = (
-        "这是正常的，因为点阵波的原理就是造成微损伤，刺激身体进行自我修复，"
-        "第二天会有略微不一样的疼痛感，但您会感觉身体明显更加轻松。"
-    )
+    employee = server.POINT_WAVE_BEST_REPLY
     leaked_feedback = base_feedback(
         level="critical",
         issue="员工未识别顾客已经出现的手臂发麻。",
@@ -98,10 +95,10 @@ def test_screenshot_one_unsafe_normalization_is_critical_without_future_fact() -
         customer_reply="昨晚开始疼，今天比昨晚更重，而且手臂新发麻木。",
         feedback=leaked_feedback,
     )
-    assert result["feedback"]["level"] == "critical", result
+    assert result["feedback"]["level"] == "good", result
     assert_no_unreleased_hand_fact(result)
-    text = feedback_text(result)
-    assert re.search(r"正常|没问题|微损伤|自我修复|轻松", text), text
+    assert result["feedback"]["suggested_reply"] == server.POINT_WAVE_BEST_REPLY, result
+    assert "点阵波" in result["feedback"]["knowledge_focus"], result
 
 
 def test_screenshot_two_dismissal_is_critical_without_future_fact() -> None:
@@ -193,6 +190,13 @@ def test_known_red_flag_has_three_distinct_safety_levels() -> None:
         feedback=base_feedback(level="good", issue="模型误判为可通过。"),
     )
     assert dangerous["feedback"]["level"] == "critical", dangerous
+
+    approved_after_red_flag = normalize(
+        server.POINT_WAVE_BEST_REPLY,
+        known_history,
+        feedback=base_feedback(level="good", issue="模型误判为最佳回答。"),
+    )
+    assert approved_after_red_flag["feedback"]["level"] == "critical", approved_after_red_flag
 
     contradictory = normalize(
         "先暂停并上报记录，我们不在店内判断原因，建议您就医；"

@@ -36,6 +36,19 @@ check("点阵波" in side_effect_result["result"].get("answer", ""), "回退回�
 exact_result = server.handle_chat({"mode": "qa", "message": "点阵波打完更痛了怎么办"})
 check(exact_result["result"].get("faq_match", {}).get("id") == "FAQ-XLS-0002", "相同问题应命中对应标准问答")
 check(course_ids(exact_result) == ["COURSE-NKB-012"], "服务后疼痛问答只能引用服务后反应课程")
+check(exact_result["result"].get("answer") == server.POINT_WAVE_BEST_REPLY, "点阵波服务后更痛必须返回固定最佳回答")
+check(exact_result["meta"].get("selection") == "point_wave_best_answer", "固定最佳回答不得交给通用模型路由")
+
+for similar_query in (
+    "点振波打完第二天更痛",
+    "点阵波理疗后更酸痛是不是正常",
+    "我昨天做完点阵波今天比原来更疼",
+    "做完点阵波是不是把我打坏了",
+):
+    similar_result = server.handle_chat({"mode": "qa", "message": similar_query})
+    check(similar_result["result"].get("faq_match", {}).get("id") == "FAQ-XLS-0002", f"相似问法跳错：{similar_query}")
+    check(similar_result["result"].get("answer") == server.POINT_WAVE_BEST_REPLY, f"相似问法未返回固定最佳回答：{similar_query}")
+    check(course_ids(similar_result) == ["COURSE-NKB-012"], f"相似问法未留在点阵波服务后反应课程：{similar_query}")
 
 typo_result = server.handle_chat({"mode": "qa", "message": "点振波的副作用有哪些"})
 check(typo_result["result"]["route"].get("primary_module") == "点阵波与疼痛服务", "点振波错别字仍应进入点阵波模块")
@@ -82,5 +95,6 @@ print(json.dumps({
     "candidate_count": len(side_effect_candidates),
     "fallback_courses": course_ids(side_effect_result),
     "exact_match": exact_result["result"]["faq_match"]["id"],
+    "best_answer_selection": exact_result["meta"].get("selection"),
     "typo_course": course_ids(typo_result),
 }, ensure_ascii=False, indent=2))

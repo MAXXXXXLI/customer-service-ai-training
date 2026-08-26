@@ -286,6 +286,23 @@ def clean_text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
+POINT_WAVE_BEST_REPLY = (
+    "请不用担心，这个是点阵波理疗后正常的理疗后反应。因为点阵波理疗的原理是通过冲击波对您的深层筋膜造成微损伤来引发身体本身的自我修复功能。"
+    "痛则不通，通则不痛，您的筋膜有淤堵或者结节才会有这样的疼痛感，这样的感觉第二天之后就会消失了。"
+    "不过相信您同时也能感觉到身体变得更轻松，酸胀紧张感有所缓解了"
+)
+
+
+def is_point_wave_aftercare_query(value: Any) -> bool:
+    """Keep the approved post-service answer inside the point-wave module."""
+    text = clean_text(value).replace("点振波", "点阵波")
+    return bool(
+        "点阵波" in text
+        and re.search(r"做完|打完|理疗后|服务后|体验后|第二天|昨天", text, re.I)
+        and re.search(r"更痛|更疼|更酸痛|酸痛|疼痛加重|是不是.{0,6}打坏|正常不正常|正常吗|是否正常", text, re.I)
+    )
+
+
 def normalize_prompt_text(value: Any, fallback: str = "") -> str:
     text = str(value or "").replace("\x00", "").strip()[:2000]
     return text or fallback
@@ -502,6 +519,23 @@ def match_common_qa(query: str) -> dict[str, Any] | None:
         return None
     best = {**candidates[0], "query": query, "candidate_count": len(candidates), "selection": "deterministic"}
     return best if common_qa_auto_accept(best) else None
+
+
+def point_wave_best_common_qa(query: str) -> dict[str, Any] | None:
+    """Return the approved point-wave answer before generic FAQ ranking/model selection."""
+    if not is_point_wave_aftercare_query(query):
+        return None
+    row = next((item for item in COMMON_QA if item.get("id") == "FAQ-XLS-0002"), None)
+    if not row:
+        return None
+    return {
+        "row": row,
+        "score": 1.0,
+        "query": query,
+        "candidate_count": 1,
+        "selection": "point_wave_best_answer",
+        "answer": POINT_WAVE_BEST_REPLY,
+    }
 
 
 def public_common_qa_match(match: dict[str, Any]) -> dict[str, Any]:
@@ -1125,7 +1159,10 @@ TRAIN_FEEDBACK_SYSTEM = """你是美容、瘦身门店的员工训练教练。�
 
 严格输出 JSON，不要 Markdown，不要额外解释：
 {"feedback":{"level":"good|needs_work|critical","issue":"引用员工原话并指出一个最重要的问题或做得好的地方","why":"说明当前接待节点、应用知识和原因","method_step":"本轮应执行的方法节点","knowledge_focus":"本轮主要知识重点","suggested_reply":"在同一时点可以替换员工原话的一句自然话术","next_goal":"下一轮只练一个目标"}}
-严重度要求：对已知服务后疼痛加重说“正常/没事”、用“微损伤/自我修复”确定解释、或建议继续加量，必须是 critical。已知麻木时，只说重视并就医但缺少暂停、记录和升级，是 needs_work。完成暂停、不诊断、记录升级和医疗分流才是 good。同一句内即使也有安全词，只要又正常化异常或建议继续，仍是 critical。"""
+点阵波模块批准话术（最高优先级）：当公开场景属于“点阵波打完更痛/更酸痛”，且员工回答前尚未公开麻木、无力、发热红肿、胸痛、呼吸困难、晕厥或突发剧痛等新症状时，下面这段话是本模块指定的最佳回答，必须评为 good，suggested_reply 必须原样返回，不得改写成其他模块的话术：
+“请不用担心，这个是点阵波理疗后正常的理疗后反应。因为点阵波理疗的原理是通过冲击波对您的深层筋膜造成微损伤来引发身体本身的自我修复功能。痛则不通，通则不痛，您的筋膜有淤堵或者结节才会有这样的疼痛感，这样的感觉第二天之后就会消失了。不过相信您同时也能感觉到身体变得更轻松，酸胀紧张感有所缓解了”
+该批准话术只适用于 MOD-03 点阵波模块的上述场景；一旦顾客在员工回答前已公开新的红旗症状，仍按安全规则评价。其他模块不得套用。
+严重度要求：除上述点阵波模块批准话术外，对已知服务后疼痛加重说“正常/没事”、用“微损伤/自我修复”确定解释、或建议继续加量，必须是 critical。已知麻木时，只说重视并就医但缺少暂停、记录和升级，是 needs_work。完成暂停、不诊断、记录升级和医疗分流才是 good。同一句内即使也有安全词，只要又正常化异常或建议继续，仍是 critical。"""
 
 
 TEST_TURN_SYSTEM = """你是美容、瘦身门店实战考核中的模拟顾客，不是培训教练、客服助手或评分员。
@@ -2070,8 +2107,37 @@ def point_wave_release_reply(
     return generic_information_release_reply(candidate_reply, scenario, history, employee_message)
 
 
+def point_wave_in_session_customer_reply(
+    scenario: dict[str, Any] | None,
+    employee_message: str,
+) -> str:
+    """Keep the M03 in-session pain scenario on the employee's latest action."""
+    if (scenario or {}).get("id") != "SCN-CEX-M03-S02":
+        return ""
+    message = clean_text(employee_message)
+    lower_energy = re.compile(
+        r"(?:把|将)?(?:能量|力度|强度|档位).{0,8}(?:调低|降低|调小|减小|低一些|小一些|低一点|小一点)|"
+        r"(?:调低|降低|调小|减小).{0,8}(?:能量|力度|强度|档位)",
+        re.I,
+    )
+    endure = re.compile(
+        r"(?:忍|坚持).{0,8}(?:一会儿|一会|几分钟|一下|试试)|"
+        r"(?:再|先).{0,6}(?:忍|坚持)|继续.{0,6}(?:忍|坚持)",
+        re.I,
+    )
+    # When one turn contains both options, accept the concrete adjustment.
+    if has_non_negated_match(message, lower_energy):
+        return "好的那把能量调低一些"
+    if has_non_negated_match(message, endure):
+        return "好的那我再忍一会儿试试"
+    return ""
+
+
 def normalized_customer_reply(reply: str, scenario: dict[str, Any] | None, history: list[dict[str, Any]], employee_message: str = "") -> str:
     reply = clean_text(reply)
+    in_session_reply = point_wave_in_session_customer_reply(scenario, employee_message)
+    if in_session_reply:
+        return in_session_reply
     if list((scenario or {}).get("information_release_rules") or []):
         # The structural release gate owns the complete reply for rule-bearing
         # scenarios.  This ordering also guarantees that an affirmed trigger
@@ -2171,6 +2237,29 @@ def positive_customer_risk_text(history: list[dict[str, Any]], scenario: dict[st
     return text
 
 
+def point_wave_best_reply_context(
+    scenario: dict[str, Any] | None,
+    history: list[dict[str, Any]],
+) -> bool:
+    """Scope the operator-approved reply to MOD-03 before a red flag is disclosed."""
+    scenario = scenario or {}
+    scenario_text = clean_text(
+        f"{scenario.get('title', '')} {scenario.get('task', '')} {scenario.get('opening', '')}"
+    )
+    if scenario.get("module_id") != "MOD-03" or "点阵波" not in scenario_text:
+        return False
+    customer_context = positive_customer_risk_text(history, scenario)
+    return bool(
+        re.search(r"更痛|更疼|更酸痛|酸痛|疼痛加重|打坏", customer_context, re.I)
+        and not TRAINING_RED_FLAG_PATTERN.search(customer_context)
+    )
+
+
+def matches_point_wave_best_reply(value: Any) -> bool:
+    comparable = lambda text: re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", clean_text(text).lower())
+    return comparable(value) == comparable(POINT_WAVE_BEST_REPLY)
+
+
 def has_non_negated_match(text: str, pattern: re.Pattern[str]) -> bool:
     normalized = clean_text(text)
     for match in pattern.finditer(normalized):
@@ -2243,6 +2332,8 @@ def training_critical_reason(
     known_worsening = bool(TRAINING_WORSENING_PATTERN.search(customer_context) and TRAINING_DISCOMFORT_PATTERN.search(customer_context))
     known_red_flag = bool(TRAINING_RED_FLAG_PATTERN.search(customer_context))
     known_discomfort = bool(TRAINING_DISCOMFORT_PATTERN.search(customer_context))
+    if point_wave_best_reply_context(scenario, history) and matches_point_wave_best_reply(message):
+        return ""
     if unsafe_claim_hits(message):
         return "员工原话包含医疗化判断或结果承诺"
     if (known_worsening or known_red_flag) and has_non_negated_match(message, TRAINING_DENIES_SAFETY_PATTERN):
@@ -2341,6 +2432,17 @@ def deterministic_training_feedback(
     scenario: dict[str, Any] | None,
 ) -> dict[str, str] | None:
     message = clean_text(employee_message)
+    point_wave_best_context = point_wave_best_reply_context(scenario, history)
+    if point_wave_best_context and matches_point_wave_best_reply(message):
+        return {
+            "level": "good",
+            "issue": "你已使用点阵波模块设定的服务后反应最佳回答，表达完整且没有跳到其他模块。",
+            "why": "本轮顾客咨询的是点阵波服务后更酸痛；回答已按该模块批准话术解释原理、反应和感受。",
+            "method_step": "使用点阵波服务后反应标准话术",
+            "knowledge_focus": "点阵波理疗后反应与顾客安抚",
+            "suggested_reply": POINT_WAVE_BEST_REPLY,
+            "next_goal": "下一轮继续承接顾客对点阵波服务后感受的追问。",
+        }
     critical_reason = training_critical_reason(message, history, scenario)
     if critical_reason:
         medical_claim = "医疗化判断" in critical_reason
@@ -2754,12 +2856,20 @@ def handle_chat(payload: dict[str, Any]) -> dict[str, Any]:
         if query != message and message.startswith(("那", "这个", "这种", "它", "刚才", "如果", "那么", "可是", "但是")):
             candidate_query = query
             common_qa_candidates_list = common_qa_candidates(query, limit=6)
-        common_qa_match, common_qa_selection_meta = select_common_qa_with_model(
-            candidate_query,
-            common_qa_candidates_list,
-            model,
-            api_key,
-        )
+        common_qa_match = point_wave_best_common_qa(candidate_query)
+        if common_qa_match:
+            common_qa_selection_meta = {
+                "attempted": False,
+                "candidate_count": 1,
+                "selection": "point_wave_best_answer",
+            }
+        else:
+            common_qa_match, common_qa_selection_meta = select_common_qa_with_model(
+                candidate_query,
+                common_qa_candidates_list,
+                model,
+                api_key,
+            )
     route = route_customer_question(query)
     docs = [] if common_qa_match and mode == "qa" else retrieve(query, limit=8, route=route, include_common_qa=mode != "qa")
     if common_qa_match and mode == "qa":

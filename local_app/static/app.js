@@ -15,6 +15,20 @@ const DEFAULT_PROMPT_OVERRIDES = Object.freeze({
   simulation: { customer: "你是实战考核中的模拟顾客。请先回应员工最新一句，再提出一个相关追问。", assessment: "你是企业培训考核官，只在对话结束后按评分表输出考核报告。" },
 });
 
+const POINT_WAVE_BEST_REPLY = "请不用担心，这个是点阵波理疗后正常的理疗后反应。因为点阵波理疗的原理是通过冲击波对您的深层筋膜造成微损伤来引发身体本身的自我修复功能。痛则不通，通则不痛，您的筋膜有淤堵或者结节才会有这样的疼痛感，这样的感觉第二天之后就会消失了。不过相信您同时也能感觉到身体变得更轻松，酸胀紧张感有所缓解了";
+
+function isStaticPointWaveAftercareQuery(value = "") {
+  const text = String(value || "").replace(/\s+/g, " ").trim().replaceAll("点振波", "点阵波");
+  return text.includes("点阵波")
+    && /做完|打完|理疗后|服务后|体验后|第二天|昨天/i.test(text)
+    && /更痛|更疼|更酸痛|酸痛|疼痛加重|是不是.{0,6}打坏|正常不正常|正常吗|是否正常/i.test(text);
+}
+
+function matchesStaticPointWaveBestReply(value = "") {
+  const comparable = (text) => String(text || "").toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, "");
+  return comparable(value) === comparable(POINT_WAVE_BEST_REPLY);
+}
+
 function normalizePromptText(value, fallback = "") {
   const text = String(value ?? "").replace(/\u0000/g, "").trim().slice(0, 2000);
   return text || fallback;
@@ -517,6 +531,20 @@ function matchStaticCommonQa(query, catalog = []) {
   return { ...best, query, candidate_count: 1, selection: "deterministic" };
 }
 
+function staticPointWaveBestCommonQa(query, catalog = []) {
+  if (!isStaticPointWaveAftercareQuery(query)) return null;
+  const row = catalog.find((item) => item?.id === "FAQ-XLS-0002");
+  if (!row) return null;
+  return {
+    row,
+    score: 1,
+    query,
+    candidate_count: 1,
+    selection: "point_wave_best_answer",
+    answer: POINT_WAVE_BEST_REPLY,
+  };
+}
+
 function publicStaticCommonQaMatch(match) {
   const row = match?.row || {};
   return { id: row.id || "", question: row.question || "", score: match?.score || 0, status: row.status || "", candidate_count: match?.candidate_count || 1, selection: match?.selection || "candidate" };
@@ -971,6 +999,14 @@ function staticVisibleCustomerText(scenario, history = []) {
   return staticAffirmedCustomerText([scenario?.opening || "", ...visibleTurns].join(" "));
 }
 
+function staticPointWaveBestReplyContext(scenario, history = []) {
+  const scenarioText = `${scenario?.title || ""} ${scenario?.task || ""} ${scenario?.opening || ""}`;
+  if (scenario?.module_id !== "MOD-03" || !scenarioText.includes("点阵波")) return false;
+  const customerFacts = staticVisibleCustomerText(scenario, history);
+  return /更痛|更疼|更酸痛|酸痛|疼痛加重|打坏/i.test(customerFacts)
+    && !STATIC_TRAINING_RED_FLAG_PATTERN.test(customerFacts);
+}
+
 function staticHasAffirmativeEmployeeMatch(message, pattern) {
   const text = String(message || "");
   const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
@@ -1051,6 +1087,19 @@ function staticTrainingSafetyDecision(scenario, history = [], message = "") {
   const continues = staticHasAffirmativeEmployeeMatch(employee, /(?:继续做|继续操作|接着做(?:完)?|照常(?:做|操作)|再做一次|把.{0,4}(?:项目|体验|操作)?做完|做完再说|明天.{0,4}可以做|加量|加大|加强|打透|不用停|不必停|没必要暂停|忍一忍|坚持一下|越痛越有效)/i);
   const deniesSafety = staticTrainingMessageDeniesSafetyAction(employee);
   const globalCritical = staticCriticalHits(employee).length > 0;
+  const pointWaveBestContext = staticPointWaveBestReplyContext(scenario, history);
+
+  if (pointWaveBestContext && matchesStaticPointWaveBestReply(employee)) {
+    return {
+      level: "good",
+      issue: "你已使用点阵波模块设定的服务后反应最佳回答，表达完整且没有跳到其他模块。",
+      why: "本轮顾客咨询的是点阵波服务后更酸痛；回答已按该模块批准话术解释原理、反应和感受。",
+      method_step: "使用点阵波服务后反应标准话术",
+      knowledge_focus: "点阵波理疗后反应与顾客安抚",
+      suggested_reply: POINT_WAVE_BEST_REPLY,
+      next_goal: "下一轮继续承接顾客对点阵波服务后感受的追问。",
+    };
+  }
 
   // A dangerous contradiction always wins, even when the same sentence also
   // contains safe words such as "暂停" or "就医".
@@ -1261,6 +1310,16 @@ function staticSafetyFlowCustomerReply(scenario, history = [], employeeMessage =
 function staticPointWaveReleaseReply(scenario, history = [], employeeMessage = "", candidateReply = "") {
   if (scenario?.id !== "SCN-CEX-M03-S01") return "";
   return staticGenericInformationReleaseReply(candidateReply, scenario, history, employeeMessage);
+}
+
+function staticPointWaveInSessionCustomerReply(scenario, employeeMessage = "") {
+  if (scenario?.id !== "SCN-CEX-M03-S02") return "";
+  const employee = String(employeeMessage || "").trim();
+  const lowerEnergy = /(?:把|将)?(?:能量|力度|强度|档位).{0,8}(?:调低|降低|调小|减小|低一些|小一些|低一点|小一点)|(?:调低|降低|调小|减小).{0,8}(?:能量|力度|强度|档位)/i;
+  const endure = /(?:忍|坚持).{0,8}(?:一会儿|一会|几分钟|一下|试试)|(?:再|先).{0,6}(?:忍|坚持)|继续.{0,6}(?:忍|坚持)/i;
+  if (staticHasAffirmativeEmployeeMatch(employee, lowerEnergy)) return "好的那把能量调低一些";
+  if (staticHasAffirmativeEmployeeMatch(employee, endure)) return "好的那我再忍一会儿试试";
+  return "";
 }
 
 const STATIC_GENERIC_RELEASE_ASK_MARKERS = /[？?]|(?:请|麻烦).{0,8}(?:说|告诉|提供)|(?:想|需要).{0,6}(?:了解|确认)|是否|有没有|有无|什么|怎么|如何|哪|几|多久|多长|吗|么|呢/i;
@@ -1568,6 +1627,8 @@ function staticCustomerReplyNeedsContextRepair(reply, employeeMessage) {
 
 function normalizeStaticCustomerReply(reply, scenario, history = [], employeeMessage = "") {
   let normalized = String(reply || "").trim();
+  const inSessionReply = staticPointWaveInSessionCustomerReply(scenario, employeeMessage);
+  if (inSessionReply) return inSessionReply;
   if ((scenario?.information_release_rules || []).length) {
     // A rule-bearing scenario always resolves to one normalized release group
     // or a deterministic fallback; model-authored text never crosses the gate.
@@ -1805,9 +1866,14 @@ async function staticApi(path, body) {
   if (mode === "qa") {
     const candidateQuery = query !== message && /^(?:那|这个|这种|它|刚才|如果|那么|可是|但是)/.test(String(message).trim()) ? query : message;
     const candidates = matchStaticCommonQaCandidates(candidateQuery, data.commonQa, 6);
-    const selection = await selectStaticCommonQaWithModel(candidateQuery, candidates, model, apiKey);
-    commonQaMatch = selection.match;
-    commonQaSelectionMeta = selection.meta;
+    commonQaMatch = staticPointWaveBestCommonQa(candidateQuery, data.commonQa);
+    if (commonQaMatch) {
+      commonQaSelectionMeta = { attempted: false, candidate_count: 1, selection: "point_wave_best_answer" };
+    } else {
+      const selection = await selectStaticCommonQaWithModel(candidateQuery, candidates, model, apiKey);
+      commonQaMatch = selection.match;
+      commonQaSelectionMeta = selection.meta;
+    }
   }
   const route = staticRouteCustomerQuestion(query, data.methodology);
   let docs = commonQaMatch && mode === "qa" ? [] : staticRetrieve(query, data.documents, 8, route, mode !== "qa");

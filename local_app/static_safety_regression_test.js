@@ -38,7 +38,8 @@ vm.runInContext(
     + "staticAffirmedCustomerText, staticCriticalHits, staticTrainingMessageHasUnsafeContradiction, "
     + "staticTrainingMessageHasSafeDirection, staticTrainingMessageHasCompleteSafeClosure, "
     + "staticTrainingSafetyDecision, staticAssessmentFailureMatches, staticAssessmentAdviceNeedsSanitizing, "
-    + "sanitizeStaticAssessmentAdvice, staticEvidenceIsGroundedInEmployee, normalizeStaticAssessment, normalizeStaticQaResult};",
+    + "sanitizeStaticAssessmentAdvice, staticEvidenceIsGroundedInEmployee, normalizeStaticAssessment, normalizeStaticQaResult, "
+    + "POINT_WAVE_BEST_REPLY, staticPointWaveBestCommonQa, normalizeStaticCustomerReply};",
   context,
   { filename: appPath },
 );
@@ -66,6 +67,63 @@ const canonicalPartial = helpers.staticTrainingSafetyDecision(
 if (canonicalPartial?.level !== "needs_work") {
   throw new Error(`规范化释放短句“手臂新麻了”未进入安全状态：${JSON.stringify(canonicalPartial)}`);
 }
+
+const pointWaveScenario = {
+  id: "SCN-CEX-M03-S01",
+  module_id: "MOD-03",
+  title: "点阵波打完更痛",
+  task: "使用点阵波模块批准的服务后反应最佳回答",
+  opening: "我昨天做完点阵波，今天比原来更痛。你们是不是把我打坏了？",
+};
+const pointWaveApproved = helpers.staticTrainingSafetyDecision(
+  pointWaveScenario,
+  [{ role: "assistant", content: pointWaveScenario.opening }],
+  helpers.POINT_WAVE_BEST_REPLY,
+);
+if (pointWaveApproved?.level !== "good" || pointWaveApproved.suggested_reply !== helpers.POINT_WAVE_BEST_REPLY) {
+  throw new Error(`点阵波固定最佳回答未通过：${JSON.stringify(pointWaveApproved)}`);
+}
+const pointWaveAfterRedFlag = helpers.staticTrainingSafetyDecision(
+  pointWaveScenario,
+  [...canonicalReleaseHistory],
+  helpers.POINT_WAVE_BEST_REPLY,
+);
+if (pointWaveAfterRedFlag?.level !== "critical") {
+  throw new Error(`红旗公开后不应继续套用点阵波固定话术：${JSON.stringify(pointWaveAfterRedFlag)}`);
+}
+const forcedPointWaveFaq = helpers.staticPointWaveBestCommonQa(
+  "点振波理疗后更酸痛是不是正常",
+  [{ id: "FAQ-XLS-0002", approved_answer: helpers.POINT_WAVE_BEST_REPLY }],
+);
+if (forcedPointWaveFaq?.selection !== "point_wave_best_answer" || forcedPointWaveFaq.answer !== helpers.POINT_WAVE_BEST_REPLY) {
+  throw new Error(`点阵波相似问法未固定命中：${JSON.stringify(forcedPointWaveFaq)}`);
+}
+
+const pointWaveInSessionScenario = {
+  id: "SCN-CEX-M03-S02",
+  module_id: "MOD-03",
+  opening: "这个太痛了，但你们说痛就是不通，我是不是必须忍几分钟？",
+  information_release_rules: [
+    "员工问疼痛程度时，回答8分。",
+    "员工问感觉时，说明“像电到一样”。",
+    "员工谈钱时，顾客说“我怕浪费”。",
+  ],
+};
+const pointWaveOpening = [{ role: "assistant", content: pointWaveInSessionScenario.opening }];
+const loweredReply = helpers.normalizeStaticCustomerReply(
+  "无关回复",
+  pointWaveInSessionScenario,
+  pointWaveOpening,
+  "辛苦您忍几分钟，如果实在很痛，我可以把力度调低一些。",
+);
+if (loweredReply !== "好的那把能量调低一些") throw new Error(`静态站降能量回复错误：${loweredReply}`);
+const enduredReply = helpers.normalizeStaticCustomerReply(
+  "无关回复",
+  pointWaveInSessionScenario,
+  pointWaveOpening,
+  "辛苦您再忍一会儿试试。",
+);
+if (enduredReply !== "好的那我再忍一会儿试试") throw new Error(`静态站忍耐回复错误：${enduredReply}`);
 
 for (const message of [
   "您是不是还想继续做？",
@@ -170,7 +228,8 @@ const pythonSanitizer = [
   "payload = json.load(sys.stdin)",
   "json.dump(server.sanitize_assessment_advice(payload), sys.stdout, ensure_ascii=False)",
 ].join("\n");
-const serverSanitized = JSON.parse(execFileSync("python3", ["-c", pythonSanitizer], {
+const pythonCommand = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
+const serverSanitized = JSON.parse(execFileSync(pythonCommand, ["-X", "utf8", "-c", pythonSanitizer], {
   cwd: __dirname,
   input: JSON.stringify(unsafeAssessment),
   encoding: "utf8",

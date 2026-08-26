@@ -203,6 +203,46 @@ def test_point_wave_specialized_release_order_is_unchanged() -> None:
     assert companion == server.information_release_reply(item["information_release_rules"][1]), companion
 
 
+def test_point_wave_in_session_reply_tracks_the_employee_action_across_turns() -> None:
+    item = scenario("SCN-CEX-M03-S02")
+    opening = opening_history(item)
+    combined_employee = (
+        "是的，辛苦您忍几分钟。如果您实在很痛，"
+        "我可以先帮您把力度调低一些。"
+    )
+    lowered = normalize(item["id"], combined_employee, "模型输出了无关的服务后酸痛回答。", opening)
+    assert lowered == "好的那把能量调低一些", lowered
+
+    continued = normalize(
+        item["id"],
+        "辛苦您再忍一会儿试试。",
+        "模型输出了另一个无关回答。",
+        opening,
+    )
+    assert continued == "好的那我再忍一会儿试试", continued
+
+    lower_history = [
+        *opening,
+        {"role": "user", "content": combined_employee},
+        {"role": "assistant", "content": lowered},
+    ]
+    pain_score = normalize(
+        item["id"],
+        "现在疼痛大概是几分？",
+        "模型提前泄露了多条隐藏信息。",
+        lower_history,
+    )
+    assert pain_score == "大概8分。", pain_score
+
+    denied = normalize(
+        item["id"],
+        "您不用忍，我们先暂停，也不降低能量继续做。",
+        "好的那我再忍一会儿试试",
+        opening,
+    )
+    assert denied not in {"好的那把能量调低一些", "好的那我再忍一会儿试试"}, denied
+
+
 def run_static_cases(cases: list[dict[str, Any]]) -> list[str]:
     node = shutil.which("node") or str(
         Path.home() / ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
@@ -251,6 +291,8 @@ def test_static_and_server_gates_match_representative_cases() -> None:
         ("SCN-CEX-M09-S01", "您现在最在意哪个部位，目标是什么？", "口周和下颌缘，太阳穴也凹。"),
         ("SCN-CEX-M03-S01", "什么时候开始，今天有没有更重？", "昨晚开始，今天更重，手臂也麻了。"),
         ("SCN-CEX-M03-S01", "我先核对一下情况。", "昨夜才开始疼，今早更厉害，胳膊木木的。"),
+        ("SCN-CEX-M03-S02", "如果实在很痛，我可以把力度调低一些。", "无关回复。"),
+        ("SCN-CEX-M03-S02", "辛苦您再忍一会儿试试。", "无关回复。"),
         ("SCN-CEX-M01-S01", "我不是在问您持续多久。", "已经两个月了。"),
     ]
     cases = []
@@ -282,6 +324,7 @@ if __name__ == "__main__":
         test_rule_release_does_not_depend_on_hidden_array_position,
         test_action_rules_require_an_affirmative_current_turn,
         test_point_wave_specialized_release_order_is_unchanged,
+        test_point_wave_in_session_reply_tracks_the_employee_action_across_turns,
         test_static_and_server_gates_match_representative_cases,
     ]
     passed = []
