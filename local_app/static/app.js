@@ -1,14 +1,18 @@
-const DEFAULT_MODEL = "Qwen/Qwen3.5-35B-A3B";
+// New visitors use the lower-latency model.  The storage key is versioned
+// below so a previously saved 35B selection cannot silently keep an old,
+// slower default after this release.
+const DEFAULT_MODEL = "Qwen/Qwen3.5-27B";
 const AVAILABLE_MODELS = [
-  { id: "Qwen/Qwen3.5-35B-A3B", label: "Qwen 3.5 35B · 推荐" },
+  { id: "Qwen/Qwen3.5-27B", label: "Qwen 3.5 27B · 推荐（更快）" },
+  { id: "Qwen/Qwen3.5-35B-A3B", label: "Qwen 3.5 35B · 高质量" },
   { id: "deepseek-ai/DeepSeek-V3.2", label: "DeepSeek V3.2 · 高质量" },
-  { id: "Qwen/Qwen3.5-27B", label: "Qwen 3.5 27B · 稳定" },
   { id: "Pro/zai-org/GLM-5.1", label: "GLM 5.1 Pro" },
   { id: "Pro/moonshotai/Kimi-K2.6", label: "Kimi K2.6 Pro" },
   { id: "MiniMaxAI/MiniMax-M2.5", label: "MiniMax M2.5" },
 ];
 
 const PROMPT_STORAGE_KEY = "kbai_prompt_preferences_v4";
+const MODEL_STORAGE_KEY = "kbai_model_v2";
 const DEFAULT_PROMPT_OVERRIDES = Object.freeze({
   qa: "你是智能接待助手。请用自然、清楚、可以直接对顾客说的话回答；先回应顾客当前问题，只补充一个最必要的信息，再给出一个明确的下一步。不要把知识库摘要、内部路由或幕后判断直接展示给顾客。",
   training: { customer: "你是情景陪练中的模拟顾客。请先回应员工最新一句，再继续相关对话。", coach: "你是情景陪练中的训练教练，只评价员工当前回答和此前公开信息。" },
@@ -296,7 +300,7 @@ const state = {
   scenario: null,
   history: [],
   apiKey: localStorage.getItem("kbai_api_key") || "",
-  model: localStorage.getItem("kbai_model") || DEFAULT_MODEL,
+  model: localStorage.getItem(MODEL_STORAGE_KEY) || DEFAULT_MODEL,
   promptOverrides: loadPromptOverrides(),
   promptDefaults: DEFAULT_PROMPT_OVERRIDES,
   models: [...AVAILABLE_MODELS],
@@ -4840,7 +4844,7 @@ function renderModelOptions() {
 function selectModel(model, notify = true) {
   if (!model) return;
   state.model = model;
-  localStorage.setItem("kbai_model", state.model);
+  localStorage.setItem(MODEL_STORAGE_KEY, state.model);
   renderModelOptions();
   if (notify) showToast(`已切换模型：${state.models.find((item) => item.id === model)?.label || model}`);
 }
@@ -4887,7 +4891,7 @@ async function saveSettings() {
     state.model = candidateModel;
     state.apiVerified = false;
     localStorage.removeItem("kbai_api_key");
-    localStorage.setItem("kbai_model", state.model);
+    localStorage.setItem(MODEL_STORAGE_KEY, state.model);
     updateApiStatus({ mock: true });
     closeModal("settings-modal");
     showToast("已进入演示模式。");
@@ -4910,7 +4914,7 @@ async function saveSettings() {
     state.model = candidateModel;
     state.apiVerified = true;
     localStorage.setItem("kbai_api_key", state.apiKey);
-    localStorage.setItem("kbai_model", state.model);
+    localStorage.setItem(MODEL_STORAGE_KEY, state.model);
     updateApiStatus(validation.meta);
     closeModal("settings-modal");
     showToast("在线 AI 已连接，设置已保存。");

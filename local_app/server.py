@@ -38,14 +38,17 @@ STATIC_ROOT = Path(__file__).resolve().parent / "static"
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8787"))
 SILICONFLOW_URL = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1/chat/completions")
-DEFAULT_MODEL = os.getenv("SILICONFLOW_MODEL", "Qwen/Qwen3.5-35B-A3B")
+# The browser sends its selected model on every request.  Keep the server
+# default aligned with the browser default so first-time visitors and callers
+# without an explicit model get the low-latency option as well.
+DEFAULT_MODEL = os.getenv("SILICONFLOW_MODEL", "Qwen/Qwen3.5-27B")
 ENV_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 MOCK_MODE = os.getenv("SILICONFLOW_MOCK", "0").lower() in {"1", "true", "yes"}
 TRAINING_DUAL_CALL_WAIT_SECONDS = float(os.getenv("TRAINING_DUAL_CALL_WAIT_SECONDS", "48"))
 AVAILABLE_MODELS = [
-    {"id": "Qwen/Qwen3.5-35B-A3B", "label": "Qwen 3.5 35B · 推荐"},
+    {"id": "Qwen/Qwen3.5-27B", "label": "Qwen 3.5 27B · 推荐（更快）"},
+    {"id": "Qwen/Qwen3.5-35B-A3B", "label": "Qwen 3.5 35B · 高质量"},
     {"id": "deepseek-ai/DeepSeek-V3.2", "label": "DeepSeek V3.2 · 高质量"},
-    {"id": "Qwen/Qwen3.5-27B", "label": "Qwen 3.5 27B · 稳定"},
     {"id": "Pro/zai-org/GLM-5.1", "label": "GLM 5.1 Pro"},
     {"id": "Pro/moonshotai/Kimi-K2.6", "label": "Kimi K2.6 Pro"},
     {"id": "MiniMaxAI/MiniMax-M2.5", "label": "MiniMax M2.5"},
