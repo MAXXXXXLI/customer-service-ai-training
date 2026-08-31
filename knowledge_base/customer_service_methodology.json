@@ -98,7 +98,25 @@
         "疼痛与常见身体问题",
         "服务后反应"
       ],
-      "recommended_next": "先确认当前问题和风险信息，再调用对应具体QA。",
+      "recommended_next": "先确认顾客当前最想了解的问题和必要安全信息，再用已核验的项目标准回应。",
+      "support_module_ids": []
+    },
+    {
+      "id": "TOPIC-PRIVATE",
+      "label": "私密健康与盆底服务",
+      "patterns": [
+        "私密|盆底|漏尿|尿失禁|阴道|私处|性健康|产后恢复"
+      ],
+      "module_id": "MOD-10",
+      "course_ids": [
+        "COURSE-NKB-043"
+      ],
+      "knowledge_points": [
+        "私密健康需求识别",
+        "隐私与同意",
+        "项目方案与恢复管理"
+      ],
+      "recommended_next": "先在保护隐私和尊重同意的前提下，确认具体诉求、当前状态和必要安全信息。",
       "support_module_ids": []
     },
     {
@@ -122,45 +140,111 @@
       "support_module_ids": []
     },
     {
-      "id": "TOPIC-BEAUTY",
-      "label": "皮肤管理、春语面部与私密",
+      "id": "TOPIC-GLP",
+      "label": "GLP-1与医疗体重管理",
       "patterns": [
-        "皮肤|敏感|痘|水光|脱毛|毛囊|春语|医美|热玛吉|皮秒|肉毒|玻尿酸|私密"
+        "GLP.?1|贝那鲁肽|司美格鲁肽|利拉鲁肽|减肥针|细美宝"
+      ],
+      "module_id": "MOD-06",
+      "course_ids": [
+        "COURSE-NKB-026",
+        "COURSE-NKB-027",
+        "COURSE-NKB-028"
+      ],
+      "knowledge_points": [
+        "GLP-1项目定位",
+        "医疗评估与常见反应",
+        "停用与长期维持"
+      ],
+      "recommended_next": "先确认顾客询问的具体项目、已有医嘱和当前状态，药品与剂量由有资质人员评估。",
+      "support_module_ids": []
+    },
+    {
+      "id": "TOPIC-SLIMMING-PRODUCTS",
+      "label": "184、局部塑形与定制内衣",
+      "patterns": [
+        "184|高纤维饱腹|冰雕|轰脂|抽脂|局部塑形|定制内衣|量体|版型|塑形内衣"
+      ],
+      "module_id": "MOD-07",
+      "course_ids": [
+        "COURSE-NKB-029",
+        "COURSE-NKB-030",
+        "COURSE-NKB-031",
+        "COURSE-NKB-032"
+      ],
+      "knowledge_points": [
+        "184饱腹产品",
+        "轰脂、冰雕与抽脂比较",
+        "定制内衣量体与售后"
+      ],
+      "recommended_next": "先确认具体产品、塑形部位或穿着问题，再按对应课程说明定位、反应和使用边界。",
+      "support_module_ids": []
+    },
+    {
+      "id": "TOPIC-BEAUTY",
+      "label": "皮肤管理、设备操作与毛囊养护",
+      "patterns": [
+        "胶原微水光|微水光|纳米喷射|面膜|手膜|冰点脱毛|脱毛|毛囊|头皮|脱发|白发|智能提拉|磁波内雕|皮肤管理|皮肤|痘"
       ],
       "module_id": "MOD-08",
       "course_ids": [
         "COURSE-NKB-033",
         "COURSE-NKB-034",
         "COURSE-NKB-035",
-        "COURSE-NKB-036"
+        "COURSE-NKB-036",
+        "COURSE-NKB-037"
       ],
       "knowledge_points": [
-        "皮肤管理",
-        "面部年轻化",
-        "私密项目"
+        "皮肤分析与服务记录",
+        "补水与设备体验",
+        "脱毛与毛囊头皮养护"
       ],
-      "recommended_next": "核对当前肤况、项目和使用提醒。",
+      "recommended_next": "先确认当前皮肤或头皮状态、近期项目和必要安全信息，再核对具体项目。",
+      "support_module_ids": []
+    },
+    {
+      "id": "TOPIC-FACE",
+      "label": "春语面部年轻化与医美",
+      "patterns": [
+        "春语|医美|热玛吉|线雕|Fotona|4D|祛斑|斑点|皮秒|玻尿酸|肉毒|(?<!微)水光|超声炮|超声刀|射频|眼周|面部凹陷|骨相"
+      ],
+      "module_id": "MOD-09",
+      "course_ids": [
+        "COURSE-NKB-038",
+        "COURSE-NKB-039",
+        "COURSE-NKB-040",
+        "COURSE-NKB-041",
+        "COURSE-NKB-042"
+      ],
+      "knowledge_points": [
+        "水光与肤质改善",
+        "祛斑与面部年轻化",
+        "填充、表情与骨相支撑"
+      ],
+      "recommended_next": "先确认顾客的面部目标、当前肤况、既往项目和间隔，医疗美容适合度由有资质人员评估。",
       "support_module_ids": []
     },
     {
       "id": "TOPIC-SLIMMING",
-      "label": "减重、美妥、GLP-1、184与塑形",
+      "label": "科学减重与营养管理",
       "patterns": [
-        "减肥|减重|体重|体脂|美妥|GLP-1|贝那鲁肽|184|轰脂|内衣|反弹|饮食"
+        "减肥(?!针)|减重|体重|体脂|腰围|美妥|古方减脂|拔罐|反弹|平台期|饮食|营养|运动|作息"
       ],
       "module_id": "MOD-05",
       "course_ids": [
         "COURSE-NKB-020",
         "COURSE-NKB-021",
         "COURSE-NKB-022",
-        "COURSE-NKB-023"
+        "COURSE-NKB-023",
+        "COURSE-NKB-024",
+        "COURSE-NKB-025"
       ],
       "knowledge_points": [
         "科学减重",
-        "产品使用",
-        "效果与维持"
+        "营养、运动与日常执行",
+        "平台期、反弹与特殊人群"
       ],
-      "recommended_next": "定位具体产品或体重管理问题后调用具体QA。",
+      "recommended_next": "先确认体重或营养目标、当前执行情况和必要安全信息，再说明可执行的体重管理方法。",
       "support_module_ids": []
     },
     {
@@ -181,7 +265,7 @@
         "价值沟通",
         "回访"
       ],
-      "recommended_next": "先核对具体项目，再使用对应答案。",
+      "recommended_next": "先核对顾客说的具体项目和当前问题，再按已核验标准回应。",
       "support_module_ids": []
     },
     {
@@ -272,7 +356,7 @@
       "priority": 95,
       "label": "口服产品、药品与特殊人群",
       "patterns": [
-        "GLP-1|glp-1|司美|贝那鲁肽|利拉鲁肽|减肥针|处方|药品|减肥药|口服片|细美宝|美妥|剂量|停药|换药|副作用|孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|糖尿病|高血压|三高|慢病|植入物"
+        "GLP-1|glp-1|司美|贝那鲁肽|利拉鲁肽|减肥针|处方|药品|减肥药|口服片|细美宝|剂量|停药|换药|副作用|孩子|儿童|未成年|孕妇|怀孕|备孕|哺乳|糖尿病|高血压|三高|慢病|植入物"
       ],
       "primary_module_id": "MOD-06",
       "support_module_ids": [

@@ -30,6 +30,33 @@ python .\local_app\server.py
 
 也可以在网站“模型设置”中临时输入 Key。Key 只由本地服务转发到 SiliconFlow，不写入知识库文件。
 
+## 讯飞在线语音合成（后端接口）
+
+后端提供 `POST /api/tts`，由服务器调用讯飞流式 WebSocket TTS，浏览器只接收音频，不接触讯飞凭据。请求示例：
+
+```json
+{
+  "text": "我先帮您记录当前情况，再说明下一步安排。",
+  "voice_name": "x4_xiaoyan",
+  "speed": 50,
+  "volume": 50,
+  "pitch": 50,
+  "audio_format": "mp3"
+}
+```
+
+成功时返回 `audio/mpeg`（或 `audio/L16; rate=16000` 的 PCM），并带有 `X-TTS-Cache`、`X-TTS-Format` 等非敏感响应头。 `GET /api/tts/status` 只返回是否已配置、默认音色和限制，不返回任何密钥。
+
+将 `weknora_migration/lite_deployment/templates/training.env.example` 中的 `IFLYTEK_TTS_*` 项复制到服务器的 `/etc/training-kb/training.env` 后再填写。推荐使用控制台的 APIPassword；也可以填写完整的 APP_ID、API_KEY、API_SECRET 进行 HMAC 签名。真实 `training.env` 必须保持 `root:root`、`0600`，不要把密钥放到前端、Git、命令行参数或聊天记录中。单次文本上限严格小于 8000 个 UTF-8 字节，服务端按来源地址限流并使用有上限的短期内存缓存。
+
+## 讯飞语音输入（语音转文字）
+
+三个对话入口——智能接待、情景陪练和模拟接待考核——共用输入框右侧的“语音输入”按钮。点击开始录音，再次点击停止；浏览器会把单声道音频转换为 16 kHz PCM，交给本应用的 `POST /api/asr` 后端代理。后端以讯飞流式语音听写（IAT）协议转写，结果只回填到输入框，员工可以检查或修改后再发送；不会自动把语音内容提交给 AI。
+
+接口只接受 `audio_base64`（16-bit、little-endian PCM）与 `sample_rate: 16000`，单次录音最长 30 秒、最大原始音频 960000 字节，并按来源地址限流。`GET /api/asr/status` 与 `/api/health` 仅返回是否完成配置、采样率和时长上限，绝不返回凭据。
+
+在讯飞控制台为同一应用启用“语音听写（流式版）”。IAT 必须使用 APPID、APIKey 与 APISecret 的完整 HMAC 三元组；TTS 的 APIPassword 不能用于语音输入。可填独立 `IFLYTEK_IAT_*`，也可以留空让它复用完整的 `IFLYTEK_TTS_APP_ID/API_KEY/API_SECRET`。浏览器和静态文件中不存放任何讯飞凭据。若纯 GitHub Pages 静态页没有受保护的应用后端，语音按钮会保持不可用，避免把鉴权或音频错误地发送到第三方；将页面部署在本应用后端的 HTTPS 入口即可启用。
+
 ## 当前验证边界
 
 当前检索使用轻量词项和中文双字匹配，适合先验证学习路径、Prompt、评分与引用。后续接入向量数据库时可以保留同一套 JSONL 结构、模块体系和三套系统 Prompt。

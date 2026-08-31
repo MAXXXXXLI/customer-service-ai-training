@@ -27,6 +27,8 @@ python .\local_app\server.py
 
 也可以参考 [`local_app/.env.example`](local_app/.env.example)。API Key 只应通过环境变量或页面临时配置提供，不要提交到 Git。
 
+后端还提供可选的讯飞在线语音合成接口 `POST /api/tts`。讯飞凭据只配置在服务器环境中，接口返回 MP3/PCM 音频；请先填写 `IFLYTEK_TTS_*` 配置并运行 `python3 local_app/iflytek_tts_regression_test.py` 验证契约。
+
 ## GitHub Pages 发布
 
 仓库包含 GitHub Actions 工作流。推送到 `main` 后，工作流会自动把静态网页发布到 GitHub Pages。访问 Pages 地址后，在“模型设置”中输入你自己的 SiliconFlow API Key；Key 只保存在当前浏览器的本地存储，并由浏览器直接发送给 SiliconFlow。

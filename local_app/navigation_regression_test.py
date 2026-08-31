@@ -125,7 +125,7 @@ checks = {
             "sanitizeStaticTrainingSuggestedReply",
             "history 中 role=user 是员工，role=assistant 是本轮前顾客已经说出的公开信息",
             "suggested_reply",
-            "不在店内判断原因",
+            "我先不把它当成一般反应",
         ],
     ),
     "qa_natural_follow_up_keeps_context": contains_all(
@@ -168,6 +168,14 @@ checks = {
         and re.search(r'app\.js\?v=([^"\s]+)', HTML)
         and re.search(r'styles\.css\?v=([^"\s]+)', HTML).group(1)
         == re.search(r'app\.js\?v=([^"\s]+)', HTML).group(1)
+    ),
+    "server_managed_ai_status_stays_online": contains_all(
+        JS,
+        [
+            "backendApiConfigured: false",
+            "state.backendApiConfigured = health.api_configured",
+            "state.backendApiConfigured || state.apiVerified",
+        ],
     ),
     "default_route_is_simple_learning_hub": 'raw = LEGACY_ROUTES[raw] || raw || "learning";' in JS,
 }

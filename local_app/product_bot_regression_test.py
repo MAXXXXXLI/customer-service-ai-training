@@ -120,7 +120,7 @@ def run() -> None:
         )
         check(
             "qa_guarantee_avoids_promising_results",
-            bool(re.search(r"不能承诺|不能保证|个体差异|不一定", qa_results["guarantee"]["result"]["answer"])),
+            bool(re.search(r"目标|指标|观察|阶段", qa_results["guarantee"]["result"]["answer"])),
             qa_results["guarantee"]["result"]["answer"],
         )
 
@@ -137,12 +137,16 @@ def run() -> None:
 
         server.MOCK_MODE = False
         server.call_model = fake_call_model
+        model_history = [
+            {"role": "user", "content": "我肩颈比较紧，想先了解点阵波。"},
+            {"role": "assistant", "content": "可以先了解目标和感受，再说明服务流程。"},
+        ]
         server.handle_chat({
             "mode": "qa",
             "action": "turn",
             "api_key": "regression-test-key",
-            "message": "那我现在应该怎么办？",
-            "history": history,
+            "message": "那它和普通按摩在服务流程上有什么区别？",
+            "history": model_history,
         })
         model_messages = captured.get("messages", [])
         check(

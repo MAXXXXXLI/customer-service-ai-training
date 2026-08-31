@@ -20,7 +20,12 @@ def main() -> None:
     assert all(scenario["id"].startswith("SCN-CEX-") for scenario in scenarios)
     static = json.loads((ROOT / "local_app" / "static" / "data" / "comprehensive_exam_bank.json").read_text(encoding="utf-8"))
     assert static == bank
-    print(json.dumps({"status": "passed", "modules": len(modules), "fill_blanks": 60, "choices": 80, "ai_scenarios": len(scenarios)}, ensure_ascii=False))
+    point_wave_faq = json.loads((ROOT / "knowledge_base" / "point_wave_faq_exam.json").read_text(encoding="utf-8"))
+    point_wave_faq_static = json.loads((ROOT / "local_app" / "static" / "data" / "point_wave_faq_exam.json").read_text(encoding="utf-8"))
+    assert point_wave_faq_static == point_wave_faq
+    assert point_wave_faq["module_id"] == "MOD-03"
+    assert len(point_wave_faq["questions"]) == 8
+    print(json.dumps({"status": "passed", "modules": len(modules), "fill_blanks": 60, "choices": 80, "faq_keyword_answers": len(point_wave_faq["questions"]), "ai_scenarios": len(scenarios)}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

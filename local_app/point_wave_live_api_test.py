@@ -41,7 +41,8 @@ def main() -> None:
         "history": opening_history,
         "message": lower_employee,
     })
-    assert lower_result["result"]["customer_reply"] == "好的那把能量调低一些", lower_result["result"]
+    assert lower_result["result"]["customer_reply"] == "我已经很痛了，能不能先停下来？", lower_result["result"]
+    assert lower_result["result"]["feedback"]["level"] == "critical", lower_result["result"]
 
     continued_history = [
         *opening_history,
@@ -104,7 +105,8 @@ def main() -> None:
         "history": opening_history,
         "message": "辛苦您再忍一会儿试试。",
     })
-    assert endure_result["result"]["customer_reply"] == "好的那我再忍一会儿试试", endure_result["result"]
+    assert endure_result["result"]["customer_reply"] == "我已经很痛了，能不能先停下来？", endure_result["result"]
+    assert endure_result["result"]["feedback"]["level"] == "critical", endure_result["result"]
 
     results = [aftercare_result, lower_result, pain_score_result, feeling_result, companion_result, closure_result, endure_result]
     summary = {

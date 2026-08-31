@@ -1,0 +1,42 @@
+[Unit]
+Description=Customer service AI training application
+After=network-online.target weknora-lite.service
+Wants=network-online.target
+Requires=weknora-lite.service
+ConditionPathExists=/opt/training-kb/current/training-app/local_app/server.py
+ConditionPathExists=/etc/training-kb/training.env
+
+[Service]
+Type=simple
+User=training-app
+Group=training-app
+WorkingDirectory=/opt/training-kb/current/training-app
+EnvironmentFile=/etc/training-kb/training.env
+ExecStart=/usr/bin/python3 -B local_app/server.py
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=60s
+TimeoutStopSec=30s
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

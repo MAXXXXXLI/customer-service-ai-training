@@ -1,0 +1,113 @@
+{
+  "bundle_version": "2026-08-27-weknora-v6",
+  "source_version": "2026-08-integrated-high-density",
+  "weknora": {
+    "version": "v0.7.2",
+    "commit": "3d5d8bfcdfeeea266b292b71cea616847af28d0f"
+  },
+  "knowledge_bases": [
+    {
+      "key": "staff_courses",
+      "name": "KB-STAFF-COURSES",
+      "type": "document",
+      "description": "员工课程知识库。包含当前10模块43课程、课程训练增量与安全重写但待业务确认的异议训练；不得直接绑定顾客智能体。",
+      "access_policy": "staff_only",
+      "tenant_group": "runtime",
+      "chunking_config": {
+        "chunk_size": 512,
+        "chunk_overlap": 80,
+        "separators": ["\n\n", "\n", "。", "！", "？", ";", "；"],
+        "strategy": "heading",
+        "token_limit": 0,
+        "languages": ["zh"],
+        "enable_parent_child": true,
+        "parent_chunk_size": 4096,
+        "child_chunk_size": 384
+      }
+    },
+    {
+      "key": "customer_approved",
+      "name": "KB-CUSTOMER-PROVISIONAL",
+      "type": "faq",
+      "description": "顾客问答待审库。当前和历史候选答案首次导入全部停用；须填写审核人、核验时间与有效期后才能逐条发布。",
+      "access_policy": "reviewer_until_approved",
+      "tenant_group": "runtime",
+      "faq_config": {
+        "index_mode": "question_answer",
+        "question_index_mode": "separate"
+      },
+      "chunking_config": {
+        "chunk_size": 300,
+        "chunk_overlap": 0,
+        "separators": ["\n\n", "\n", "。", "！", "？", ";", "；"],
+        "strategy": "auto",
+        "token_limit": 0,
+        "languages": ["zh"],
+        "enable_parent_child": false,
+        "parent_chunk_size": 4096,
+        "child_chunk_size": 384
+      }
+    },
+    {
+      "key": "safety_policy",
+      "name": "KB-SAFETY-POLICY",
+      "type": "document",
+      "description": "员工与后台使用的安全规范、医疗边界、红旗信号、动态信息核验和回答路由；不包含536个历史边界问法。当前缺少具名审核记录，不直接进入顾客检索白名单。",
+      "access_policy": "staff_only_until_reviewed",
+      "tenant_group": "runtime",
+      "chunking_config": {
+        "chunk_size": 512,
+        "chunk_overlap": 80,
+        "separators": ["\n\n", "\n", "。", "！", "？", ";", "；"],
+        "strategy": "heading",
+        "token_limit": 0,
+        "languages": ["zh"],
+        "enable_parent_child": false,
+        "parent_chunk_size": 4096,
+        "child_chunk_size": 384
+      }
+    },
+    {
+      "key": "safety_boundary",
+      "name": "KB-SAFETY-BOUNDARY",
+      "type": "faq",
+      "description": "安全边界直答库。将536条历史高风险或缺乏批准材料的问法折叠为9个唯一边界答案；只允许返回边界回复，不补写项目事实。",
+      "access_policy": "reviewer_until_approved",
+      "tenant_group": "runtime",
+      "faq_config": {
+        "index_mode": "question_only",
+        "question_index_mode": "separate"
+      },
+      "chunking_config": {
+        "chunk_size": 300,
+        "chunk_overlap": 0,
+        "separators": ["\n\n", "\n", "。", "！", "？", ";", "；"],
+        "strategy": "auto",
+        "token_limit": 0,
+        "languages": ["zh"],
+        "enable_parent_child": false,
+        "parent_chunk_size": 4096,
+        "child_chunk_size": 384
+      }
+    },
+    {
+      "key": "audit_raw",
+      "name": "KB-AUDIT-RAW",
+      "type": "document",
+      "description": "当前可取得原件、派生资料、历史抽取、考试、待审视频、缺材料问题和质量报告的审计层；缺失原件不宣称可重放。仅管理员和审核人可访问。",
+      "access_policy": "reviewer_admin_only",
+      "tenant_group": "audit",
+      "chunking_config": {
+        "chunk_size": 1000,
+        "chunk_overlap": 150,
+        "separators": ["\n\n", "\n", "。", "！", "？", ";", "；"],
+        "strategy": "auto",
+        "token_limit": 0,
+        "languages": ["zh"],
+        "enable_parent_child": true,
+        "parent_chunk_size": 4096,
+        "child_chunk_size": 512
+      }
+    }
+  ]
+}

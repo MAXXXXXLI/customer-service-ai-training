@@ -101,6 +101,22 @@ def test_point_wave_approved_reply_is_good_without_future_fact() -> None:
     assert "点阵波" in result["feedback"]["knowledge_focus"], result
 
 
+def test_retired_point_wave_normalization_script_is_critical() -> None:
+    scenario = exact_scenario()
+    history = [{"role": "assistant", "content": scenario["opening"]}]
+    retired = (
+        "请不用担心，这是正常反应。点阵波造成微损伤后会自我修复，"
+        "痛则不通，第二天之后就会消失。"
+    )
+    result = normalize(
+        retired,
+        history,
+        feedback=base_feedback(level="good", issue="模型误判为历史最佳话术。"),
+    )
+    assert result["feedback"]["level"] == "critical", result
+    assert result["feedback"]["suggested_reply"] != retired, result
+
+
 def test_screenshot_two_dismissal_is_critical_without_future_fact() -> None:
     scenario = exact_scenario()
     history = [{"role": "assistant", "content": scenario["opening"]}]
@@ -191,12 +207,12 @@ def test_known_red_flag_has_three_distinct_safety_levels() -> None:
     )
     assert dangerous["feedback"]["level"] == "critical", dangerous
 
-    approved_after_red_flag = normalize(
+    standard_reply_after_red_flag = normalize(
         server.POINT_WAVE_BEST_REPLY,
         known_history,
-        feedback=base_feedback(level="good", issue="模型误判为最佳回答。"),
+        feedback=base_feedback(level="good", issue="模型忽略了已知红旗。"),
     )
-    assert approved_after_red_flag["feedback"]["level"] == "critical", approved_after_red_flag
+    assert standard_reply_after_red_flag["feedback"]["level"] == "needs_work", standard_reply_after_red_flag
 
     contradictory = normalize(
         "先暂停并上报记录，我们不在店内判断原因，建议您就医；"
@@ -394,7 +410,9 @@ def test_finish_failure_detection_respects_turn_order_and_negation() -> None:
         },
         [{"role": "user", "content": "我先了解一下您的情况。"}],
     )
-    assert "我先了解一下您的情况" in grounded_report["dimension_scores"][0]["evidence"], grounded_report
+    by_dimension = {item["id"]: item for item in grounded_report["dimension_scores"]}
+    assert by_dimension["D1"]["score"] == 0 and by_dimension["D1"]["evidence"] == "对话中未体现", grounded_report
+    assert "我先了解一下您的情况" in by_dimension["D2"]["evidence"], grounded_report
 
 
 def test_medical_claim_rules_match_server_and_static_expectations() -> None:
@@ -427,7 +445,9 @@ def test_real_training_calls_are_isolated_and_schema_compatible() -> None:
         max_tokens: int = 1800,
     ) -> tuple[str, dict[str, Any]]:
         serialized = json.dumps({"system": system, "messages": messages}, ensure_ascii=False)
-        customer_call = any(str(fact) in serialized for fact in scenario.get("hidden_information", []))
+        # The serialized request escapes quotes inside the system prompt; use
+        # the unique mode marker rather than depending on JSON escaping.
+        customer_call = "freeform_current_turn" in serialized
         with records_lock:
             records.append({
                 "role": "customer" if customer_call else "coach",
@@ -455,7 +475,7 @@ def test_real_training_calls_are_isolated_and_schema_compatible() -> None:
             "message": "我理解您更痛会担心。疼痛从什么时候开始，今天是否比昨晚更重？",
             "history": history,
             "api_key": "unit-test-key",
-            "model": "unit-test-model",
+            "model": server.AVAILABLE_MODELS[0]["id"],
         })
     finally:
         server.call_model = original_call_model
@@ -467,7 +487,8 @@ def test_real_training_calls_are_isolated_and_schema_compatible() -> None:
     customer_prompt = by_role["customer"]["serialized"]
     coach_prompt = by_role["coach"]["serialized"]
 
-    assert any(str(fact) in customer_prompt for fact in scenario.get("hidden_information", []))
+    assert "freeform_current_turn" in customer_prompt
+    assert not any(str(fact) in customer_prompt for fact in scenario.get("hidden_information", []))
     for forbidden_key in ("hidden_information", "information_release_rules", "reference_answer", "must_test"):
         assert forbidden_key not in coach_prompt, {"field": forbidden_key, "coach_prompt": coach_prompt}
     for field in ("hidden_information", "information_release_rules"):
@@ -533,8 +554,8 @@ def test_point_wave_natural_continuity_and_role_attribution_are_grounded() -> No
     scenario = next(item for item in server.SCENARIOS if item.get("id") == "SCN-CEX-M03-S02")
     history = [
         {"role": "assistant", "content": scenario["opening"]},
-        {"role": "user", "content": "您不用硬忍，我先把能量调低一些。"},
-        {"role": "assistant", "content": "好的那把能量调低一些"},
+        {"role": "user", "content": "您不用继续忍，我们先停止操作。"},
+        {"role": "assistant", "content": "我已经很痛了，能不能先停下来？"},
         {"role": "user", "content": "现在疼痛大概是几分？"},
         {"role": "assistant", "content": "大概8分。"},
         {"role": "user", "content": "现在有没有麻木、无力、肿胀或发热？"},
@@ -582,6 +603,7 @@ def test_point_wave_natural_continuity_and_role_attribution_are_grounded() -> No
 if __name__ == "__main__":
     tests = [
         test_point_wave_approved_reply_is_good_without_future_fact,
+        test_retired_point_wave_normalization_script_is_critical,
         test_screenshot_two_dismissal_is_critical_without_future_fact,
         test_safe_pause_and_change_question_is_not_misread_as_continuing_service,
         test_known_red_flag_has_three_distinct_safety_levels,

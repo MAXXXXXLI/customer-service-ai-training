@@ -289,6 +289,12 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .composer textarea::placeholder { color: var(--faint); }
 .send-button, .primary-button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 13px; color: #fff; border: 0; border-radius: 9px; background: linear-gradient(135deg, var(--lime), #1859e4); box-shadow: 0 8px 20px rgba(37, 90, 223, 0.2); font-size: 9px; font-weight: 800; }
 .send-button:hover, .primary-button:hover { filter: brightness(1.06); }
+.voice-input-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 78px; min-height: 38px; padding: 9px 10px; color: var(--blue); border: 1px solid rgba(37, 90, 223, 0.22); border-radius: 9px; background: rgba(37, 90, 223, 0.045); font-size: 9px; font-weight: 800; white-space: nowrap; }
+.voice-input-button:hover:not(:disabled) { color: #fff; border-color: var(--blue); background: var(--blue); }
+.voice-input-button.is-recording { color: #fff; border-color: var(--red); background: var(--red); box-shadow: 0 0 0 3px rgba(220, 67, 86, 0.12); animation: voice-pulse 1.2s infinite; }
+.voice-input-button.is-transcribing { color: #fff; border-color: var(--sand); background: var(--sand); }
+.voice-input-button:disabled { cursor: not-allowed; opacity: 0.48; }
+@keyframes voice-pulse { 50% { box-shadow: 0 0 0 7px rgba(220, 67, 86, 0); } }
 .composer-foot { display: flex; justify-content: space-between; padding: 8px 3px 0; color: var(--faint); font-size: 8px; }
 
 .assessment-card { margin: 20px 0 24px 37px; padding: 20px; border: 1px solid rgba(37, 90, 223, 0.2); border-radius: 14px; background: linear-gradient(145deg, rgba(37, 90, 223, 0.075), rgba(255, 255, 255, 0.92)); }
@@ -526,7 +532,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .answer-reference strong { font-size: var(--font-small); }
 .answer-reference i, .reference-empty { font-size: var(--font-caption); }
 .composer textarea { min-height: 48px; font-size: var(--font-body); }
-.send-button, .primary-button { min-height: 44px; font-size: var(--font-small); }
+.send-button, .primary-button, .voice-input-button { min-height: 44px; font-size: var(--font-small); }
 .composer-foot { font-size: var(--font-caption); }
 
 .assessment-header span, .assessment-header p { font-size: var(--font-small); }
@@ -601,7 +607,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   .course-preview { min-height: 110px; }
   .conversation-stage { min-height: 380px; margin-top: 20px; }
   .messages { min-height: 150px; }
-  .subtle-button, .finish-button, .send-button { min-height: 44px; }
+  .subtle-button, .finish-button, .send-button, .voice-input-button { min-height: 44px; }
   .score-rows, .report-columns { grid-template-columns: 1fr; }
 }
 
@@ -629,6 +635,8 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   .conversation-head { gap: 12px; padding: 14px; }
   .messages { padding: 16px 13px 8px; }
   .composer-wrap { padding: 10px 12px 13px; }
+  .voice-input-button { min-width: 44px; padding: 9px; }
+  .voice-input-button span:last-child { display: none; }
   .modal-actions { align-items: stretch; }
   .modal-actions button { flex: 1; }
 }

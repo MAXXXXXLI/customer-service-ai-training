@@ -211,7 +211,7 @@ def test_point_wave_in_session_reply_tracks_the_employee_action_across_turns() -
         "我可以先帮您把力度调低一些。"
     )
     lowered = normalize(item["id"], combined_employee, "模型输出了无关的服务后酸痛回答。", opening)
-    assert lowered == "好的那把能量调低一些", lowered
+    assert lowered == "我已经很痛了，能不能先停下来？", lowered
 
     continued = normalize(
         item["id"],
@@ -219,7 +219,7 @@ def test_point_wave_in_session_reply_tracks_the_employee_action_across_turns() -
         "模型输出了另一个无关回答。",
         opening,
     )
-    assert continued == "好的那我再忍一会儿试试", continued
+    assert continued == "我已经很痛了，能不能先停下来？", continued
 
     lower_history = [
         *opening,
@@ -264,7 +264,7 @@ def test_point_wave_in_session_reply_tracks_the_employee_action_across_turns() -
         "好的那我再忍一会儿试试",
         opening,
     )
-    assert denied not in {"好的那把能量调低一些", "好的那我再忍一会儿试试"}, denied
+    assert denied != "我已经很痛了，能不能先停下来？", denied
 
 
 def run_static_cases(cases: list[dict[str, Any]]) -> list[str]:

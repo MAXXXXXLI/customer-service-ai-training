@@ -150,7 +150,7 @@ def test_training_suggested_reply_strips_unverified_medical_advice() -> None:
     )
     reply = result["feedback"]["suggested_reply"]
     assert "神经受刺激" not in reply and "热敷" not in reply and "按摩" not in reply, result
-    assert "不在店内判断原因" in reply and "医疗机构评估" in reply, result
+    assert "我先为您暂停" in reply and "医疗机构评估" in reply, result
 
 
 def test_mock_multiturn_stays_in_role() -> None:
@@ -198,7 +198,8 @@ def test_static_site_has_same_guardrails() -> None:
         "Promise.all",
     ]
     assert all(marker in APP_JS for marker in required)
-    assert "隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario))}" in APP_JS
+    assert "隐藏场景（不得整段泄露）：${JSON.stringify(staticCustomerScenario(scenario, true))}" in APP_JS
+    assert "freeform_current_turn" in APP_JS
     assert "公开场景：${JSON.stringify(staticPublicTrainingScenario(scenario))}" in APP_JS
     assert "隐藏场景（不得泄露）：${JSON.stringify(scenario)}" not in APP_JS
     assert "好，那我先按相近时间复测" in APP_JS
