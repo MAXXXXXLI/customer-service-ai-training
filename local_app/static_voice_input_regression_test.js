@@ -42,7 +42,7 @@ context.window.window = context.window;
 vm.createContext(context);
 vm.runInContext(
   `${source.slice(0, boundary)}\n;globalThis.__voiceTest = {`
-    + "VOICE_SAMPLE_RATE, VOICE_MAX_DURATION_SECONDS, mergeVoiceSamples, resampleFloat32ToPcm16, pcm16ToBase64, appendVoiceTranscript, voiceInputUnavailableMessage, state, els};",
+    + "VOICE_SAMPLE_RATE, VOICE_MAX_DURATION_SECONDS, mergeVoiceSamples, resampleFloat32ToPcm16, pcm16ToBase64, appendVoiceTranscript, voiceInputUnavailableMessage, applyVoiceServiceStatus, state, els};",
   context,
   { filename: appPath },
 );
@@ -86,7 +86,20 @@ if (helpers.els.input.value !== "顾客现在有麻木") {
   throw new Error("空输入框写入转写内容失败");
 }
 
+helpers.applyVoiceServiceStatus({ asr: { configured: false } });
+if (!helpers.state.asrStatusKnown || helpers.state.asrConfigured) {
+  throw new Error("前端没有正确记录后端的语音服务未配置状态");
+}
+if (!helpers.voiceInputUnavailableMessage().includes("正在配置")) {
+  throw new Error("后端语音未配置时，前端没有给出准确的可恢复提示");
+}
+helpers.applyVoiceServiceStatus({ asr: { configured: true } });
+if (!helpers.state.asrStatusKnown || !helpers.state.asrConfigured) {
+  throw new Error("前端没有正确记录后端的语音服务已配置状态");
+}
+
 if (!source.includes('api("/api/asr"')) throw new Error("前端未调用受保护的 /api/asr 后端接口");
+if (!source.includes("applyVoiceServiceStatus(health)")) throw new Error("启动时没有把后端语音状态同步到输入按钮");
 if (!source.includes('modeSnapshot') || !source.includes('function sendMessage')) throw new Error("共享输入框的三种对话模式发送路径缺失");
 if (!source.includes('STATIC_PAGES || !voiceCaptureSupported()')) throw new Error("静态页面未明确阻止将语音请求发往无后端环境");
 if (!indexHtml.includes('id="voice-input-button"')) throw new Error("语音输入按钮未接入页面");

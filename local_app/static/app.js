@@ -317,6 +317,8 @@ const state = {
   requestSerial: 0,
   voiceCapture: null,
   voiceRequestSerial: 0,
+  asrConfigured: false,
+  asrStatusKnown: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -3254,25 +3256,34 @@ function voiceCaptureSupported() {
 function voiceInputUnavailableMessage() {
   if (STATIC_PAGES) return "语音输入需要接入受保护的应用后端；当前静态页面不保存或使用讯飞凭据。";
   if (!window.isSecureContext) return "语音输入需要通过 HTTPS 打开网站（本机 localhost 也可以）。";
+  if (state.asrStatusKnown && !state.asrConfigured) return "语音输入服务正在配置中，请稍后刷新后再试。";
   return "当前浏览器不支持麦克风录音，请使用最新版 Chrome、Edge 或 Safari。";
 }
 
 function updateVoiceInputUi(phase = "idle") {
   const button = els.voiceInput;
   if (!button) return;
-  const unavailable = STATIC_PAGES || !voiceCaptureSupported();
+  const serviceUnavailable = state.asrStatusKnown && !state.asrConfigured;
+  const unavailable = STATIC_PAGES || !voiceCaptureSupported() || serviceUnavailable;
   const disabled = unavailable || state.busy || state.ended || phase === "transcribing";
   button.disabled = disabled;
   button.classList.toggle("is-recording", phase === "recording");
   button.classList.toggle("is-transcribing", phase === "transcribing");
   button.setAttribute("aria-pressed", phase === "recording" ? "true" : "false");
   if (els.voiceInputLabel) {
-    els.voiceInputLabel.textContent = phase === "recording" ? "停止录音" : phase === "transcribing" ? "识别中" : "语音输入";
+    els.voiceInputLabel.textContent = phase === "recording" ? "停止录音" : phase === "transcribing" ? "识别中" : serviceUnavailable ? "语音配置中" : "语音输入";
   }
   button.title = unavailable ? voiceInputUnavailableMessage() : phase === "recording"
     ? "正在录音，再次点击即可结束"
     : phase === "transcribing" ? "正在识别语音"
       : `语音输入：录音后转写到输入框（最长 ${VOICE_MAX_DURATION_SECONDS} 秒）`;
+}
+
+function applyVoiceServiceStatus(health = null) {
+  const configured = health?.asr?.configured;
+  state.asrStatusKnown = typeof configured === "boolean";
+  state.asrConfigured = configured === true;
+  updateVoiceInputUi();
 }
 
 function mergeVoiceSamples(chunks) {
@@ -3630,9 +3641,11 @@ function parseRouteHash(hash = window.location.hash) {
 
 function activityModuleStats(route, module) {
   if (route === "learning/course") {
+    if (!state.catalogIndex.length) return "课程内容加载中…";
     return `${moduleGroups(module.id).length} 个章节 · ${moduleCourses(module.id).length} 节课程`;
   }
   if (route === "exam/objective") {
+    if (!state.examBank) return "题库加载中…";
     const exam = objectiveExamById(module.id);
     return `${examQuestions(exam).length} 道题${isRealExam(exam) ? ` · 满分 ${examTotalPoints(exam)} 分` : ""}`;
   }
@@ -3804,6 +3817,13 @@ function renderLearning() {
   const groups = moduleGroups(module.id);
   const courses = moduleCourses(module.id);
   const moduleDescription = String(module.description || "").trim();
+  if (!state.catalogIndex.length) {
+    els.learningSummary.innerHTML = `
+      <div><span>正在学习</span><h3>${escapeHtml(module.title)}</h3>${moduleDescription && moduleDescription !== module.title ? `<p>${escapeHtml(moduleDescription)}</p>` : ""}</div>
+      <div class="summary-count"><strong>…</strong><span>课程内容加载中</span></div>`;
+    els.learningChapters.innerHTML = `<div class="scenario-empty">正在载入本模块课程内容…</div>`;
+    return;
+  }
   els.learningSummary.innerHTML = `
     <div><span>正在学习</span><h3>${escapeHtml(module.title)}</h3>${moduleDescription && moduleDescription !== module.title ? `<p>${escapeHtml(moduleDescription)}</p>` : ""}</div>
     <div class="summary-count"><strong>${groups.length}</strong><span>个章节</span><strong>${courses.length}</strong><span>节课程</span></div>`;
@@ -4180,8 +4200,9 @@ function renderObjectiveQuestion(question, index, answers, score) {
 }
 
 function renderObjectiveExam() {
+  if (!state.examBank) return `<div class="scenario-empty">题库正在后台加载，请稍候…</div>`;
   const exam = activeExamModule();
-  if (!exam) return "";
+  if (!exam) return `<div class="scenario-empty">暂时未找到该模块的题库，请返回模块列表重试。</div>`;
   const answers = objectiveAnswers();
   const score = objectiveScore();
   const questions = examQuestions(exam);
@@ -4965,25 +4986,41 @@ function syncRouteFromLocation(focus = true) {
   if (parsed.invalid) showToast("这个链接无法打开，已返回可选择的页面。", true);
 }
 
+function refreshCurrentRouteAfterDeferredData() {
+  // The slow course catalog and exam banks are intentionally loaded after
+  // the core navigation data.  Re-rendering only refreshes the currently
+  // visible page; it never resets a conversation or discards typed input.
+  renderModuleOptions();
+  renderRoute();
+  if (state.routeModuleId && state.route === "learning/course") renderLearning();
+  if (state.routeModuleId && (state.route === "exam/objective" || state.route === "exam/faq-keywords")) {
+    renderScenarioFrame();
+  }
+}
+
 async function boot() {
   try {
-    const [bootstrap, moduleData, catalogData, health, examBank, pointWaveFaqExam, realExamBank] = await Promise.all([
-      api("/api/bootstrap"),
-      fetch(staticAsset("learning_modules.json")).then((response) => response.json()),
-      fetch(staticAsset("learning_catalog.json")).then((response) => response.json()),
-      api("/api/health"),
-      fetch(staticAsset("data/comprehensive_exam_bank.json")).then((response) => response.json()),
-      fetch(staticAsset("data/point_wave_faq_exam.json")).then((response) => response.json()),
-      fetch(staticAsset("data/real_exam_bank.json")).then((response) => response.json()),
+    // Start every request at once, but only block the first paint on the
+    // small payloads required to navigate and start a conversation.  The
+    // course catalog and exam banks are much larger and used only after a
+    // learner enters those specific areas.
+    const bootstrapPromise = api("/api/bootstrap");
+    const moduleDataPromise = fetch(staticAsset("learning_modules.json")).then((response) => response.json());
+    const healthPromise = api("/api/health");
+    const pointWaveFaqExamPromise = fetch(staticAsset("data/point_wave_faq_exam.json")).then((response) => response.json());
+    const catalogDataPromise = fetch(staticAsset("learning_catalog.json")).then((response) => response.json());
+    const examBankPromise = fetch(staticAsset("data/comprehensive_exam_bank.json")).then((response) => response.json());
+    const realExamBankPromise = fetch(staticAsset("data/real_exam_bank.json")).then((response) => response.json());
+    const [bootstrap, moduleData, health, pointWaveFaqExam] = await Promise.all([
+      bootstrapPromise,
+      moduleDataPromise,
+      healthPromise,
+      pointWaveFaqExamPromise,
     ]);
     state.scenarios = bootstrap.scenarios || [];
     state.modules = moduleData.modules || [];
-    state.courses = catalogData.courses || [];
-    state.catalogIndex = catalogData.module_index || [];
     state.knowledge = bootstrap.knowledge || {};
-    state.examBank = mergePointWaveFaqExam(examBank, pointWaveFaqExam);
     state.faqKeywordExamBanks = normalizeFaqKeywordExamBanks(pointWaveFaqExam);
-    state.realExamBank = realExamBank;
     // The bootstrap payload contains the fixed long prompts. They are used
     // only inside the system envelope; the editable local values remain
     // short presentation preferences.
@@ -4997,7 +5034,27 @@ async function boot() {
     navigateRoute(requested.route, requested.moduleId, { updateHistory: false, focus: false });
     if (requested.invalid) showToast("这个链接无法打开，已返回可选择的页面。", true);
     updateApiStatus({}, health);
-    updateVoiceInputUi();
+    applyVoiceServiceStatus(health);
+
+    void catalogDataPromise.then((catalogData) => {
+      state.courses = catalogData.courses || [];
+      state.catalogIndex = catalogData.module_index || [];
+      refreshCurrentRouteAfterDeferredData();
+    }).catch(() => {
+      if (state.route === "learning/course") showToast("课程内容暂时加载失败，请刷新后重试。", true);
+    });
+    void examBankPromise.then((examBank) => {
+      state.examBank = mergePointWaveFaqExam(examBank, pointWaveFaqExam);
+      refreshCurrentRouteAfterDeferredData();
+    }).catch(() => {
+      if (state.route === "exam/objective") showToast("考试题库暂时加载失败，请刷新后重试。", true);
+    });
+    void realExamBankPromise.then((realExamBank) => {
+      state.realExamBank = realExamBank;
+      if (state.route === "exam/objective" && !state.routeModuleId) refreshCurrentRouteAfterDeferredData();
+    }).catch(() => {
+      // The module exams stay usable even if an optional real-exam bank is unavailable.
+    });
   } catch (error) {
     showToast(`页面数据加载失败，请刷新后重试。${error.message ? `（${error.message}）` : ""}`, true);
   }
