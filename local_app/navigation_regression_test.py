@@ -30,12 +30,13 @@ checks = {
         HTML,
         ['id="module-gateway-page"', 'id="module-route-grid"', 'id="gateway-back"'],
     ),
-    "four_activity_entries_exist": contains_all(
+    "five_activity_entries_exist": contains_all(
         HTML,
         [
             'data-route="learning/course"',
             'data-route="learning/practice"',
             'data-route="exam/objective"',
+            'data-route="exam/faq-keywords"',
             'data-route="exam/simulation"',
         ],
     ),
@@ -50,21 +51,24 @@ checks = {
             "window.addEventListener(\"popstate\"",
         ],
     ),
-    "four_activity_routes_are_configured": contains_all(
+    "five_activity_routes_are_configured": contains_all(
         JS,
         [
             '"learning/course": {',
             '"learning/practice": {',
             '"exam/objective": {',
+            '"exam/faq-keywords": {',
             '"exam/simulation": {',
         ],
     ),
-    "objective_and_simulation_keep_independent_modules": contains_all(
+    "exam_activities_keep_independent_modules": contains_all(
         JS,
         [
             "objectiveModuleId",
+            "faqKeywordModuleId",
             "simulationModuleId",
             'if (route === "exam/objective")',
+            'if (route === "exam/faq-keywords")',
             'if (route === "exam/simulation")',
         ],
     ),
@@ -78,6 +82,21 @@ checks = {
     ) and bool(
         re.search(
             r'if \(state\.route === "exam/objective"\) \{.*?renderObjectiveExam\(\);.*?bindObjectiveExam\(els\.testScenario\);\s*return;',
+            JS,
+            re.S,
+        )
+    ),
+    "faq_keyword_page_renders_only_keyword_exam": contains_all(
+        JS,
+        [
+            'if (state.route === "exam/faq-keywords") {',
+            "els.testScenario.innerHTML = renderFaqKeywordExam();",
+            "bindFaqKeywordExam(els.testScenario);",
+            'if (route === "exam/faq-keywords") return faqKeywordQuestions(itemId).length',
+        ],
+    ) and bool(
+        re.search(
+            r'if \(state\.route === "exam/faq-keywords"\) \{.*?renderFaqKeywordExam\(\);.*?bindFaqKeywordExam\(els\.testScenario\);\s*return;',
             JS,
             re.S,
         )
@@ -125,7 +144,7 @@ checks = {
             "sanitizeStaticTrainingSuggestedReply",
             "history 中 role=user 是员工，role=assistant 是本轮前顾客已经说出的公开信息",
             "suggested_reply",
-            "我先不把它当成一般反应",
+            "需要跟进的异常反应",
         ],
     ),
     "qa_natural_follow_up_keeps_context": contains_all(

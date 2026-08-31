@@ -289,6 +289,7 @@ const state = {
   learningModuleId: null,
   practiceModuleId: null,
   objectiveModuleId: null,
+  faqKeywordModuleId: null,
   simulationModuleId: null,
   testModuleId: null,
   scenarioIndex: 0,
@@ -306,9 +307,12 @@ const state = {
   revising: false,
   knowledge: {},
   examBank: null,
+  faqKeywordExamBanks: [],
   realExamBank: null,
   objectiveAnswersByModule: {},
   objectiveScoresByModule: {},
+  faqKeywordAnswersByModule: {},
+  faqKeywordScoresByModule: {},
   simulationScoresByModule: {},
   requestSerial: 0,
   voiceCapture: null,
@@ -420,7 +424,12 @@ const ROUTE_CONFIG = {
   "exam/objective": {
     area: "exam", mode: "test", screen: "activity", parent: "exam",
     tag: "知识考试", nav: "实战考核 / 客观题考试", title: "客观题考试", gatewayTitle: "选择考试模块",
-    pageDescription: "完成知识测试，巩固关键业务要点。", description: "选择一个知识模块，完成填空、选择和 FAQ 关键词问答。", workspaceDescription: "完成当前模块全部题目，交卷后查看成绩和解析。", action: "开始答题",
+    pageDescription: "完成知识测试，巩固关键业务要点。", description: "选择一个知识模块，完成填空和选择题。", workspaceDescription: "完成当前模块全部题目，交卷后查看成绩和解析。", action: "开始答题",
+  },
+  "exam/faq-keywords": {
+    area: "exam", mode: "test", screen: "activity", parent: "exam",
+    tag: "FAQ 关键词问答", nav: "实战考核 / FAQ关键词问答", title: "FAQ关键词问答", gatewayTitle: "选择 FAQ 题库模块",
+    pageDescription: "用自己的话回答高频 FAQ，系统按关键词组自动判分。", description: "选择有题库的知识模块；表达命中关键要点即可得分。", workspaceDescription: "完成本模块 FAQ 关键词问答，交卷后查看命中要点和参考回答。", action: "开始关键词问答",
   },
   "exam/simulation": {
     area: "exam", mode: "test", screen: "activity", parent: "exam",
@@ -459,6 +468,17 @@ function mergePointWaveFaqExam(examBank, pointWaveFaqExam) {
   return examBank;
 }
 
+function normalizeFaqKeywordExamBanks(...banks) {
+  const seen = new Set();
+  return banks.flat().filter((bank) => {
+    const moduleId = String(bank?.module_id || "").trim();
+    const questions = Array.isArray(bank?.questions) ? bank.questions : [];
+    if (!moduleId || !questions.length || seen.has(moduleId)) return false;
+    seen.add(moduleId);
+    return true;
+  });
+}
+
 async function loadStaticData() {
   if (!staticDataPromise) {
     staticDataPromise = Promise.all([
@@ -478,6 +498,7 @@ async function loadStaticData() {
       rubric,
       methodology,
       examBank: mergePointWaveFaqExam(examBank, pointWaveFaqExam),
+      faqKeywordExamBanks: normalizeFaqKeywordExamBanks(pointWaveFaqExam),
       promptDefaults,
     }));
   }
@@ -3452,9 +3473,24 @@ function realExamById(examId) {
   return state.realExamBank?.exams?.find((exam) => exam.id === examId) || null;
 }
 
+function faqKeywordExamByModuleId(moduleId) {
+  return state.faqKeywordExamBanks?.find((exam) => exam.module_id === moduleId) || null;
+}
+
+function faqKeywordQuestions(moduleId) {
+  const bank = faqKeywordExamByModuleId(moduleId);
+  return (bank?.questions || []).map((question) => ({
+    ...question,
+    type: "keyword_answer",
+    section: bank?.section_title || "FAQ 关键词问答",
+    points: Number(question.points || 0),
+  }));
+}
+
 function routeItemById(route, itemId) {
   if (!itemId) return null;
   if (route === "exam/objective") return exactModuleById(itemId) || realExamById(itemId);
+  if (route === "exam/faq-keywords") return faqKeywordQuestions(itemId).length ? exactModuleById(itemId) : null;
   return exactModuleById(itemId);
 }
 
@@ -3466,6 +3502,7 @@ function activeModuleId() {
   if (state.route === "learning/course") return state.learningModuleId;
   if (state.route === "learning/practice") return state.practiceModuleId;
   if (state.route === "exam/objective") return state.objectiveModuleId;
+  if (state.route === "exam/faq-keywords") return state.faqKeywordModuleId;
   if (state.route === "exam/simulation") return state.simulationModuleId;
   return null;
 }
@@ -3599,6 +3636,10 @@ function activityModuleStats(route, module) {
     const exam = objectiveExamById(module.id);
     return `${examQuestions(exam).length} 道题${isRealExam(exam) ? ` · 满分 ${examTotalPoints(exam)} 分` : ""}`;
   }
+  if (route === "exam/faq-keywords") {
+    const questions = faqKeywordQuestions(module.id);
+    return `${questions.length} 道 FAQ 关键词题 · 满分 ${questions.reduce((sum, question) => sum + Number(question.points || 0), 0)} 分`;
+  }
   return `${moduleScenarios(module.id).length} 个顾客场景`;
 }
 
@@ -3608,13 +3649,21 @@ function renderModuleGateway() {
   els.gatewayTitle.textContent = config.gatewayTitle || `选择${config.title}模块`;
   els.gatewayDescription.textContent = config.description;
   els.gatewayBack.dataset.route = config.parent;
-  const moduleCards = state.modules.map((module) => `
+  const routeModules = state.route === "exam/faq-keywords"
+    ? state.modules.filter((module) => faqKeywordQuestions(module.id).length)
+    : state.modules;
+  const moduleCards = routeModules.map((module) => `
     <button class="module-route-card" data-module-id="${escapeHtml(module.id)}">
       <span>模块 ${String(module.order).padStart(2, "0")}</span>
       <h3>${escapeHtml(module.title)}</h3>
       <p>${escapeHtml(activityModuleStats(state.route, module))}</p>
       <b>${escapeHtml(config.action)} →</b>
     </button>`).join("");
+  if (!moduleCards.length) {
+    els.moduleRouteGrid.classList.remove("grouped");
+    els.moduleRouteGrid.innerHTML = `<div class="scenario-empty">暂时没有可用的 FAQ 关键词题库。</div>`;
+    return;
+  }
   const realExams = state.route === "exam/objective" ? state.realExamBank?.exams || [] : [];
   if (!realExams.length) {
     els.moduleRouteGrid.classList.remove("grouped");
@@ -3670,12 +3719,17 @@ function renderRoute() {
   const moduleObjectiveExam = state.route === "exam/objective" && !realObjectiveExam
     ? objectiveExamById(state.routeModuleId)
     : null;
+  const moduleFaqKeywordExam = state.route === "exam/faq-keywords"
+    ? faqKeywordExamByModuleId(state.routeModuleId)
+    : null;
   state.mode = config.mode;
   els.modeButtons.forEach((button) => button.classList.toggle("active", button.dataset.route === config.area));
   els.modeBreadcrumb.textContent = config.nav;
   els.pageTitle.textContent = routeItem?.title || config.title;
   els.pageDescription.textContent = realObjectiveExam
     ? `完成 ${examQuestions(routeItem).length} 道正式试题，提交后按原卷答案批阅并查看成绩。`
+    : moduleFaqKeywordExam
+      ? `完成本模块 ${moduleFaqKeywordExam.questions.length} 道 FAQ 关键词题；表达命中关键要点即可得分。`
     : moduleObjectiveExam
       ? `完成本模块 ${examQuestions(moduleObjectiveExam).length} 道题，交卷后查看成绩和解析。`
     : workspace && state.routeModuleId ? config.workspaceDescription || config.description : config.pageDescription || config.description;
@@ -3684,7 +3738,7 @@ function renderRoute() {
   els.moduleGatewayPage.classList.toggle("hidden", !gateway);
   els.learningPage.classList.toggle("hidden", !(state.route === "learning/course" && workspace));
   els.trainingPage.classList.toggle("hidden", !(state.route === "learning/practice" && workspace));
-  els.testPage.classList.toggle("hidden", !(["exam/objective", "exam/simulation"].includes(state.route) && workspace));
+  els.testPage.classList.toggle("hidden", !(["exam/objective", "exam/faq-keywords", "exam/simulation"].includes(state.route) && workspace));
   els.qaPage.classList.toggle("hidden", state.route !== "qa");
   const showConversation = state.route === "qa" || ((state.route === "learning/practice" || state.route === "exam/simulation") && workspace);
   els.conversationStage.classList.toggle("hidden", !showConversation);
@@ -3707,6 +3761,12 @@ function renderRoute() {
     els.testRouteDescription.textContent = realExam
       ? `完成全部 ${examQuestions(exam).length} 题后提交；填空题自动判分，问答题按原卷答案批阅。`
       : `完成全部 ${examQuestions(exam).length} 题后交卷，即可查看成绩、答案和解析。`;
+  } else if (state.route === "exam/faq-keywords" && workspace) {
+    const exam = moduleFaqKeywordExam;
+    els.testRouteBack.dataset.route = "exam/faq-keywords";
+    els.testRouteTag.textContent = "FAQ 关键词问答";
+    els.testRouteTitle.textContent = `${exam?.module_title || routeItem?.title || "当前模块"} FAQ关键词问答`;
+    els.testRouteDescription.textContent = `请用自己的话回答 ${exam?.questions?.length || 0} 道高频问题；系统会按关键词组、必答安全要点和危险反向表达自动判分。`;
   } else if (state.route === "exam/simulation" && workspace) {
     els.testRouteBack.dataset.route = "exam/simulation";
     els.testRouteTag.textContent = "实战对话";
@@ -3717,12 +3777,18 @@ function renderRoute() {
 
 function renderModuleOptions() {
   const options = state.modules.map((module) => `<option value="${module.id}">${String(module.order).padStart(2, "0")} · ${escapeHtml(module.title)}</option>`).join("");
+  const testModules = state.route === "exam/faq-keywords"
+    ? state.modules.filter((module) => faqKeywordQuestions(module.id).length)
+    : state.modules;
+  const testOptions = testModules.map((module) => `<option value="${module.id}">${String(module.order).padStart(2, "0")} · ${escapeHtml(module.title)}</option>`).join("");
   els.learningSelect.innerHTML = options;
   els.practiceSelect.innerHTML = options;
-  els.testSelect.innerHTML = options;
+  els.testSelect.innerHTML = testOptions;
   els.learningSelect.value = state.learningModuleId;
   els.practiceSelect.value = state.practiceModuleId;
-  els.testSelect.value = state.route === "exam/simulation" ? state.simulationModuleId : state.objectiveModuleId;
+  els.testSelect.value = state.route === "exam/simulation"
+    ? state.simulationModuleId
+    : state.route === "exam/faq-keywords" ? state.faqKeywordModuleId : state.objectiveModuleId;
 }
 
 function renderCourseSummary(summary) {
@@ -3857,12 +3923,6 @@ function examQuestions(exam) {
       section: "选择题",
       points: 4,
       reference_answer: (question.answers || []).join("、"),
-    })),
-    ...(exam.faq_keyword_answers || []).map((question) => ({
-      ...question,
-      type: "keyword_answer",
-      section: "FAQ 关键词问答",
-      points: Number(question.points || 0),
     })),
   ];
 }
@@ -4062,6 +4122,20 @@ function objectiveScore(moduleId = state.objectiveModuleId) {
   return moduleId ? state.objectiveScoresByModule[moduleId] || null : null;
 }
 
+function activeFaqKeywordExam() {
+  return faqKeywordExamByModuleId(state.faqKeywordModuleId);
+}
+
+function faqKeywordAnswers(moduleId = state.faqKeywordModuleId) {
+  if (!moduleId) return {};
+  state.faqKeywordAnswersByModule[moduleId] ||= {};
+  return state.faqKeywordAnswersByModule[moduleId];
+}
+
+function faqKeywordScore(moduleId = state.faqKeywordModuleId) {
+  return moduleId ? state.faqKeywordScoresByModule[moduleId] || null : null;
+}
+
 function simulationScores(moduleId = state.simulationModuleId) {
   if (!moduleId) return {};
   state.simulationScoresByModule[moduleId] ||= {};
@@ -4137,6 +4211,28 @@ function renderObjectiveExam() {
       ? `<button class="exam-submit" data-finalize-objective>完成批阅并查看成绩</button>`
       : `<button class="exam-restart" data-reset-objective>再考一次</button>`;
   return `<section class="objective-exam ${realExam ? "real-objective-exam" : ""}"><div class="exam-section-head"><span>共 ${questions.length} 题 · 满分 ${formatPoints(totalPoints)} 分</span><h3>${realExam ? escapeHtml(exam.title) : "开始答题"}</h3><p>${manualQuestions.length ? "请独立完成全部题目；提交前不会显示标准答案。" : "完成所有题目后交卷，即可查看成绩和详细解析。"}</p></div>${sourceNote}${sections}${action}${reveal}</section>`;
+}
+
+function renderFaqKeywordExam() {
+  const exam = activeFaqKeywordExam();
+  if (!exam) return `<div class="scenario-empty">暂时没有可用的 FAQ 关键词题库。</div>`;
+  const answers = faqKeywordAnswers();
+  const score = faqKeywordScore();
+  const questions = faqKeywordQuestions(state.faqKeywordModuleId);
+  const totalPoints = questions.reduce((sum, question) => sum + Number(question.points || 0), 0);
+  let questionNumber = 0;
+  const sections = examSectionGroups(questions).map((group) => {
+    const sectionPoints = group.questions.reduce((sum, question) => sum + Number(question.points || 0), 0);
+    const content = group.questions.map((question) => renderObjectiveQuestion(question, questionNumber++, answers, score)).join("");
+    return `<details open><summary>${escapeHtml(group.title)}（${group.questions.length} 题，共 ${formatPoints(sectionPoints)} 分）</summary><div class="exam-question-list">${content}</div></details>`;
+  }).join("");
+  const reveal = score?.stage === "complete"
+    ? `<div class="exam-result" tabindex="-1"><strong>本次得分：${formatPoints(score.score)}/${formatPoints(totalPoints)} 分</strong><p>答对 ${score.correct}/${questions.length} 题。下方已标出命中的关键词组、仍可补充的要点和参考回答。</p></div>`
+    : "";
+  const action = !score
+    ? `<button class="exam-submit" data-submit-faq-keyword>交卷并查看关键词判定</button>`
+    : `<button class="exam-restart" data-reset-faq-keyword>再考一次</button>`;
+  return `<section class="objective-exam faq-keyword-exam"><div class="exam-section-head"><span>共 ${questions.length} 题 · 满分 ${formatPoints(totalPoints)} 分</span><h3>${escapeHtml(exam.title || "FAQ 关键词问答")}</h3><p>请用自己的话回答；命中相关关键词组即可得分。必答安全要点必须覆盖，危险的反向表达会触发安全硬规则并按 0 分处理。</p></div><div class="real-exam-source-note"><strong>智能关键词判定说明</strong><p>无需逐字复述参考回答。系统会识别每道题的关键词组和同义表达，交卷后展示命中情况、补充方向与参考回答。</p></div>${sections}${action}${reveal}</section>`;
 }
 
 function scoreObjectiveExam() {
@@ -4216,6 +4312,41 @@ function scoreObjectiveExam() {
   els.testScenario.querySelector(".exam-result")?.focus();
 }
 
+function scoreFaqKeywordExam() {
+  const exam = activeFaqKeywordExam();
+  if (!exam) return;
+  const answers = faqKeywordAnswers();
+  const all = faqKeywordQuestions(state.faqKeywordModuleId);
+  const unanswered = all.filter((question) => !questionIsAnswered(question, answers[objectiveAnswerKey(question)]));
+  if (unanswered.length) {
+    showToast(`还有 ${unanswered.length} 题未作答，完成后再交卷。`, true);
+    const firstKey = objectiveAnswerKey(unanswered[0]);
+    els.testScenario.querySelector(`[data-exam-short="${firstKey}"]`)?.focus();
+    return;
+  }
+  let autoScore = 0;
+  let correct = 0;
+  const results = {};
+  all.forEach((question) => {
+    const key = objectiveAnswerKey(question);
+    const keywordScore = keywordAnswerScore(question, answers[key]);
+    results[key] = { ...keywordScore, actual: questionAnswerText(question, answers[key]) };
+    autoScore += keywordScore.earned;
+    if (keywordScore.correct) correct += 1;
+  });
+  state.faqKeywordScoresByModule[state.faqKeywordModuleId] = {
+    stage: "complete",
+    score: Math.round(autoScore * 100) / 100,
+    autoScore: Math.round(autoScore * 100) / 100,
+    manualScore: 0,
+    correct,
+    results,
+    manualScores: {},
+  };
+  renderScenarioFrame();
+  els.testScenario.querySelector(".exam-result")?.focus();
+}
+
 function finalizeObjectiveReview() {
   const exam = activeExamModule();
   const score = objectiveScore();
@@ -4274,12 +4405,31 @@ function bindObjectiveExam(root) {
   });
 }
 
+function bindFaqKeywordExam(root) {
+  root.querySelectorAll("[data-exam-short]").forEach((input) => input.addEventListener("input", () => {
+    faqKeywordAnswers()[input.dataset.examShort] = input.value;
+  }));
+  root.querySelector("[data-submit-faq-keyword]")?.addEventListener("click", scoreFaqKeywordExam);
+  root.querySelector("[data-reset-faq-keyword]")?.addEventListener("click", () => {
+    delete state.faqKeywordAnswersByModule[state.faqKeywordModuleId];
+    delete state.faqKeywordScoresByModule[state.faqKeywordModuleId];
+    renderScenarioFrame();
+    els.testScenario.querySelector("textarea")?.focus();
+  });
+}
+
 function renderScenarioFrame() {
   if (state.mode !== "training" && state.mode !== "test") return;
   if (state.route === "exam/objective") {
     els.testScenario.classList.add("objective-only");
     els.testScenario.innerHTML = renderObjectiveExam();
     bindObjectiveExam(els.testScenario);
+    return;
+  }
+  if (state.route === "exam/faq-keywords") {
+    els.testScenario.classList.add("objective-only");
+    els.testScenario.innerHTML = renderFaqKeywordExam();
+    bindFaqKeywordExam(els.testScenario);
     return;
   }
   const module = activeModule();
@@ -4772,6 +4922,10 @@ function navigateRoute(route, moduleId = null, options = {}) {
     state.objectiveModuleId = validModuleId;
     state.testModuleId = validModuleId;
   }
+  if (route === "exam/faq-keywords") {
+    state.faqKeywordModuleId = validModuleId;
+    state.testModuleId = validModuleId;
+  }
   if (route === "exam/simulation") {
     state.simulationModuleId = validModuleId;
     state.testModuleId = validModuleId;
@@ -4783,7 +4937,7 @@ function navigateRoute(route, moduleId = null, options = {}) {
   renderModuleOptions();
   renderRoute();
   if (validModuleId && route === "learning/course") renderLearning();
-  if (validModuleId && route === "exam/objective") renderScenarioFrame();
+  if (validModuleId && (route === "exam/objective" || route === "exam/faq-keywords")) renderScenarioFrame();
   if (validModuleId && (route === "learning/practice" || route === "exam/simulation")) {
     state.scenarioIndex = 0;
     selectScenario();
@@ -4828,6 +4982,7 @@ async function boot() {
     state.catalogIndex = catalogData.module_index || [];
     state.knowledge = bootstrap.knowledge || {};
     state.examBank = mergePointWaveFaqExam(examBank, pointWaveFaqExam);
+    state.faqKeywordExamBanks = normalizeFaqKeywordExamBanks(pointWaveFaqExam);
     state.realExamBank = realExamBank;
     // The bootstrap payload contains the fixed long prompts. They are used
     // only inside the system envelope; the editable local values remain

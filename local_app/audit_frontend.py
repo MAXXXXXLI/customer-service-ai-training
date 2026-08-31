@@ -36,12 +36,12 @@ raw_title_pattern = re.compile(r"(?:SRC-\d+|CHUNK-\d+|\.(?:docx?|pptx?|xlsx?|xls
 checks = {
     "all_javascript_ids_exist": sorted(js_id_refs - html_ids) == [],
     "three_product_areas_exist": all(f'data-route="{route}"' in HTML for route in ["learning", "exam", "qa"]),
-    "four_activity_gateways_exist": all(f'data-route="{route}"' in HTML for route in ["learning/course", "learning/practice", "exam/objective", "exam/simulation"]),
+    "five_activity_gateways_exist": all(f'data-route="{route}"' in HTML for route in ["learning/course", "learning/practice", "exam/objective", "exam/faq-keywords", "exam/simulation"]),
     "module_selection_uses_gateway": 'id="module-gateway-page"' in HTML and 'id="module-route-grid"' in HTML,
     "learning_and_coaching_are_separate": all(marker in HTML for marker in ['id="learning-page"', 'id="training-page"', 'data-route="learning/course"', 'data-route="learning/practice"']),
     "assessment_types_are_separate": (
-        all(marker in HTML for marker in ['data-route="exam/objective"', 'data-route="exam/simulation"'])
-        and all(marker in JS for marker in ['state.route === "exam/objective"', 'state.route === "exam/simulation"'])
+        all(marker in HTML for marker in ['data-route="exam/objective"', 'data-route="exam/faq-keywords"', 'data-route="exam/simulation"'])
+        and all(marker in JS for marker in ['state.route === "exam/objective"', 'state.route === "exam/faq-keywords"', 'state.route === "exam/simulation"'])
     ),
     "objective_exam_excludes_conversation": 'const showConversation = state.route === "qa" || ((state.route === "learning/practice" || state.route === "exam/simulation") && workspace);' in JS,
     "course_content_uses_modal": 'id="course-modal"' in HTML and 'id="course-modal-content"' in HTML,
